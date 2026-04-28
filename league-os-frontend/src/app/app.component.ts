@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { HeaderComponent } from './widgets/header/header.component';
 import { HomeComponent } from './features/home/home.component';
-import { FooterComponent } from './shared/components/footer/footer.component';
+import { FooterComponent } from './widgets/footer/footer.component';
 import { BreadcrumbsComponent } from './shared/components/breadcrumbs/breadcrumbs.component';
 import { MainComponent } from './features/main/main.component';
 
