@@ -5,6 +5,6 @@ import { MatchesSliderComponent } from '../../widgets/matches-slide/matches-slid
     selector: 'app-home',
     imports: [MatchesSliderComponent],
     templateUrl: './home.component.html',
-    styleUrl: './home.component.css',
+    styleUrl: './home.component.scss',
 })
 export class HomeComponent {}

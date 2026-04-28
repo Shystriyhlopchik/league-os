@@ -1,38 +1,93 @@
+<!--<article class="match-card">-->
+<!--    <header class="match-card__header">-->
+<!--        <h4>Сезон {{ match().seasonYear }}, {{ match().roundNumber }} тур</h4>-->
+
+<!--        <h3>-->
+<!--            {{ match().matchDateTime }}-->
+<!--        </h3>-->
+<!--    </header>-->
+
+<!--    <div class="match-card__teams">-->
+<!--        <div class="match-card__team">-->
+<!--            <img-->
+<!--                [src]="match().homeTeamLogoUrl"-->
+<!--                [alt]="'Логотип команды ' + match().homeTeamName"-->
+<!--            />-->
+<!--            <p>{{ match().homeTeamName }}</p>-->
+<!--        </div>-->
+
+<!--        <strong class="match-card__score">-->
+<!--            {{ match().homeTeamScore ?? "-" }} :-->
+<!--            {{ match().awayTeamScore ?? "-" }}-->
+<!--        </strong>-->
+
+<!--        <div class="match-card__team">-->
+<!--            <img-->
+<!--                [src]="match().awayTeamLogoUrl"-->
+<!--                [alt]="'Логотип команды ' + match().awayTeamName"-->
+<!--            />-->
+<!--            <p>{{ match().awayTeamName }}</p>-->
+<!--        </div>-->
+<!--    </div>-->
+
+<!--    @if (match().venueName) {-->
+<!--        <p class="match-card__venue">-->
+<!--            {{ match().venueName }}-->
+<!--        </p>-->
+<!--    }-->
+<!--</article>-->
+
 <article class="match-card">
     <header class="match-card__header">
-        <h4>Сезон {{ match().seasonYear }}, {{ match().roundNumber }} тур</h4>
+        <div class="match-card__season">
+            <img src="assets/icons/ball.svg" alt="" />
+            <span>{{ match().seasonYear }}, {{ match().roundNumber }}</span>
+        </div>
 
-        <h3>
+        <time class="match-card__date">
             {{ match().matchDateTime }}
-        </h3>
+        </time>
     </header>
 
-    <div class="match-card__teams">
+    <div class="match-card__content">
         <div class="match-card__team">
             <img
+                class="match-card__logo"
                 [src]="match().homeTeamLogoUrl"
                 [alt]="'Логотип команды ' + match().homeTeamName"
             />
-            <p>{{ match().homeTeamName }}</p>
+
+            <span class="match-card__team-name">
+                {{ match().homeTeamName }}
+            </span>
         </div>
 
-        <strong class="match-card__score">
-            {{ match().homeTeamScore ?? "-" }} :
-            {{ match().awayTeamScore ?? "-" }}
-        </strong>
+        <div class="match-card__center">
+            <strong class="match-card__score">
+                {{ match().homeTeamScore ?? " - " }} :
+                {{ match().awayTeamScore ?? " - " }}
+            </strong>
+
+            <span class="match-card__status">
+                матч<br />
+                окончен
+            </span>
+        </div>
 
         <div class="match-card__team">
             <img
+                class="match-card__logo"
                 [src]="match().awayTeamLogoUrl"
                 [alt]="'Логотип команды ' + match().awayTeamName"
             />
-            <p>{{ match().awayTeamName }}</p>
+
+            <span class="match-card__team-name">
+                {{ match().awayTeamName }}
+            </span>
         </div>
     </div>
 
-    @if (match().venueName) {
-        <p class="match-card__venue">
-            {{ match().venueName }}
-        </p>
-    }
+    <footer class="match-card__venue">
+        {{ match().venueName }}
+    </footer>
 </article>
