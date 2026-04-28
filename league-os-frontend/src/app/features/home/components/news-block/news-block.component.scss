@@ -1,52 +1,58 @@
 #news {
-  padding: 24px;
-  background: #fafafa;
+    padding: 24px;
+    background: #fafafa;
 
-  .news-title {
-    font-family: "Russo One", sans-serif;
-    font-size: 48px;
-    margin-bottom: 16px;
-  }
-
-  .news-grid {
-    /* в точности соблюдаем отступы через Material API */
-  }
-
-  .news-card {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-
-    img {
-      object-fit: cover;
-      height: 140px;
+    .news-title {
+        font-family: "Russo One", sans-serif;
+        font-size: 48px;
+        margin-bottom: 16px;
     }
 
-    mat-card-content {
-      padding: 16px 8px;
-      h3 {
-        font-family: 'Fira Sans', sans-serif;
-        margin: 0 0 8px;
-        font-size: 20px;
-        font-weight: 500;
-      }
-      p {
-        font-family: 'Fira Sans', sans-serif;
-        margin: 0;
-        color: rgba(0,0,0,0.7);
-        font-size: 16px;
-      }
+    .news-grid {
+        /* в точности соблюдаем отступы через Material API */
     }
-  }
+
+    .news-card {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+
+        img {
+            object-fit: cover;
+            height: 140px;
+        }
+
+        mat-card-content {
+            padding: 16px 8px;
+            h3 {
+                font-family: "Fira Sans", sans-serif;
+                margin: 0 0 8px;
+                font-size: 20px;
+                font-weight: 500;
+            }
+            p {
+                font-family: "Fira Sans", sans-serif;
+                margin: 0;
+                color: rgba(0, 0, 0, 0.7);
+                font-size: 16px;
+            }
+        }
+    }
 }
 
 /* Адаптивность */
 @media (max-width: 1200px) {
-  mat-grid-list { cols: 3 !important; }
+    mat-grid-list {
+        cols: 3 !important;
+    }
 }
 @media (max-width: 900px) {
-  mat-grid-list { cols: 2 !important; }
+    mat-grid-list {
+        cols: 2 !important;
+    }
 }
 @media (max-width: 600px) {
-  mat-grid-list { cols: 1 !important; }
+    mat-grid-list {
+        cols: 1 !important;
+    }
 }

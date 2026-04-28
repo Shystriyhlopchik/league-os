@@ -5,12 +5,12 @@
     max-height: 180px;
     position: relative;
     font-family: Arial, sans-serif;
-    color: #E0F7FA;
+    color: #e0f7fa;
     overflow: hidden;
 
     .accent {
         flex: 0 0 100px;
-        background: #189CA8;
+        background: #189ca8;
         transform: skewX(-20deg);
         transform-origin: center;
         height: 160px;
@@ -44,7 +44,7 @@
 
         h3 {
             margin: 0 auto 0 8px;
-            font-family: 'Oswald', sans-serif;
+            font-family: "Oswald", sans-serif;
             font-size: 20px;
             line-height: 126%;
             font-weight: 400;
@@ -72,4 +72,3 @@
         }
     }
 }
-

@@ -1,0 +1,22 @@
+@if (matches$ | async; as matches) {
+    @if (matches.length) {
+        <swiper-container
+            #swiperEl
+            class="match-swiper"
+            [attr.loop]="false"
+            [attr.space-between]="30"
+            [attr.slides-per-view]="'auto'"
+            [attr.initial-slide]="initialSlideIndex"
+        >
+            @for (match of matches; track match.id) {
+                <swiper-slide>
+                    <app-match-card [match]="match" />
+                </swiper-slide>
+            }
+        </swiper-container>
+    } @else {
+        <div class="matches-slider__empty">Календарь ещё не готов.</div>
+    }
+} @else {
+    <div class="matches-slider__empty">Загрузка матчей...</div>
+}

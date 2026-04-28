@@ -1,13 +1,18 @@
 <div class="info-card">
     <div class="image-wrapper">
-        <img ngSrc="{{data.photoUrl}}" width="120" height="150" alt="На фотографии изображен {{data.fullName}}" priority/>
+        <img
+            ngSrc="{{ data.photoUrl }}"
+            width="120"
+            height="150"
+            alt="На фотографии изображен {{ data.fullName }}"
+            priority
+        />
     </div>
-    <div class="accent">
-    </div>
+    <div class="accent"></div>
     <div class="content">
-        <h3>{{data.fullName}}</h3>
+        <h3>{{ data.fullName }}</h3>
         <p>
-            {{data.bio}}
+            {{ data.bio }}
         </p>
     </div>
 </div>

@@ -1,0 +1,9 @@
+.match-swiper {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Каждый слайд занимает 80% ширины — то есть 1 полный слайд + 20% следующего */
+swiper-slide {
+    width: 80% !important;
+}
