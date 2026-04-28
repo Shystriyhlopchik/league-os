@@ -7,7 +7,6 @@ import { MatchTableBlockComponent } from './components/match-table-block/match-t
 import { MatIconModule } from '@angular/material/icon';
 import { NewsListComponent } from '../../shared/components/news-list/news-list.component';
 import { StatsComponent } from '../../shared/components/stats/stats.component';
-import { TeamLogosComponent } from './components/team-logos/team-logos.component';
 
 @Component({
     selector: 'app-home',
@@ -22,7 +21,6 @@ import { TeamLogosComponent } from './components/team-logos/team-logos.component
         MatIconModule,
         NewsListComponent,
         StatsComponent,
-        TeamLogosComponent,
     ],
     templateUrl: './home.component.html',
     styleUrl: './home.component.scss',
