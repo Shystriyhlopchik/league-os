@@ -1,0 +1,28 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+body {
+    font-family: Arial, sans-serif;
+    color: #333;
+    background-color: #faf7f0;
+}
+a {
+    text-decoration: none;
+    color: inherit;
+}
+img {
+    max-width: 100%;
+    display: block;
+}
+
+main {
+    margin: 0 auto;
+    background: #121212 url("/images/bg-arman.png") no-repeat;
+    background-size: 250%;
+    max-width: 390px;
+    //padding: 192px 16px 32px 16px;
+    padding: 0 16px;
+    box-sizing: border-box;
+}

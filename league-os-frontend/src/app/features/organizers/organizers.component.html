@@ -1,0 +1,10 @@
+<h2>Наша команда</h2>
+@if (organizers$ | async; as organizers) {
+    <div class="profile-cards">
+        @for (card of organizers; track card.id) {
+            <app-profile-card [data]="card"></app-profile-card>
+        }
+    </div>
+} @else {
+    <p>Что-то пошло не так</p>
+}

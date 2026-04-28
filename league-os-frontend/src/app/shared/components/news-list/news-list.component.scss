@@ -1,0 +1,66 @@
+.news {
+  padding: 24px;
+  background: #0e0e0e;
+  color: #e2faff;
+  font-family: Arial, sans-serif;
+
+  &__title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #00bcd4;
+    margin-bottom: 16px;
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;               // две равные колонки
+    grid-template-areas:
+      "main main"                                  // main – на оба столбца
+      "sub1 sub2";                                 // sub1 | sub2
+    gap: 16px;
+  }
+
+  &__item {
+    background: #1c1c1c;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+
+    &--main { grid-area: main; }
+    &--sub1 { grid-area: sub1; }
+    &--sub2 { grid-area: sub2; }
+
+    & img.news__img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    & .news__headline {
+      font-size: 1.125rem;
+      margin: 12px;
+      color: #E0F7FA;
+      font-family: 'Oswald', sans-serif;
+      font-weight: 500;
+    }
+
+    & .news__date {
+      font-size: 0.875rem;
+      color: rgba(224, 247, 250, 0.8);
+      margin: 0 12px 12px;
+      font-family: 'Oswald', sans-serif;
+      font-weight: 300;
+    }
+  }
+
+  // Адаптив для узких экранов
+  @media (max-width: 768px) {
+    &__grid {
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        "main"
+        "sub1"
+        "sub2";
+    }
+  }
+}

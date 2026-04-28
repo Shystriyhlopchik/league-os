@@ -1,0 +1,124 @@
+.stats {
+    padding: 24px;
+    background: #0e0e0e;
+    color: #e2faff;
+    font-family: Arial, sans-serif;
+    margin-top: 20px;
+    margin-bottom: 20px;
+
+    &__title {
+        font-family: "Russo One", sans-serif;
+        font-size: 2rem;
+        font-weight: 400;
+        color: #189ca8;
+        margin-bottom: 28px;
+        line-height: 128%;
+    }
+
+    &__table {
+        display: grid;
+        row-gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    &__header,
+    &__row {
+        display: grid;
+        grid-template-columns: 40px 1fr 40px 40px;
+        align-items: center;
+        padding: 8px 0;
+    }
+
+    &__header {
+        border-bottom: 2px solid #1c1c1c;
+        margin-bottom: 8px;
+        font-family: "Russo One", sans-serif;
+        font-weight: 400;
+
+        .stats__cell {
+            color: #e0f7fa;
+            font-size: 1rem;
+        }
+    }
+
+    &__row {
+        border-bottom: 1px solid #1c1c1c;
+
+        .stats__cell--num {
+            font-family: "Bebas Neue", sans-serif;
+            font-size: 1.25rem;
+            font-weight: 400;
+            color: #e0f7fa;
+        }
+
+        .stats__cell--games {
+            font-family: "Bebas Neue", sans-serif;
+            font-size: 1.25rem;
+            font-weight: 400;
+            color: #e0f7fa;
+        }
+
+        .stats__cell--points {
+            font-family: "Bebas Neue", sans-serif;
+            font-size: 1.25rem;
+            font-weight: 400;
+            color: #e0f7fa;
+        }
+
+        &:last-child {
+            border-bottom: none;
+        }
+    }
+
+    &__cell {
+        padding: 0 8px;
+
+        &--team {
+            display: flex;
+            align-items: center;
+        }
+
+        &--num {
+            text-align: center;
+        }
+
+        &--games,
+        &--points {
+            text-align: center;
+        }
+    }
+
+    &__dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        background: #e0f7fa;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+
+    &__logo {
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+        margin-right: 8px;
+    }
+
+    &__name {
+        font-size: 1.25rem;
+        font-family: "Oswald", sans-serif;
+        font-weight: 400;
+    }
+
+    &__link {
+        display: none;
+        font-size: 0.875rem;
+        color: #00bcd4;
+        text-decoration: none;
+        font-weight: 600;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+}

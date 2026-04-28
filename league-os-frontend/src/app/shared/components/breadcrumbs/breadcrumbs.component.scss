@@ -1,0 +1,24 @@
+.breadcrumbs {
+    display: flex;
+    align-items: center;
+    font-family: "Oswald", sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    color: #E0F7FA;
+    padding-top: 16px;
+
+    a {
+        color: #E0F7FA;
+        text-decoration: none;
+        line-height: 126%;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+
+    .separator {
+        margin: 0 8px;
+        color: #00e0ff;
+    }
+}

@@ -1,0 +1,16 @@
+h2 {
+    font-family: "Russo One", cursive;
+    font-weight: 400;
+    font-size: 36px;
+    line-height: 126%;
+    color: #189CA8;
+    margin: 64px 0 0 0;
+}
+
+.profile-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    margin: 20px 0 0 0;
+    padding-bottom: 40px;
+}

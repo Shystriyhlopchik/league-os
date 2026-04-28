@@ -1,0 +1,126 @@
+.match-table-block {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin: 24px;
+
+  // Общие стили для карточек
+  mat-card {
+    flex: 1 1 320px; // минимум 320px, но растягивается равномерно
+  }
+
+  // Секция «Ближайший матч»
+  .upcoming-card {
+    max-width: 480px;
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 500;
+      margin-bottom: 16px;
+    }
+
+    .match-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 32px;
+      margin-bottom: 16px;
+
+      .team-logo {
+        width: 80px;
+        height: 100px;
+        border-radius: 50% / 60%; // овальный логотип
+      }
+
+      .vs-label {
+        font-size: 24px;
+        font-weight: 600;
+      }
+    }
+
+    .team-names {
+      display: flex;
+      justify-content: space-between;
+      padding: 0 32px 16px;
+
+      .team-name {
+        font-weight: 500;
+        font-size: 16px;
+        text-align: center;
+        width: 80px;
+      }
+    }
+
+    .match-info {
+      text-align: center;
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.8);
+
+      .match-date {
+        display: block;
+        font-size: 18px;
+        font-weight: 500;
+        margin-bottom: 8px;
+      }
+
+      .stadium,
+      .temperature {
+        margin-top: 2px;
+      }
+    }
+  }
+
+  // Секция «Турнирная таблица»
+  .table-card {
+    flex: 2 1 600px; // минимум 600px, но может растягиваться в 2 раза шире
+    overflow-x: auto;
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    .mat-divider {
+      margin-bottom: 16px;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+    }
+
+    // Стили для таблицы Angular Material
+    .standings-table {
+      width: 100%;
+
+      th.mat-header-cell {
+        font-weight: 600;
+        background: #f2f2f2;
+        text-align: left;
+        padding: 8px 12px;
+      }
+
+      td.mat-cell {
+        padding: 8px 12px;
+      }
+
+      tr.mat-row:nth-child(even) {
+        background-color: rgba(0, 0, 0, 0.04);
+      }
+
+      tr.mat-row:hover {
+        background-color: rgba(0, 0, 0, 0.08);
+      }
+    }
+  }
+
+  // Адаптив: если экран очень узкий, карты станут шире, но располагаться по одной
+  @media (max-width: 768px) {
+    flex-direction: column;
+
+    .upcoming-card,
+    .table-card {
+      max-width: 100%;
+    }
+  }
+}

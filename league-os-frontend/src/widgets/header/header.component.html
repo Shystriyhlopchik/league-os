@@ -1,0 +1,28 @@
+<header class="header">
+    <a class="header__logo" routerLink="/" aria-label="Арман Лига">
+        <img src="images/Arman_liga.png" alt="Арман Лига" />
+    </a>
+
+    <button
+        class="header__menu-button"
+        type="button"
+        [attr.aria-label]="menuIconLabel()"
+        [attr.aria-expanded]="isMenuOpen()"
+        aria-controls="header-menu"
+        (click)="toggleMenu()"
+    >
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+
+    @if (isMenuOpen()) {
+        <nav id="header-menu" class="header__menu">
+            <a routerLink="/" (click)="closeMenu()">Главная</a>
+            <a routerLink="/tournaments" (click)="closeMenu()">Турниры</a>
+            <a routerLink="/teams" (click)="closeMenu()">Команды</a>
+            <a routerLink="/matches" (click)="closeMenu()">Матчи</a>
+            <a routerLink="/login" (click)="closeMenu()">Войти</a>
+        </nav>
+    }
+</header>
