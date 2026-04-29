@@ -10,6 +10,20 @@ export interface Match {
      */
     id: number;
     /**
+     * название лиги к которому принадлежит матч.
+     *
+     * Строка названия лиги.
+     * @example "ФИН"
+     */
+    competitionName: string,
+    /**
+     * путь до иконки логотипа лиги.
+     *
+     * Строка пути к иконке.
+     * @example "images/logo/fin.png"
+     */
+    competitionLogoUrl: string,
+    /**
      * Название принимающей (домашней) команды.
      *
      * @example "Сятра"

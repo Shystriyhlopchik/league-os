@@ -1,46 +1,10 @@
-<!--<article class="match-card">-->
-<!--    <header class="match-card__header">-->
-<!--        <h4>Сезон {{ match().seasonYear }}, {{ match().roundNumber }} тур</h4>-->
-
-<!--        <h3>-->
-<!--            {{ match().matchDateTime }}-->
-<!--        </h3>-->
-<!--    </header>-->
-
-<!--    <div class="match-card__teams">-->
-<!--        <div class="match-card__team">-->
-<!--            <img-->
-<!--                [src]="match().homeTeamLogoUrl"-->
-<!--                [alt]="'Логотип команды ' + match().homeTeamName"-->
-<!--            />-->
-<!--            <p>{{ match().homeTeamName }}</p>-->
-<!--        </div>-->
-
-<!--        <strong class="match-card__score">-->
-<!--            {{ match().homeTeamScore ?? "-" }} :-->
-<!--            {{ match().awayTeamScore ?? "-" }}-->
-<!--        </strong>-->
-
-<!--        <div class="match-card__team">-->
-<!--            <img-->
-<!--                [src]="match().awayTeamLogoUrl"-->
-<!--                [alt]="'Логотип команды ' + match().awayTeamName"-->
-<!--            />-->
-<!--            <p>{{ match().awayTeamName }}</p>-->
-<!--        </div>-->
-<!--    </div>-->
-
-<!--    @if (match().venueName) {-->
-<!--        <p class="match-card__venue">-->
-<!--            {{ match().venueName }}-->
-<!--        </p>-->
-<!--    }-->
-<!--</article>-->
-
 <article class="match-card">
     <header class="match-card__header">
         <div class="match-card__season">
-            <img src="assets/icons/ball.svg" alt="" />
+            <img
+                [src]="match().competitionLogoUrl"
+                [alt]="match().competitionName"
+            />
             <span>{{ match().seasonYear }}, {{ match().roundNumber }}</span>
         </div>
 

@@ -3,6 +3,8 @@ import { Match } from '../../shared/models';
 export const matches: Match[] = [
     {
         id: 1,
+        competitionName: 'Арман ФЛ',
+        competitionLogoUrl: 'images/icons/logo_arman_liga.png',
         homeTeamName: 'Сятра',
         homeTeamLogoUrl: 'images/teams/sytra_logo.svg',
         homeTeamScore: 4,
@@ -16,6 +18,8 @@ export const matches: Match[] = [
     },
     {
         id: 2,
+        competitionName: 'Арман ФЛ',
+        competitionLogoUrl: 'images/icons/logo_arman_liga.png',
         homeTeamName: 'Сарбаки',
         homeTeamLogoUrl: 'images/teams/sarbaki.svg',
         homeTeamScore: 0,
@@ -29,6 +33,8 @@ export const matches: Match[] = [
     },
     {
         id: 3,
+        competitionName: 'Арман ФЛ',
+        competitionLogoUrl: 'images/icons/logo_arman_liga.png',
         homeTeamName: 'Сарбаки',
         homeTeamLogoUrl: 'images/teams/sarbaki.svg',
         homeTeamScore: 3,
@@ -42,6 +48,8 @@ export const matches: Match[] = [
     },
     {
         id: 4,
+        competitionName: 'Арман ФЛ',
+        competitionLogoUrl: 'images/icons/logo_arman_liga.png',
         homeTeamName: 'Сятра',
         homeTeamLogoUrl: 'images/teams/sytra_logo.svg',
         homeTeamScore: 0,
@@ -55,6 +63,8 @@ export const matches: Match[] = [
     },
     {
         id: 5,
+        competitionName: 'Арман ФЛ',
+        competitionLogoUrl: 'images/icons/logo_arman_liga.png',
         homeTeamName: 'Шоркино',
         homeTeamLogoUrl: 'images/teams/shorkino.png',
         homeTeamScore: 0,
@@ -68,6 +78,8 @@ export const matches: Match[] = [
     },
     {
         id: 6,
+        competitionName: 'Арман ФЛ',
+        competitionLogoUrl: 'images/icons/logo_arman_liga.png',
         homeTeamName: 'Сятра',
         homeTeamLogoUrl: 'images/teams/sytra_logo.svg',
         homeTeamScore: 2,
@@ -81,6 +93,8 @@ export const matches: Match[] = [
     },
     {
         id: 7,
+        competitionName: 'Арман ФЛ',
+        competitionLogoUrl: 'images/icons/logo_arman_liga.png',
         homeTeamName: 'Шоркино',
         homeTeamLogoUrl: 'images/teams/shorkino.png',
         homeTeamScore: 3,
@@ -94,6 +108,8 @@ export const matches: Match[] = [
     },
     {
         id: 8,
+        competitionName: 'Арман ФЛ',
+        competitionLogoUrl: 'images/icons/logo_arman_liga.png',
         homeTeamName: 'Хурынлых',
         homeTeamLogoUrl: 'images/teams/poboi.svg',
         homeTeamScore: 4,
@@ -107,6 +123,8 @@ export const matches: Match[] = [
     },
     {
         id: 9,
+        competitionName: 'Арман ФЛ',
+        competitionLogoUrl: 'images/icons/logo_arman_liga.png',
         homeTeamName: 'Хурынлых',
         homeTeamLogoUrl: 'images/teams/poboi.svg',
         homeTeamScore: 4,
@@ -120,6 +138,8 @@ export const matches: Match[] = [
     },
     {
         id: 10,
+        competitionName: 'Арман ФЛ',
+        competitionLogoUrl: 'images/icons/logo_arman_liga.png',
         homeTeamName: 'Шоркино',
         homeTeamLogoUrl: 'images/teams/shorkino.png',
         homeTeamScore: 0,
@@ -133,6 +153,8 @@ export const matches: Match[] = [
     },
     {
         id: 11,
+        competitionName: 'Арман ФЛ',
+        competitionLogoUrl: 'images/icons/logo_arman_liga.png',
         homeTeamName: 'Хурынлых',
         homeTeamLogoUrl: 'images/teams/poboi.svg',
         homeTeamScore: 3,
@@ -146,6 +168,8 @@ export const matches: Match[] = [
     },
     {
         id: 12,
+        competitionName: 'Арман ФЛ',
+        competitionLogoUrl: 'images/icons/logo_arman_liga.png',
         homeTeamName: 'Сарбаки',
         homeTeamLogoUrl: 'images/teams/sarbaki.svg',
         homeTeamScore: 6,
@@ -159,6 +183,8 @@ export const matches: Match[] = [
     },
     {
         id: 13,
+        competitionName: 'Арман ФЛ',
+        competitionLogoUrl: 'images/icons/logo_arman_liga.png',
         homeTeamName: 'Хурынлых',
         homeTeamLogoUrl: 'images/teams/poboi.svg',
         homeTeamScore: 4,
@@ -172,6 +198,8 @@ export const matches: Match[] = [
     },
     {
         id: 14,
+        competitionName: 'Арман ФЛ',
+        competitionLogoUrl: 'images/icons/logo_arman_liga.png',
         homeTeamName: 'Сарбаки',
         homeTeamLogoUrl: 'images/teams/sarbaki.svg',
         homeTeamScore: 5,
@@ -185,6 +213,8 @@ export const matches: Match[] = [
     },
     {
         id: 15,
+        competitionName: 'Арман ФЛ',
+        competitionLogoUrl: 'images/icons/logo_arman_liga.png',
         homeTeamName: 'Сятра',
         homeTeamLogoUrl: 'images/teams/sytra_logo.svg',
         homeTeamScore: 5,
@@ -198,6 +228,8 @@ export const matches: Match[] = [
     },
     {
         id: 16,
+        competitionName: 'Арман ФЛ',
+        competitionLogoUrl: 'images/icons/logo_arman_liga.png',
         homeTeamName: 'Шоркино',
         homeTeamLogoUrl: 'images/teams/shorkino.png',
         homeTeamScore: 3,
@@ -211,6 +243,8 @@ export const matches: Match[] = [
     },
     {
         id: 17,
+        competitionName: 'Арман ФЛ',
+        competitionLogoUrl: 'images/icons/logo_arman_liga.png',
         homeTeamName: 'Сятра',
         homeTeamLogoUrl: 'images/teams/sytra_logo.svg',
         homeTeamScore: null,
@@ -224,6 +258,8 @@ export const matches: Match[] = [
     },
     {
         id: 18,
+        competitionName: 'ФИН',
+        competitionLogoUrl: 'images/icons/FutboolFederationChuvashii.png',
         homeTeamName: 'Сарбаки',
         homeTeamLogoUrl: 'images/teams/sarbaki.svg',
         homeTeamScore: null,

@@ -1,8 +1,11 @@
 import { Match } from '../../../shared/models';
-import { MatchCardVm } from '../ui/match-card/match-card.component';
+import {MatchCardVm} from './match-card.vm';
+
 
 export const mapMatchToCardVm = (match: Match): MatchCardVm => ({
     id: match.id,
+    competitionName: match.competitionName,
+    competitionLogoUrl: match.competitionLogoUrl,
     seasonYear: match.seasonYear,
     roundNumber: match.roundNumber,
     matchDateTime: match.matchDateTime,
