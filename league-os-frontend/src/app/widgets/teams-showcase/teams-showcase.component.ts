@@ -10,14 +10,14 @@ import {RouterLink} from '@angular/router';
 export class TeamsShowcaseComponent {
     teams = [
         {
-            name: 'Сятракасы',
-            logo: 'images/teams/sytra_logo_name.svg',
-            small: false,
-        },
-        {
             name: 'Шоркино',
             logo: 'images/teams/shorkino_name.png',
             small: true,
+        },
+        {
+            name: 'Сятракасы',
+            logo: 'images/teams/sytra_logo_name.svg',
+            small: false,
         },
         {
             name: 'Сарбаки',

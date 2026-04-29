@@ -9,13 +9,14 @@
     justify-content: center;
 
     &__grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
-        gap: 24px;
+        display: flex;
+        justify-content: space-between;
+        //grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
+        gap: 16px;
         max-width: 800px;
         width: 100%;
-        padding-block-start: 16px;
-        padding-block-end: 16px;
+        padding: 16px;
+        box-sizing: border-box;
     }
 
     &__item {
@@ -37,6 +38,6 @@
     }
 
     &__img--sm {
-        width: 45px;
+        height: 78px;
     }
 }
