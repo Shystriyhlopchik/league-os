@@ -1,32 +1,18 @@
-import { Component } from '@angular/core';
+import { Component, computed, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-
-interface LeagueTab {
-    id: string;
-    name: string;
-    logoUrl: string;
-}
-
-interface TeamStandingRow {
-    id: number;
-    name: string;
-    logoUrl: string;
-    games: number;
-    points: number;
-    status: 'up' | 'same' | 'down';
-}
+import { StandingsTableComponent } from '../../entities/standings/ui/standings-table/standings-table.component';
+import { CompetitionTabsComponent } from '../../features/select-competition/ui/competition-tabs/competition-tabs.component';
+import { StandingRow } from '../../entities/standings/model/standings-row.model';
 
 @Component({
     selector: 'app-statistics-preview',
     standalone: true,
-    imports: [RouterLink],
+    imports: [RouterLink, StandingsTableComponent, CompetitionTabsComponent],
     templateUrl: './statistics-preview.component.html',
     styleUrl: './statistics-preview.component.scss',
 })
 export class StatisticsPreviewComponent {
-    selectedLeagueId = 'arman-fl';
-
-    leagues: LeagueTab[] = [
+    competitions = signal([
         {
             id: 'arman-fl',
             name: 'Арман ФЛ',
@@ -37,55 +23,57 @@ export class StatisticsPreviewComponent {
             name: 'ФИН',
             logoUrl: 'images/icons/FutboolFederationChuvashii.png',
         },
-    ];
+    ]);
 
-    standings: Record<string, TeamStandingRow[]> = {
+    selectedCompetitionId = signal('arman-fl');
+
+    standings = signal<Record<string, StandingRow[]>>({
         'arman-fl': [
             {
                 id: 1,
-                name: 'Сятра',
-                logoUrl: 'images/teams/sytra_logo.svg',
+                teamName: 'Сятра',
+                teamLogoUrl: 'images/teams/sytra_logo.svg',
                 games: 6,
                 points: 10,
-                status: 'up',
+                movement: 'up',
             },
             {
                 id: 2,
-                name: 'Побои',
-                logoUrl: 'images/teams/poboi.svg',
+                teamName: 'Побои',
+                teamLogoUrl: 'images/teams/poboi.svg',
                 games: 6,
                 points: 9,
-                status: 'same',
+                movement: 'same',
             },
             {
                 id: 3,
-                name: 'Сарбаки',
-                logoUrl: 'images/teams/sarbaki.svg',
+                teamName: 'Сарбаки',
+                teamLogoUrl: 'images/teams/sarbaki.svg',
                 games: 6,
                 points: 8,
-                status: 'same',
+                movement: 'same',
             },
             {
                 id: 4,
-                name: 'Шоркино',
-                logoUrl: 'images/teams/shorkino.png',
+                teamName: 'Шоркино',
+                teamLogoUrl: 'images/teams/shorkino.png',
                 games: 6,
                 points: 7,
-                status: 'down',
+                movement: 'down',
             },
         ],
 
         fin: [],
-    };
+    });
 
-    get tableRows(): TeamStandingRow[] {
-        return this.standings[this.selectedLeagueId] ?? [];
-    }
+    rows = computed(() => {
+        return this.standings()[this.selectedCompetitionId()] ?? [];
+    });
 
-    selectLeague(leagueId: string): void {
-        this.selectedLeagueId = leagueId;
+    selectCompetition(id: string) {
+        this.selectedCompetitionId.set(id);
 
-        // Позже сюда можно добавить вызов сервиса:
-        // this.statisticsService.loadStandings(leagueId).subscribe(...)
+        // тут потом будет API
+        // this.loadStandings(id);
     }
 }

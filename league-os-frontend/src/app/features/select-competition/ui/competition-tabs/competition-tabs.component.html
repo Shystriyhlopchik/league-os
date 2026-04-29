@@ -1,0 +1,20 @@
+<div class="statistics-preview__tabs" role="tablist">
+    @for (competition of competitions(); track competition.id) {
+        <button
+            type="button"
+            class="statistics-preview__tab"
+            [class.statistics-preview__tab--active]="competition.id === selectedId()"
+            [class.statistics-preview__tab--arman]="competition.id === 'arman-fl'"
+            [class.statistics-preview__tab--fin]="competition.id === 'fin'"
+            (click)="selectCompetition(competition.id)"
+        >
+            <img
+                class="statistics-preview__tab-logo"
+                [src]="competition.logoUrl"
+                [alt]="competition.name"
+            />
+
+            <span>{{ competition.name }}</span>
+        </button>
+    }
+</div>

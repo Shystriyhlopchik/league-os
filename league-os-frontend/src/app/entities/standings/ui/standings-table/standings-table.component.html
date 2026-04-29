@@ -1,0 +1,40 @@
+<table class="statistics-preview__table">
+    <thead>
+    <tr>
+        <th>№</th>
+        <th></th>
+        <th class="statistics-preview__team-head">команда</th>
+        <th>И</th>
+        <th>О</th>
+    </tr>
+    </thead>
+
+    <tbody>
+        @for (team of rows(); track team.id; let index = $index) {
+            <tr>
+                <td class="statistics-preview__cell--numeric">{{ index + 1 }}</td>
+                <td>
+                        <span
+                            class="statistics-preview__status"
+                            [class.statistics-preview__status--green]="team.movement === 'up'"
+                            [class.statistics-preview__status--white]="team.movement === 'same'"
+                            [class.statistics-preview__status--yellow]="team.movement === 'down'"
+                        ></span>
+                </td>
+
+                <td class="statistics-preview__team">
+                    <img
+                        class="statistics-preview__team-logo"
+                        [src]="team.teamLogoUrl"
+                        [alt]="team.teamName"
+                    />
+
+                    <span>{{ team.teamName }}</span>
+                </td>
+
+                <td class="statistics-preview__cell--numeric">{{ team.games }}</td>
+                <td class="statistics-preview__cell--numeric">{{ team.points }}</td>
+            </tr>
+        }
+    </tbody>
+</table>

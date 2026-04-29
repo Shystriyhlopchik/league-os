@@ -1,67 +1,13 @@
 <section class="statistics-preview">
     <h2 class="statistics-preview__title">Статистика</h2>
 
-    <div class="statistics-preview__tabs" role="tablist">
-        @for (league of leagues; track league.id) {
-            <button
-                type="button"
-                class="statistics-preview__tab"
-                [class.statistics-preview__tab--active]="league.id === selectedLeagueId"
-                [class.statistics-preview__tab--arman]="league.id === 'arman-fl'"
-                [class.statistics-preview__tab--fin]="league.id === 'fin'"
-                (click)="selectLeague(league.id)"
-            >
-                <img
-                    class="statistics-preview__tab-logo"
-                    [src]="league.logoUrl"
-                    [alt]="league.name"
-                />
+    <app-competition-tabs
+        [competitions]="competitions()"
+        [selectedId]="selectedCompetitionId()"
+        (selected)="selectCompetition($event)"
+    />
 
-                <span>{{ league.name }}</span>
-            </button>
-        }
-    </div>
-
-    <table class="statistics-preview__table">
-        <thead>
-        <tr>
-            <th>№</th>
-            <th></th>
-            <th class="statistics-preview__team-head">команда</th>
-            <th>И</th>
-            <th>О</th>
-        </tr>
-        </thead>
-
-        <tbody>
-            @for (team of tableRows; track team.id; let index = $index) {
-                <tr>
-                    <td class="statistics-preview__cell--numeric">{{ index + 1 }}</td>
-                    <td>
-                        <span
-                            class="statistics-preview__status"
-                            [class.statistics-preview__status--green]="team.status === 'up'"
-                            [class.statistics-preview__status--white]="team.status === 'same'"
-                            [class.statistics-preview__status--yellow]="team.status === 'down'"
-                        ></span>
-                    </td>
-
-                    <td class="statistics-preview__team">
-                        <img
-                            class="statistics-preview__team-logo"
-                            [src]="team.logoUrl"
-                            [alt]="team.name"
-                        />
-
-                        <span>{{ team.name }}</span>
-                    </td>
-
-                    <td class="statistics-preview__cell--numeric">{{ team.games }}</td>
-                    <td class="statistics-preview__cell--numeric">{{ team.points }}</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <app-standings-table [rows]="rows()" />
 
     <a class="statistics-preview__link" routerLink="/statistics">
         Вся таблица

@@ -1,0 +1,80 @@
+.statistics-preview__table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 4px;
+    font-family: Oswald, 'Inter', sans-serif;
+
+
+    th {
+        padding: 0 10px 2px;
+        text-align: center;
+        text-transform: uppercase;
+
+        font-size: 16px;
+        line-height: 1;
+        font-weight: 400;
+        color: #f5f5f5;
+    }
+
+    td {
+        height: 48px;
+        padding: 0 10px;
+        background: #30363a;
+
+        font-size: 18px;
+        line-height: 1;
+        font-weight: 700;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    tbody {
+        font-size: 20px;
+    }
+}
+
+.statistics-preview__team-head {
+    text-align: left !important;
+}
+
+.statistics-preview__cell--numeric {
+    font-family: 'Bebas Neue', sans-serif;
+}
+
+.statistics-preview__status {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+
+    &--green {
+        background: #2ECC71;
+    }
+
+    &--white {
+        background: #f5f5f5;
+    }
+
+    &--yellow {
+        background: #D4AC0D;
+    }
+}
+
+.statistics-preview__team {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    text-align: left !important;
+
+    span {
+        font-weight: 400;
+    }
+}
+
+.statistics-preview__team-logo {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+    flex: 0 0 auto;
+}
