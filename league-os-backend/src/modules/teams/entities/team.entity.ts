@@ -6,7 +6,8 @@ import {BaseEntity} from "../../../common/base/base.entity";
 import {TeamPlayerEntity} from "../../team-players/entities/team-players.entity";
 import {TournamentTeamEntity} from "../../tournament-teams/entities/tournament-teams.entity";
 import {MatchEventEntity} from "../../match-events/entities/match-event.entity";
-import {StandingEntity} from "../../standings/entities/stading.entity";
+import {StandingEntity} from "../../standings/entities/standing.entity";
+
 
 @Entity('teams')
 export class TeamEntity extends BaseEntity {

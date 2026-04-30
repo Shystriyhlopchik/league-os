@@ -48,6 +48,6 @@ import { TournamentTeamsModule } from './modules/tournament-teams/tournament-tea
     TournamentTeamsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [],
 })
 export class AppModule {}

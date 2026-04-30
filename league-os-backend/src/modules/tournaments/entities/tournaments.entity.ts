@@ -10,7 +10,8 @@ import {TournamentStatus} from "../enums/tournament-status.enum";
 import {TournamentFormat} from "../enums/tournament-format.enum";
 import {TournamentType} from "../enums/tournament-type.enum";
 import {TournamentTeamEntity} from "../../tournament-teams/entities/tournament-teams.entity";
-import {StandingEntity} from "../../standings/entities/stading.entity";
+import {StandingEntity} from "../../standings/entities/standing.entity";
+
 
 @Entity('tournaments')
 export class TournamentEntity extends BaseEntity {
