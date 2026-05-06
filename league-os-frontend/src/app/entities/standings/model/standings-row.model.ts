@@ -1,8 +1,16 @@
-export interface StandingRow {
-    id: number;
-    teamName: string;
-    teamLogoUrl: string;
-    games: number;
+export interface StandingRow{
+    position: number;
+    team: {
+        id: number;
+        name: string;
+        logoUrl: string;
+    },
+    played: number;
+    wins: number;
+    draws: number;
+    losses: number;
+    goalsFor: number;
+    goalsAgainst: number;
+    goalDifference: number;
     points: number;
-    movement: 'up' | 'same' | 'down';
 }

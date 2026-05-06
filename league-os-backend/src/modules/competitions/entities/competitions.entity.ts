@@ -3,9 +3,10 @@ import {
     PrimaryGeneratedColumn,
     Column,
     CreateDateColumn,
-    UpdateDateColumn,
+    UpdateDateColumn, OneToMany,
 } from 'typeorm';
 import { BaseEntity } from "../../../common/base/base.entity";
+import {SeasonEntity} from "../../seasons/entities/season.entity";
 
 @Entity('competitions')
 export class CompetitionEntity extends BaseEntity {
@@ -36,6 +37,6 @@ export class CompetitionEntity extends BaseEntity {
     @Column({ nullable: true })
     region?: string;
 
-    // @OneToMany(() => SeasonEntity, (season) => season.competition)
-    // seasons: SeasonEntity[];
+    @OneToMany(() => SeasonEntity, (season) => season.competition)
+    seasons: SeasonEntity[];
 }

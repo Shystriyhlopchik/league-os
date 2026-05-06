@@ -9,7 +9,7 @@ import {Competition} from '../../../../entities/competition/model/competition.mo
 })
 export class CompetitionTabsComponent {
     readonly competitions = input.required<Competition[]>();
-    readonly selectedId = input.required<string>();
+    readonly selectedId = input.required<number | string >();
 
     readonly selected = output<string>();
 

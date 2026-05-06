@@ -1,8 +1,13 @@
-import { Component, computed, signal } from '@angular/core';
+import {Component, computed, inject, signal} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { StandingsTableComponent } from '../../entities/standings/ui/standings-table/standings-table.component';
 import { CompetitionTabsComponent } from '../../features/select-competition/ui/competition-tabs/competition-tabs.component';
 import { StandingRow } from '../../entities/standings/model/standings-row.model';
+import {StandingsApi} from '../../entities/standings/api/standings.api';
+import {CompetitionApi} from '../../entities/competition/api/competition.api';
+import {toObservable, toSignal} from '@angular/core/rxjs-interop';
+import {of, switchMap, tap} from 'rxjs';
+import {Competition} from '../../entities/competition/model/competition.model';
 
 @Component({
     selector: 'app-statistics-preview',
@@ -12,68 +17,40 @@ import { StandingRow } from '../../entities/standings/model/standings-row.model'
     styleUrl: './statistics-preview.component.scss',
 })
 export class StatisticsPreviewComponent {
-    competitions = signal([
+    private readonly competitionApi = inject(CompetitionApi);
+    private readonly standingsApi = inject(StandingsApi);
+
+    readonly selectedCompetitionId = signal<number | string >(1);
+
+    readonly competitions = toSignal(
+        this.competitionApi.getCompetitions().pipe(
+            tap((competitions) => {
+                if (!this.selectedCompetitionId() && competitions.length) {
+                    this.selectedCompetitionId.set(competitions[0].id);
+                }
+            }),
+        ),
         {
-            id: 'arman-fl',
-            name: 'Арман ФЛ',
-            logoUrl: 'images/icons/logo_arman_liga.png',
+            initialValue: [] as Competition[],
         },
+    );
+
+    readonly rows = toSignal(
+        toObservable(this.selectedCompetitionId).pipe(
+            switchMap((competitionId) => {
+                if (!competitionId) {
+                    return of([] as StandingRow[]);
+                }
+
+                return this.standingsApi.getStandingsByCompetition(competitionId);
+            }),
+        ),
         {
-            id: 'fin',
-            name: 'ФИН',
-            logoUrl: 'images/icons/FutboolFederationChuvashii.png',
+            initialValue: [] as StandingRow[],
         },
-    ]);
+    );
 
-    selectedCompetitionId = signal('arman-fl');
-
-    standings = signal<Record<string, StandingRow[]>>({
-        'arman-fl': [
-            {
-                id: 1,
-                teamName: 'Сятра',
-                teamLogoUrl: 'images/teams/sytra_logo.svg',
-                games: 6,
-                points: 10,
-                movement: 'up',
-            },
-            {
-                id: 2,
-                teamName: 'Побои',
-                teamLogoUrl: 'images/teams/poboi.svg',
-                games: 6,
-                points: 9,
-                movement: 'same',
-            },
-            {
-                id: 3,
-                teamName: 'Сарбаки',
-                teamLogoUrl: 'images/teams/sarbaki.svg',
-                games: 6,
-                points: 8,
-                movement: 'same',
-            },
-            {
-                id: 4,
-                teamName: 'Шоркино',
-                teamLogoUrl: 'images/teams/shorkino.png',
-                games: 6,
-                points: 7,
-                movement: 'down',
-            },
-        ],
-
-        fin: [],
-    });
-
-    rows = computed(() => {
-        return this.standings()[this.selectedCompetitionId()] ?? [];
-    });
-
-    selectCompetition(id: string) {
+    selectCompetition(id: number | string): void {
         this.selectedCompetitionId.set(id);
-
-        // тут потом будет API
-        // this.loadStandings(id);
     }
 }
