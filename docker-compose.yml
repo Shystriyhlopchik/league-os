@@ -1,6 +1,8 @@
 services:
   database:
     image: postgres:16-alpine
+    ports:
+      - '5432:5432'
     container_name: league-os-postgres
     restart: always
 
