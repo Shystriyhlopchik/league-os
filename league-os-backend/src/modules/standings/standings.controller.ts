@@ -21,7 +21,6 @@ export class StandingsController {
             },
         });
 
-        console.log(standings)
         return standings.map((standing, index) => ({
             position: index + 1,
             team: {
