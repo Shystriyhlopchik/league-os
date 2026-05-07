@@ -1,0 +1,62 @@
+services:
+  database:
+    image: postgres:16-alpine
+    container_name: league-os-postgres
+    restart: always
+
+    env_file:
+      - .env
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: ${POSTGRES_PGDATA}
+
+    volumes:
+      - postgres_data:${POSTGRES_PGDATA}
+
+    networks:
+      - internal
+
+  backend:
+    build:
+      context: ./league-os-backend
+
+    container_name: league-os-backend
+    restart: always
+
+    env_file:
+      - .env
+
+    depends_on:
+      - database
+
+    ports:
+      - '4000:3000'
+
+    networks:
+      - internal
+
+  frontend:
+    build:
+      context: ./league-os-frontend
+
+    container_name: league-os-frontend
+    restart: always
+
+    depends_on:
+      - backend
+
+    ports:
+      - '8081:80'
+
+    networks:
+      - internal
+
+volumes:
+  postgres_data:
+
+networks:
+  internal:
+    driver: bridge

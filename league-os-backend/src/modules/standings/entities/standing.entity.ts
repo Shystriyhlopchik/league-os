@@ -2,7 +2,7 @@ import {
     Column,
     Entity,
     JoinColumn,
-    ManyToOne,
+    ManyToOne, Unique,
 } from 'typeorm';
 
 import { TournamentEntity } from '../../tournaments/entities/tournaments.entity';
@@ -10,6 +10,7 @@ import { TeamEntity } from '../../teams/entities/team.entity';
 import {BaseEntity} from "../../../common/base/base.entity";
 
 @Entity('standings')
+@Unique(['tournamentId', 'teamId'])
 export class StandingEntity extends BaseEntity{
     @Column({ name: 'tournament_id' })
     tournamentId: number;
