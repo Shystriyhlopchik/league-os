@@ -1,15 +1,15 @@
-import {Component, input, output} from '@angular/core';
-import {Competition} from '../../../../entities/competition/model/competition.model';
+import { Component, input, output } from '@angular/core';
+import { Competition } from '../../../../entities/competition/model/competition.model';
 
 @Component({
-  selector: 'app-competition-tabs',
-  imports: [],
-  templateUrl: './competition-tabs.component.html',
-  styleUrl: './competition-tabs.component.scss'
+    selector: 'app-competition-tabs',
+    imports: [],
+    templateUrl: './competition-tabs.component.html',
+    styleUrl: './competition-tabs.component.scss',
 })
 export class CompetitionTabsComponent {
     readonly competitions = input.required<Competition[]>();
-    readonly selectedId = input.required<number | string >();
+    readonly selectedId = input.required<number | string>();
 
     readonly selected = output<string>();
 

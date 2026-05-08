@@ -1,13 +1,21 @@
-import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import { ApplicationConfig, LOCALE_ID, provideZoneChangeDetection } from '@angular/core';
 import { provideRouter } from '@angular/router';
+import localeRu from '@angular/common/locales/ru';
 
 import { routes } from './app.routes';
-import {provideHttpClient} from '@angular/common/http';
+import { provideHttpClient } from '@angular/common/http';
+import {registerLocaleData} from '@angular/common';
+
+registerLocaleData(localeRu, 'ru');
 
 export const appConfig: ApplicationConfig = {
     providers: [
         provideZoneChangeDetection({ eventCoalescing: true }),
         provideRouter(routes),
         provideHttpClient(),
+        {
+            provide: LOCALE_ID,
+            useValue: 'ru',
+        },
     ],
 };

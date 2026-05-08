@@ -1,10 +1,10 @@
-export interface StandingRow{
+export interface StandingRow {
     position: number;
     team: {
         id: number;
         name: string;
         logoUrl: string;
-    },
+    };
     played: number;
     wins: number;
     draws: number;

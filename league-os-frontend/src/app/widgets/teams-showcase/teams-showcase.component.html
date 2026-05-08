@@ -1,12 +1,12 @@
 <div class="team-logos__grid">
     @for (team of teams; track team.name) {
-        <a class="team-logos__item" routerLink="/" >
-                <img
-                    [src]="team.logo"
-                    [alt]="team.name"
-                    class="team-logos__img"
-                    [class.team-logos__img--sm]="team.small"
-                />
+        <a class="team-logos__item" routerLink="/">
+            <img
+                [src]="team.logo"
+                [alt]="team.name"
+                class="team-logos__img"
+                [class.team-logos__img--sm]="team.small"
+            />
         </a>
     }
 </div>

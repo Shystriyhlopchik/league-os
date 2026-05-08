@@ -2,8 +2,7 @@
     width: 100%;
     border-collapse: separate;
     border-spacing: 0 4px;
-    font-family: Oswald, 'Inter', sans-serif;
-
+    font-family: Oswald, "Inter", sans-serif;
 
     th {
         padding: 0 10px 2px;
@@ -38,7 +37,7 @@
 }
 
 .statistics-preview__cell--numeric {
-    font-family: 'Bebas Neue', sans-serif;
+    font-family: "Bebas Neue", sans-serif;
 }
 
 .statistics-preview__status {
@@ -48,7 +47,7 @@
     border-radius: 50%;
 
     &--green {
-        background: #2ECC71;
+        background: #2ecc71;
     }
 
     &--white {
@@ -56,7 +55,7 @@
     }
 
     &--yellow {
-        background: #D4AC0D;
+        background: #d4ac0d;
     }
 }
 

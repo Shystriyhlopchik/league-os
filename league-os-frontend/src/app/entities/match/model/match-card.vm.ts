@@ -1,18 +1,21 @@
 export interface MatchCardVm {
-    id: number | string;
-    competitionName: string,
-    competitionLogoUrl: string,
-    seasonYear: number;
-    roundNumber: number | string;
+    id: number;
+    round: string;
+    status: string;
     matchDateTime: string | Date;
 
     homeTeamName: string;
     homeTeamLogoUrl: string;
-    homeTeamScore?: number | null;
+    homeTeamScore: number | null;
 
     awayTeamName: string;
     awayTeamLogoUrl: string;
-    awayTeamScore?: number | null;
+    awayTeamScore: number | null;
 
-    venueName?: string | null;
+    venueName: string | null;
+
+    competitionLogoUrl: string;
+    competitionName: string;
+
+    seasonYear: number;
 }

@@ -25,7 +25,9 @@
                     <span
                         class="statistics-preview__status"
                         [class.statistics-preview__status--green]="isFirst"
-                        [class.statistics-preview__status--white]="!isFirst && !isLast"
+                        [class.statistics-preview__status--white]="
+                            !isFirst && !isLast
+                        "
                         [class.statistics-preview__status--yellow]="isLast"
                     ></span>
                 </td>

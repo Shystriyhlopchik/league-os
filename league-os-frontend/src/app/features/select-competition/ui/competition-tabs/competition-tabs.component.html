@@ -3,8 +3,12 @@
         <button
             type="button"
             class="statistics-preview__tab"
-            [class.statistics-preview__tab--active]="competition.id === selectedId()"
-            [class.statistics-preview__tab--arman]="competition.id === 'arman-fl'"
+            [class.statistics-preview__tab--active]="
+                competition.id === selectedId()
+            "
+            [class.statistics-preview__tab--arman]="
+                competition.id === 'arman-fl'
+            "
             [class.statistics-preview__tab--fin]="competition.id === 'fin'"
             [style.color]="competition.colorPrimary"
             (click)="selectCompetition(competition.id)"
@@ -15,7 +19,9 @@
                 [alt]="competition.name"
             />
 
-            <span [style.color]="competition.colorPrimary">{{ competition.name }}</span>
+            <span [style.color]="competition.colorPrimary">{{
+                competition.name
+            }}</span>
         </button>
     }
 </div>

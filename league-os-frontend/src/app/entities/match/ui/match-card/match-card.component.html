@@ -5,11 +5,11 @@
                 [src]="match().competitionLogoUrl"
                 [alt]="match().competitionName"
             />
-            <span>{{ match().seasonYear }}, {{ match().roundNumber }}</span>
+            <span>{{ match().seasonYear }}, {{ match().round }}</span>
         </div>
 
         <time class="match-card__date">
-            {{ match().matchDateTime }}
+            {{ match().matchDateTime | date: 'd MMMM, HH:mm' }}
         </time>
     </header>
 

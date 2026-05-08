@@ -1,19 +1,28 @@
-import { Match } from '../../../shared/models';
-import {MatchCardVm} from './match-card.vm';
+import { Match } from './match.types';
+import { MatchCardVm } from './match-card.vm';
 
+const DEFAULT_TEAM_LOGO = 'images/teams/default-team-logo.svg';
 
-export const mapMatchToCardVm = (match: Match): MatchCardVm => ({
-    id: match.id,
-    competitionName: match.competitionName,
-    competitionLogoUrl: match.competitionLogoUrl,
-    seasonYear: match.seasonYear,
-    roundNumber: match.roundNumber,
-    matchDateTime: match.matchDateTime,
-    homeTeamName: match.homeTeamName,
-    homeTeamLogoUrl: match.homeTeamLogoUrl,
-    homeTeamScore: match.homeTeamScore,
-    awayTeamName: match.awayTeamName,
-    awayTeamLogoUrl: match.awayTeamLogoUrl,
-    awayTeamScore: match.awayTeamScore,
-    venueName: match.venueName,
-});
+export function mapMatchToCardVm(match: Match): MatchCardVm {
+    return {
+        id: match.id,
+        round: match.round,
+        status: match.status,
+        matchDateTime: match.matchDateTime,
+
+        homeTeamName: match.homeTeam.shortName || match.homeTeam.name,
+        homeTeamLogoUrl: match.homeTeam.logoUrl ?? DEFAULT_TEAM_LOGO,
+        homeTeamScore: match.score.home,
+
+        awayTeamName: match.awayTeam.shortName || match.awayTeam.name,
+        awayTeamLogoUrl: match.awayTeam.logoUrl ?? DEFAULT_TEAM_LOGO,
+        awayTeamScore: match.score.away,
+
+        venueName: match.venue?.name ?? null,
+
+        competitionLogoUrl: match.tournament.competition.logoUrl,
+        competitionName: match.tournament.competition.name,
+
+        seasonYear: match.tournament.season.year,
+    };
+}
