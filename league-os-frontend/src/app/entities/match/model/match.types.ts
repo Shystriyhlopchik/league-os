@@ -37,6 +37,7 @@ export interface Tournament {
     name: string;
     competition: Competition;
     season: Season;
+    logoUrl: string;
 }
 
 export interface Season {

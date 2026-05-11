@@ -22,7 +22,7 @@ import { MatchesSliderStore } from '../model/matches-slider.store';
 export class MatchesSliderComponent {
     private readonly store = inject(MatchesSliderStore);
 
-    readonly tournamentId = input.required<number | string>();
+    readonly seasonId = input.required<number | string>();
 
     readonly matches = this.store.matches;
     readonly isLoading = this.store.isLoading;
@@ -33,7 +33,7 @@ export class MatchesSliderComponent {
 
     constructor() {
         effect(() => {
-            this.store.loadByTournament(this.tournamentId());
+            this.store.loadBySeason(this.seasonId());
         });
     }
 

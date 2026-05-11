@@ -106,4 +106,69 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
         : null,
     }));
   }
+
+  async findBySeason(seasonId: number) {
+    const matches = await this.matchesRepository.find({
+      where: {
+        tournament: {
+          seasonId,
+        },
+      },
+      relations: {
+        homeTeam: true,
+        awayTeam: true,
+        venue: true,
+
+        tournament: {
+          season: true,
+        },
+      },
+      order: {
+        matchDatetime: 'ASC',
+        id: 'ASC',
+      },
+    });
+
+    return matches.map((match) => ({
+      id: match.id,
+      tournamentId: match.tournamentId,
+      round: match.round,
+      status: match.status,
+      matchDateTime: match.matchDatetime,
+
+      tournament: {
+        id: match.tournament.id,
+        name: match.tournament.name,
+        logoUrl: match.tournament.logoUrl,
+
+        season: match.tournament.season,
+      },
+
+      homeTeam: {
+        id: match.homeTeam.id,
+        name: match.homeTeam.name,
+        shortName: match.homeTeam.shortName,
+        logoUrl: match.homeTeam.logoUrl,
+      },
+
+      awayTeam: {
+        id: match.awayTeam.id,
+        name: match.awayTeam.name,
+        shortName: match.awayTeam.shortName,
+        logoUrl: match.awayTeam.logoUrl,
+      },
+
+      score: {
+        home: match.homeScore,
+        away: match.awayScore,
+      },
+
+      venue: match.venue
+          ? {
+            id: match.venue.id,
+            name: match.venue.name,
+          }
+          : null,
+    }));
+  }
 }

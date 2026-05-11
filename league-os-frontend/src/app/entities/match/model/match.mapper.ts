@@ -20,8 +20,8 @@ export function mapMatchToCardVm(match: Match): MatchCardVm {
 
         venueName: match.venue?.name ?? null,
 
-        competitionLogoUrl: match.tournament.competition.logoUrl,
-        competitionName: match.tournament.competition.name,
+        competitionLogoUrl: match.tournament.logoUrl,
+        competitionName: match.tournament.name,
 
         seasonYear: match.tournament.season.year,
     };

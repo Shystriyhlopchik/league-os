@@ -17,4 +17,10 @@ export class MatchApi {
             `${this.apiUrl}/matches/tournament/${tournamentId}`,
         );
     }
+
+    getBySeason(seasonId: number | string): Observable<Match[]> {
+        return this.http.get<Match[]>(
+            `${this.apiUrl}/matches/season/${seasonId}`,
+        );
+    }
 }

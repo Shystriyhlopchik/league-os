@@ -1,4 +1,7 @@
 import { Controller } from '@nestjs/common';
 
 @Controller('seasons')
-export class SeasonsController {}
+export class SeasonsController {
+
+
+}

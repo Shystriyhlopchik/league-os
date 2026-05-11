@@ -39,4 +39,22 @@ export class MatchesSliderStore {
                 },
             });
     }
+
+    loadBySeason(seasonId: number | string): void {
+        this.isLoading.set(true);
+        this.error.set(null);
+
+        this.matchApi
+            .getBySeason(seasonId)
+            .pipe(finalize(() => this.isLoading.set(false)))
+            .subscribe({
+                next: (matches) => {
+                    this.matches.set(matches.map(mapMatchToCardVm));
+                },
+                error: () => {
+                    this.matches.set([]);
+                    this.error.set('Не удалось загрузить матчи сезона');
+                },
+            });
+    }
 }

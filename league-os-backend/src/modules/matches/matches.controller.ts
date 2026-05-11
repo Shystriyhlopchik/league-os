@@ -11,4 +11,9 @@ export class MatchesController {
     ) {
         return this.matchesService.findByTournamentForSlider(tournamentId);
     }
+
+    @Get('season/:seasonId')
+    findBySeason(@Param('seasonId', ParseIntPipe) seasonId: number) {
+        return this.matchesService.findBySeason(seasonId);
+    }
 }
