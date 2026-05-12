@@ -1,5 +1,5 @@
 import {
-    Component,
+    Component, computed,
     CUSTOM_ELEMENTS_SCHEMA,
     effect,
     ElementRef,
@@ -29,7 +29,13 @@ export class MatchesSliderComponent {
     readonly isEmpty = this.store.isEmpty;
     readonly error = this.store.error;
 
-    initialSlideIndex = 19;
+    readonly initialSlideIndex = computed(() => {
+        const index = this.matches().findIndex(
+            (match) => match.status !== 'finished',
+        );
+
+        return index === -1 ? 0 : index;
+    });
 
     constructor() {
         effect(() => {
@@ -42,6 +48,14 @@ export class MatchesSliderComponent {
         if (!elementRef) return;
 
         const swiperEl = elementRef.nativeElement as any;
-        swiperEl.initialize?.();
+
+        Object.assign(swiperEl, {
+            loop: false,
+            spaceBetween: 25,
+            slidesPerView: 'auto',
+            initialSlide: this.initialSlideIndex(),
+        });
+
+        swiperEl.initialize();
     }
 }

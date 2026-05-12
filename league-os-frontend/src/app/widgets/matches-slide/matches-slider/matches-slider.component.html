@@ -3,10 +3,7 @@
         <swiper-container
             #swiperEl
             class="match-swiper"
-            [attr.loop]="false"
-            [attr.space-between]="30"
-            [attr.slides-per-view]="'auto'"
-            [attr.initial-slide]="initialSlideIndex"
+            init="false"
         >
             @for (match of matches; track match.id) {
                 <swiper-slide>
