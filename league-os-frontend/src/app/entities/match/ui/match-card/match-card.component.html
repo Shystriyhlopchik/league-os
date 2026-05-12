@@ -9,7 +9,7 @@
         </div>
 
         <time class="match-card__date">
-            {{ match().matchDateTime | date: 'd MMMM, HH:mm' }}
+            {{ match().matchDateTime | date: "d MMMM, HH:mm" }}
         </time>
     </header>
 
@@ -32,10 +32,19 @@
                 {{ match().awayTeamScore ?? " - " }}
             </strong>
 
-            <span class="match-card__status">
-                матч<br />
-                окончен
-            </span>
+            @if (match().status === "finished") {
+                <span class="match-card__status">
+                    матч<br />
+                    окончен
+                </span>
+            }
+
+            @if (match().status === "cancelled") {
+                <span class="match-card__status">
+                    матч<br />
+                    отменён
+                </span>
+            }
         </div>
 
         <div class="match-card__team">

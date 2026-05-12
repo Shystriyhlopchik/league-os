@@ -1,7 +1,9 @@
+import {MatchStatus} from './match.types';
+
 export interface MatchCardVm {
     id: number;
     round: string;
-    status: string;
+    status: MatchStatus;
     matchDateTime: string | Date;
 
     homeTeamName: string;
