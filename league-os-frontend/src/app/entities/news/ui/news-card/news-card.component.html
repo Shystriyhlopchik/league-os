@@ -1,0 +1,19 @@
+<a
+    class="news-card"
+    [class.news-card--large]="variant() === 'large'"
+    [routerLink]="news().url ?? ['/news', news().id]"
+>
+    <img
+        class="news-card__image"
+        [src]="news().imageUrl"
+        [alt]="news().imageAlt ?? news().title"
+    />
+
+    <h3 class="news-card__title">
+        {{ news().title }}
+    </h3>
+
+    <time class="news-card__date">
+        {{ news().date | date: 'd MMMM y' }}
+    </time>
+</a>

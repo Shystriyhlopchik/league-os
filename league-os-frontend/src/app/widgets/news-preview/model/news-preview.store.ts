@@ -1,0 +1,37 @@
+import { computed, inject, Injectable, signal } from '@angular/core';
+import { finalize } from 'rxjs';
+
+import { NewsCardVm } from '../../../entities/news/model/news-card.vm';
+import { mapNewsToCardVm } from '../../../entities/news/model/news.mapper';
+import { NewsApiService } from '../../../entities/news/api/news.api.service';
+
+@Injectable()
+export class NewsPreviewStore {
+    private readonly newsApi = inject(NewsApiService);
+
+    readonly news = signal<NewsCardVm[]>([]);
+    readonly isLoading = signal(false);
+    readonly error = signal<string | null>(null);
+
+    readonly isEmpty = computed(() => {
+        return !this.isLoading() && this.news().length === 0;
+    });
+
+    loadLatest(limit: number): void {
+        this.isLoading.set(true);
+        this.error.set(null);
+
+        this.newsApi
+            .getLatest(limit)
+            .pipe(finalize(() => this.isLoading.set(false)))
+            .subscribe({
+                next: (news) => {
+                    this.news.set(news.map(mapNewsToCardVm));
+                },
+                error: () => {
+                    this.news.set([]);
+                    this.error.set('Не удалось загрузить новости');
+                },
+            });
+    }
+}

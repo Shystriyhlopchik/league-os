@@ -1,0 +1,25 @@
+<section class="news-preview">
+    <h2 class="news-preview__title">
+        {{ title() }}
+    </h2>
+
+    @if (isLoading()) {
+        <div class="news-preview__empty">Загрузка новостей...</div>
+    } @else if (error()) {
+        <div class="news-preview__empty">{{ error() }}</div>
+    } @else if (isEmpty()) {
+        <div class="news-preview__empty">Новостей пока нет.</div>
+    } @else {
+        <div
+            class="news-preview__grid"
+            [class.news-preview__grid--single]="news().length === 1"
+        >
+            @for (item of news(); track item.id; let first = $first) {
+                <app-news-card
+                    [news]="item"
+                    [variant]="first ? 'large' : 'small'"
+                />
+            }
+        </div>
+    }
+</section>

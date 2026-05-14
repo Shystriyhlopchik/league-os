@@ -1,0 +1,28 @@
+.news-preview {
+    padding: 24px 16px;
+    background: #151918;
+}
+
+.news-preview__title {
+    font-family: "Montserrat", Arial, sans-serif;
+    margin: 0 0 8px;
+    color: #f5f5f5;
+    font-size: 24px;
+    line-height: 1.2;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.news-preview__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px 16px;
+}
+
+.news-preview__grid app-news-card:first-child {
+    grid-column: 1 / -1;
+}
+
+.news-preview__grid--single {
+    grid-template-columns: 1fr;
+}
