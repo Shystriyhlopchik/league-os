@@ -1,4 +1,6 @@
-import {Competition} from '../../competition/model/competition.model';
+import {
+    Tournament,
+} from '../../tournaments/model/tournaments.model';
 
 export type MatchStatus = 'scheduled' | 'live' | 'finished' | 'cancelled';
 
@@ -30,18 +32,4 @@ export interface Match {
     score: MatchScore;
     venue: MatchVenue | null;
     tournament: Tournament
-}
-
-export interface Tournament {
-    id: number;
-    name: string;
-    competition: Competition;
-    season: Season;
-    logoUrl: string;
-}
-
-export interface Season {
-    id: number;
-    name: string;
-    year: number;
 }

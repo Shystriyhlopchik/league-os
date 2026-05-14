@@ -16,7 +16,7 @@ export interface MatchCardVm {
 
     venueName: string | null;
 
-    competitionLogoUrl: string;
+    competitionLogoUrl?: string | null;
     competitionName: string;
 
     seasonYear: number;

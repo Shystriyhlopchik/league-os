@@ -1,5 +1,5 @@
 import { Component, input, output } from '@angular/core';
-import { Competition } from '../../../../entities/competition/model/competition.model';
+import { Tournament } from '../../../../entities/tournaments/model/tournaments.model';
 
 @Component({
     selector: 'app-competition-tabs',
@@ -8,12 +8,12 @@ import { Competition } from '../../../../entities/competition/model/competition.
     styleUrl: './competition-tabs.component.scss',
 })
 export class CompetitionTabsComponent {
-    readonly competitions = input.required<Competition[]>();
+    readonly tournaments = input.required<Tournament[]>();
     readonly selectedId = input.required<number | string>();
 
-    readonly selected = output<string>();
+    readonly selected = output<number>();
 
-    selectCompetition(id: string): void {
+    selectCompetition(id: number): void {
         this.selected.emit(id);
     }
 }

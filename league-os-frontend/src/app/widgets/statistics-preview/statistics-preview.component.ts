@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { StandingsTableComponent } from '../../entities/standings/ui/standings-table/standings-table.component';
 import { CompetitionTabsComponent } from '../../features/select-competition/ui/competition-tabs/competition-tabs.component';
@@ -7,7 +7,8 @@ import { StandingsApi } from '../../entities/standings/api/standings.api';
 import { CompetitionApi } from '../../entities/competition/api/competition.api';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { of, switchMap, tap } from 'rxjs';
-import { Competition } from '../../entities/competition/model/competition.model';
+import {TournamentsApi} from '../../entities/tournaments/api/tournaments.api';
+import {Tournament} from '../../entities/tournaments/model/tournaments.model';
 
 @Component({
     selector: 'app-statistics-preview',
@@ -19,24 +20,26 @@ import { Competition } from '../../entities/competition/model/competition.model'
 export class StatisticsPreviewComponent {
     private readonly competitionApi = inject(CompetitionApi);
     private readonly standingsApi = inject(StandingsApi);
+    private readonly tournamentApi = inject(TournamentsApi);
 
-    readonly selectedCompetitionId = signal<number | string>(1);
+    readonly selectedTournamentId = signal<number | string>(1);
 
-    readonly competitions = toSignal(
-        this.competitionApi.getCompetitions().pipe(
-            tap((competitions) => {
-                if (!this.selectedCompetitionId() && competitions.length) {
-                    this.selectedCompetitionId.set(competitions[0].id);
+    readonly tournaments = toSignal(
+        /* TODO ID сезона будет вставлять по выбору пользователя*/
+        this.tournamentApi.getTournamentsSeason(1).pipe(
+            tap((tournaments) => {
+                if (tournaments.length) {
+                    this.selectedTournamentId.set(tournaments[0].id)
                 }
-            }),
+            })
         ),
         {
-            initialValue: [] as Competition[],
+            initialValue: [] as Tournament[],
         },
-    );
+    )
 
     readonly rows = toSignal(
-        toObservable(this.selectedCompetitionId).pipe(
+        toObservable(this.selectedTournamentId).pipe(
             switchMap((competitionId) => {
                 if (!competitionId) {
                     return of([] as StandingRow[]);
@@ -53,6 +56,6 @@ export class StatisticsPreviewComponent {
     );
 
     selectCompetition(id: number | string): void {
-        this.selectedCompetitionId.set(id);
+        this.selectedTournamentId.set(id);
     }
 }

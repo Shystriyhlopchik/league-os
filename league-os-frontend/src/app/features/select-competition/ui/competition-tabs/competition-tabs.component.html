@@ -1,27 +1,24 @@
 <div class="statistics-preview__tabs" role="tablist">
-    @for (competition of competitions(); track competition.id) {
+    @for (tournament of tournaments(); track tournament.id) {
         <button
             type="button"
             class="statistics-preview__tab"
             [class.statistics-preview__tab--active]="
-                competition.id === selectedId()
+                tournament.id === selectedId()
             "
-            [class.statistics-preview__tab--arman]="
-                competition.id === 'arman-fl'
-            "
-            [class.statistics-preview__tab--fin]="competition.id === 'fin'"
-            [style.color]="competition.colorPrimary"
-            (click)="selectCompetition(competition.id)"
+            [style.color]="tournament.colorPrimary"
+            (click)="selectCompetition(tournament.id)"
         >
             <img
                 class="statistics-preview__tab-logo"
-                [src]="competition.logoUrl"
-                [alt]="competition.name"
+                [src]="tournament.logoUrl"
+                [alt]="tournament.name"
             />
 
-            <span [style.color]="competition.colorPrimary">{{
-                competition.name
-            }}</span>
+            <span [style.color]="tournament.colorPrimary">{{
+                    tournament.name
+                }}</span>
         </button>
     }
 </div>
+

@@ -54,6 +54,12 @@ export class TournamentEntity extends BaseEntity {
     })
     status: TournamentStatus;
 
+    @Column({ length: 7, nullable: true })
+    colorPrimary?: string;
+
+    @Column({ length: 7, nullable: true })
+    colorSecondary?: string;
+
     @Column({ nullable: true })
     logoUrl?: string;
 
