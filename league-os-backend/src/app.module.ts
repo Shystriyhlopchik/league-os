@@ -14,6 +14,7 @@ import { StandingsModule } from './modules/standings/standings.module';
 import { VenuesModule } from './modules/venues/venues.module';
 import { TeamPlayersModule } from './modules/team-players/team-players.module';
 import { TournamentTeamsModule } from './modules/tournament-teams/tournament-teams.module';
+import { NewsModule } from './modules/news/news.module';
 
 
 @Module({
@@ -46,6 +47,7 @@ import { TournamentTeamsModule } from './modules/tournament-teams/tournament-tea
     VenuesModule,
     TeamPlayersModule,
     TournamentTeamsModule,
+    NewsModule,
   ],
   controllers: [AppController],
   providers: [],
