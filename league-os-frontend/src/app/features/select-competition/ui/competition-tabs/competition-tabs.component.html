@@ -1,24 +1,25 @@
 <div class="statistics-preview__tabs" role="tablist">
     @for (tournament of tournaments(); track tournament.id) {
-        <button
-            type="button"
-            class="statistics-preview__tab"
-            [class.statistics-preview__tab--active]="
+        @if(tournament.type !== TournamentType.SUPER_CUP) {
+            <button
+                type="button"
+                class="statistics-preview__tab"
+                [class.statistics-preview__tab--active]="
                 tournament.id === selectedId()
             "
-            [style.color]="tournament.colorPrimary"
-            (click)="selectCompetition(tournament.id)"
-        >
-            <img
-                class="statistics-preview__tab-logo"
-                [src]="tournament.logoUrl"
-                [alt]="tournament.name"
-            />
+                [style.color]="tournament.colorPrimary"
+                (click)="selectCompetition(tournament.id)"
+            >
+                <img
+                    class="statistics-preview__tab-logo"
+                    [src]="tournament.logoUrl"
+                    [alt]="tournament.name"
+                />
 
-            <span [style.color]="tournament.colorPrimary">{{
-                    tournament.name
-                }}</span>
-        </button>
+                <span [style.color]="tournament.colorPrimary">{{
+                        tournament.name
+                    }}</span>
+            </button>
+        }
     }
 </div>
-

@@ -1,5 +1,5 @@
 import { Component, input, output } from '@angular/core';
-import { Tournament } from '../../../../entities/tournaments/model/tournaments.model';
+import {Tournament, TournamentType} from '../../../../entities/tournaments/model/tournaments.model';
 
 @Component({
     selector: 'app-competition-tabs',
@@ -8,6 +8,7 @@ import { Tournament } from '../../../../entities/tournaments/model/tournaments.m
     styleUrl: './competition-tabs.component.scss',
 })
 export class CompetitionTabsComponent {
+    protected readonly TournamentType = TournamentType;
     readonly tournaments = input.required<Tournament[]>();
     readonly selectedId = input.required<number | string>();
 
