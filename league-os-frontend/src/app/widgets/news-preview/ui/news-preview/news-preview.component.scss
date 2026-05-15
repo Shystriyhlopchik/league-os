@@ -1,12 +1,12 @@
 .news-preview {
     padding: 24px 16px;
     background: #151918;
+    color: #f5f5f5;
 }
 
 .news-preview__title {
     font-family: "Montserrat", Arial, sans-serif;
     margin: 0 0 8px;
-    color: #f5f5f5;
     font-size: 24px;
     line-height: 1.2;
     font-weight: 700;
@@ -25,4 +25,28 @@
 
 .news-preview__grid--single {
     grid-template-columns: 1fr;
+}
+
+.news-preview__more {
+    margin: 42px auto 0;
+    padding: 0;
+
+    display: block;
+
+    color: #d8ffff;
+    background: transparent;
+    border: none;
+
+    font-size: 22px;
+    font-weight: 900;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.news-preview__empty {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.news-preview--page {
+    min-height: 100vh;
 }

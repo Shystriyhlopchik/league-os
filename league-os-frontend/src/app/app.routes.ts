@@ -7,6 +7,13 @@ export const routes: Routes = [
         loadComponent: () =>
             import('./pages/home/home.component').then((m) => m.HomeComponent),
     },
+    {
+        path: 'news',
+        loadComponent: () =>
+            import('./pages/news-page/news-page.component').then(
+                (m) => m.NewsPageComponent,
+            ),
+    },
     // {
     //     path: '',
     //     component: MainComponent,

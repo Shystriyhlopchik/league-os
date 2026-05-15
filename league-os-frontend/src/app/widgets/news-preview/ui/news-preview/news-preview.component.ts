@@ -11,6 +11,7 @@ import { NewsPreviewStore } from '../../model/news-preview.store';
 })
 export class NewsPreviewComponent {
     private readonly store = inject(NewsPreviewStore);
+    readonly variant = input<'preview' | 'page'>('preview');
 
     readonly title = input('Новости');
     readonly limit = input(3);

@@ -15,6 +15,8 @@ import { VenuesModule } from './modules/venues/venues.module';
 import { TeamPlayersModule } from './modules/team-players/team-players.module';
 import { TournamentTeamsModule } from './modules/tournament-teams/tournament-teams.module';
 import { NewsModule } from './modules/news/news.module';
+import { UsersModule } from './modules/users/users.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 
 @Module({
@@ -48,6 +50,8 @@ import { NewsModule } from './modules/news/news.module';
     TeamPlayersModule,
     TournamentTeamsModule,
     NewsModule,
+    UsersModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [],
