@@ -10,10 +10,15 @@ export class NewsController {
     return this.newsService.findPublished();
   }
 
+  @Get()
+  getNews() {
+    return this.newsService.findOne({
+      where: { status: 'published' },
+    });
+  }
+
   @Get(':slug')
   getBySlug(@Param('slug') slug: string) {
-    return this.newsService.findOne({
-      where: { slug, status: 'published' },
-    });
+    return this.newsService.findBySlug(slug);
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { NewsEntity } from './entities/news.entity';
 import { Repository } from 'typeorm';
@@ -21,5 +21,28 @@ export class NewsService extends BaseCrudService<NewsEntity> {
         createdAt: 'DESC',
       },
     });
+  }
+
+  async findBySlug(slug: string) {
+    const news = await this.newsRepository.findOne({
+      where: {
+        slug,
+        status: 'published',
+      },
+    });
+
+    if (!news) {
+      throw new NotFoundException('Новость не найдена');
+    }
+
+    return {
+      id: news.id,
+      title: news.title,
+      slug: news.slug,
+      excerpt: news.excerpt,
+      content: news.content,
+      coverUrl: news.coverUrl,
+      publishedAt: news.publishedAt,
+    };
   }
 }
