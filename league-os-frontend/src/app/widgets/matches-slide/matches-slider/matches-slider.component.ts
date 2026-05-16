@@ -34,7 +34,7 @@ export class MatchesSliderComponent {
             (match) => match.status !== 'finished',
         );
 
-        return index === this.matches().length-1 ? 0 : index;
+        return index === -1 ? this.matches().length-1 : index;
     });
 
     constructor() {
