@@ -1,36 +1,33 @@
 <main class="news-detail">
     @if (isLoading()) {
-        <p class="news-detail__message">
-            Загрузка новости...
-        </p>
+        <p class="news-detail__message">Загрузка новости...</p>
     } @else if (error()) {
         <p class="news-detail__message">
             {{ error() }}
         </p>
     } @else {
         @if (news(); as item) {
-            @if (hasImage()) {
-                <img
-                    class="news-detail__image"
-                    [src]="item.imageUrl"
-                    [alt]="item.imageAlt ?? item.title"
-                />
-            }
+            <h1 class="news-detail__title">
+                {{ item.title }}
+            </h1>
 
             <article class="news-detail__content">
+                @if (hasImage()) {
+                    <img
+                        class="news-detail__image"
+                        [src]="item.imageUrl"
+                        [alt]="item.imageAlt ?? item.title"
+                    />
+                }
                 <time class="news-detail__date">
-                    {{ item.publishedAt | date: 'd MMMM y' }}
+                    {{ item.publishedAt | date: "d MMMM y" }}
                 </time>
-
-                <h1 class="news-detail__title">
-                    {{ item.title }}
-                </h1>
 
                 <div class="news-detail__text">
                     @for (
-                            paragraph of item.content.split('\n\n');
+                        paragraph of item.content.split("\n\n");
                         track paragraph
-                        ) {
+                    ) {
                         <p>{{ paragraph }}</p>
                     }
                 </div>

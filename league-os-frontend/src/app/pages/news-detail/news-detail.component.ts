@@ -29,18 +29,24 @@ export class NewsDetailComponent {
                 switchMap((params) => {
                     const slug = params.get('slug')!;
 
-                    return this.newsApi.getBySlug(slug);
-                }),
-                finalize(() => {
-                    this.isLoading.set(false);
+                    this.isLoading.set(true);
+                    this.error.set(null);
+
+                    return this.newsApi.getBySlug(slug).pipe(
+                        finalize(() => {
+                            this.isLoading.set(false);
+                        }),
+                    );
                 }),
             )
             .subscribe({
                 next: (news) => {
+                    console.log('NEWS_DETAIL:', news);
                     this.news.set(news);
                 },
                 error: () => {
                     this.error.set('Не удалось загрузить новость');
+                    this.news.set(null);
                 },
             });
     }

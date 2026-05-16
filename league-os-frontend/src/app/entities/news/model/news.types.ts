@@ -3,5 +3,6 @@ export interface News {
     title: string;
     publishedAt: string;
     coverUrl: string;
+    content: string;
     slug: string;
 }
