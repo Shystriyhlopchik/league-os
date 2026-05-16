@@ -22,8 +22,15 @@
             }
         </div>
 
-        <button class="news-preview__more" type="button">
-            Показать ещё
-        </button>
+        @if (variant() === 'page') {
+            <button
+                class="news-preview__more"
+                type="button"
+                [disabled]="isLoading()"
+                (click)="loadMore()"
+            >
+                {{ isLoading() ? 'Загрузка...' : 'Показать ещё' }}
+            </button>
+        }
     }
 </section>

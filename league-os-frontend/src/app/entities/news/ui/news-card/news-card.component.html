@@ -1,7 +1,7 @@
 <a
     class="news-card"
     [class.news-card--large]="variant() === 'large'"
-    [routerLink]="news().url ?? ['/news', news().id]"
+    [routerLink]="['/news', news().slug]"
 >
     <img
         class="news-card__image"

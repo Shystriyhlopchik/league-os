@@ -14,6 +14,13 @@ export const routes: Routes = [
                 (m) => m.NewsPageComponent,
             ),
     },
+    {
+        path: 'news/:slug',
+        loadComponent: () =>
+            import('./pages/news-detail/news-detail.component').then(
+                (m) => m.NewsDetailComponent,
+            ),
+    }
     // {
     //     path: '',
     //     component: MainComponent,

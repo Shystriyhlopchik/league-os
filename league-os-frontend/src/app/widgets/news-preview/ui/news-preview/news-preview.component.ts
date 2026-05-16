@@ -14,7 +14,7 @@ export class NewsPreviewComponent {
     readonly variant = input<'preview' | 'page'>('preview');
 
     readonly title = input('Новости');
-    readonly limit = input(3);
+    readonly limit = input(5);
 
     readonly news = this.store.news;
     readonly isLoading = this.store.isLoading;
@@ -25,5 +25,9 @@ export class NewsPreviewComponent {
         effect(() => {
             this.store.loadLatest(this.limit());
         });
+    }
+
+    loadMore(): void {
+        this.store.loadMore(this.limit());
     }
 }
