@@ -98,6 +98,18 @@
     align-items: center;
     justify-content: center;
 
+    .footer__icon-box  {
+        width: 32px;
+        height: 32px;
+        padding: 2px;
+        box-sizing: border-box;
+
+        img {
+            width: auto;
+            height: auto;
+        }
+    }
+
     img {
         display: block;
         width: 32px;
