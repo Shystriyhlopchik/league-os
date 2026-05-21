@@ -5,6 +5,7 @@ export enum MatchEventType {
     PENALTY_MISSED = 'penalty_missed',
 
     YELLOW_CARD = 'yellow_card',
+    SECOND_YELLOW_CARD = 'second_yellow_card',
     RED_CARD = 'red_card',
 
     SUBSTITUTION = 'substitution',

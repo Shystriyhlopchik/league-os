@@ -17,6 +17,7 @@ import { TournamentTeamsModule } from './modules/tournament-teams/tournament-tea
 import { NewsModule } from './modules/news/news.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { MatchOfficialsModule } from './modules/match-officials/match-officials.module';
 
 
 @Module({
@@ -52,6 +53,7 @@ import { AuthModule } from './modules/auth/auth.module';
     NewsModule,
     UsersModule,
     AuthModule,
+    MatchOfficialsModule,
   ],
   controllers: [AppController],
   providers: [],

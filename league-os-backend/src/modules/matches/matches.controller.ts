@@ -16,4 +16,9 @@ export class MatchesController {
     findBySeason(@Param('seasonId', ParseIntPipe) seasonId: number) {
         return this.matchesService.findBySeason(seasonId);
     }
+
+    @Get(':id/protocol')
+    getProtocol(@Param('id', ParseIntPipe) id: number) {
+        return this.matchesService.findProtocol(id);
+    }
 }

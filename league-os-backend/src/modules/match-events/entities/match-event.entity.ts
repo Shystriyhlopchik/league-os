@@ -48,4 +48,18 @@ export class MatchEventEntity extends BaseEntity {
 
     @Column({ type: 'text', nullable: true })
     description?: string;
+
+    @Column({ name: 'assist_player_id', nullable: true })
+    assistPlayerId?: number;
+
+    @ManyToOne(() => PlayerEntity, { nullable: true })
+    @JoinColumn({ name: 'assist_player_id' })
+    assistPlayer?: PlayerEntity;
+
+    @Column({ name: 'secondary_player_id', nullable: true })
+    secondaryPlayerId?: number;
+
+    @ManyToOne(() => PlayerEntity, { nullable: true })
+    @JoinColumn({ name: 'secondary_player_id' })
+    secondaryPlayer?: PlayerEntity;
 }

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {BadRequestException, Injectable, NotFoundException} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MatchEntity } from './entities/match.entity';
 import { DeepPartial, Repository } from 'typeorm';
@@ -170,5 +170,126 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
           }
           : null,
     }));
+  }
+
+  async findProtocol(matchId: number) {
+    const match = await this.matchesRepository.findOne({
+      where: { id: matchId },
+      relations: {
+        homeTeam: true,
+        awayTeam: true,
+        venue: true,
+        tournament: {
+          season: {
+            competition: true,
+          },
+        },
+        events: {
+          team: true,
+          player: true,
+          assistPlayer: true,
+          secondaryPlayer: true,
+        },
+        officials: true,
+      },
+      order: {
+        events: {
+          minute: 'ASC',
+          addedMinute: 'ASC',
+          id: 'ASC',
+        },
+      },
+    });
+
+    if (!match) {
+      throw new NotFoundException('Матч не найден');
+    }
+
+    return {
+      id: match.id,
+      status: match.status,
+      round: match.round,
+      matchDateTime: match.matchDatetime,
+
+      tournament: {
+        id: match.tournament.id,
+        name: match.tournament.name,
+        season: {
+          id: match.tournament.season.id,
+          name: match.tournament.season.name,
+          year: match.tournament.season.year,
+        },
+        competition: {
+          id: match.tournament.season.competition.id,
+          name: match.tournament.season.competition.name,
+          logoUrl: match.tournament.season.competition.logoUrl,
+        },
+      },
+
+      venue: match.venue
+          ? {
+            id: match.venue.id,
+            name: match.venue.name,
+          }
+          : null,
+
+      homeTeam: {
+        id: match.homeTeam.id,
+        name: match.homeTeam.name,
+        logoUrl: match.homeTeam.logoUrl,
+        score: match.homeScore,
+      },
+
+      awayTeam: {
+        id: match.awayTeam.id,
+        name: match.awayTeam.name,
+        logoUrl: match.awayTeam.logoUrl,
+        score: match.awayScore,
+      },
+
+      officials: match.officials.map((official) => ({
+        id: official.id,
+        fullName: official.fullName,
+        role: official.role,
+      })),
+
+      events: match.events.map((event) => ({
+        id: event.id,
+        type: event.eventType,
+        minute: event.minute,
+        addedMinute: event.addedMinute,
+
+        team: {
+          id: event.team.id,
+          name: event.team.name,
+        },
+
+        player: event.player
+            ? {
+              id: event.player.id,
+              firstName: event.player.firstName,
+              lastName: event.player.lastName,
+            }
+            : null,
+
+        assistPlayer: event.assistPlayer
+            ? {
+              id: event.assistPlayer.id,
+              firstName: event.assistPlayer.firstName,
+              lastName: event.assistPlayer.lastName,
+            }
+            : null,
+
+        secondaryPlayer: event.secondaryPlayer
+            ? {
+              id: event.secondaryPlayer.id,
+              firstName: event.secondaryPlayer.firstName,
+              lastName: event.secondaryPlayer.lastName,
+            }
+            : null,
+
+        description: event.description,
+      })),
+    };
   }
 }
