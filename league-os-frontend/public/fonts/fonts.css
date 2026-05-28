@@ -1,0 +1,49 @@
+@font-face {
+    src:
+        local("Oswald Light"),
+        local("Oswald-Light"),
+        url(./Oswald-Light.ttf) format("truetype");
+    font-family: "Oswald";
+    font-weight: 300;
+    font-style: normal;
+}
+
+@font-face {
+    src:
+        local("Oswald Regular"),
+        local("Oswald-Regular"),
+        url(./Oswald-Regular.ttf) format("truetype");
+    font-family: "Oswald";
+    font-weight: 400;
+    font-style: normal;
+}
+
+@font-face {
+    src:
+        local("Oswald Medium"),
+        local("Oswald-Medium"),
+        url(./Oswald-Medium.ttf) format("truetype");
+    font-family: "Oswald";
+    font-weight: 500;
+    font-style: normal;
+}
+
+@font-face {
+    src:
+        local("Montserrat Bold"),
+        local("Montserrat-Bold"),
+        url(./Montserrat-Bold.ttf) format("truetype");
+    font-family: 'Montserrat';
+    font-weight: 700;
+    font-style: normal;
+}
+
+@font-face {
+    src:
+        local("BebasNeue-Regular"),
+        local("BebasNeue Regular"),
+        url(./BebasNeue-Regular.ttf) format("truetype");
+    font-family: 'Bebas Neue';
+    font-weight: 400;
+    font-style: normal;
+}
