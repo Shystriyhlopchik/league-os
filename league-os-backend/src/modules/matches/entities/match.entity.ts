@@ -22,7 +22,7 @@ export class MatchEntity extends BaseEntity {
   @Column({ name: 'venue_id', nullable: true })
   venueId?: number;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ name: 'match_datetime', type: 'timestamp', nullable: true })
   matchDatetime?: Date;
 
   @Column({ nullable: true })
@@ -35,10 +35,10 @@ export class MatchEntity extends BaseEntity {
   })
   status: MatchStatus;
 
-  @Column({ default: 0 })
+  @Column({ name: 'home_score', default: 0 })
   homeScore: number;
 
-  @Column({ default: 0 })
+  @Column({ name: 'away_score', default: 0 })
   awayScore: number;
 
   @OneToMany(() => MatchEventEntity, (event) => event.match)
