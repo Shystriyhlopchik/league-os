@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { MatchEntity } from './entities/match.entity';
 import { DeepPartial, Repository } from 'typeorm';
 import { BaseCrudService } from '../../common/base/base-crud.service';
+import { formatLocalDateTime } from "./helper/formatLocalDateTime";
 
 const ERR_MESSAGE = 'Команды в матче не могут быть одинаковыми';
 
@@ -60,7 +61,7 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
 
       round: match.round,
       status: match.status,
-      matchDateTime: match.matchDatetime,
+      matchDateTime: formatLocalDateTime(match.matchDatetime),
 
       tournament: {
         id: match.tournament.id,
@@ -134,7 +135,7 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
       tournamentId: match.tournamentId,
       round: match.round,
       status: match.status,
-      matchDateTime: match.matchDatetime,
+      matchDateTime: formatLocalDateTime(match.matchDatetime),
 
       tournament: {
         id: match.tournament.id,
