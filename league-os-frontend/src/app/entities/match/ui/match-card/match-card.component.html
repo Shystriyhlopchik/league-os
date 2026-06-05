@@ -27,10 +27,14 @@
         </div>
 
         <div class="match-card__center">
-            <strong class="match-card__score">
-                {{ match().homeTeamScore ?? " - " }} :
-                {{ match().awayTeamScore ?? " - " }}
-            </strong>
+            @if (match().status === "scheduled") {
+                -:-
+            } @else {
+                <strong class="match-card__score">
+                    {{ match().homeTeamScore }} :
+                    {{ match().awayTeamScore }}
+                </strong>
+            }
 
             @if (match().status === "finished") {
                 <span class="match-card__status">
