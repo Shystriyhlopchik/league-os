@@ -21,7 +21,7 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    const existingUser = await this.usersService.findByEmail(dto.email);
+    const existingUser = await this.usersService.findByEmailOrUsername(dto.email);
 
     if (existingUser) {
       throw new ConflictException('Пользователь с таким email уже существует');
@@ -52,10 +52,10 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.usersService.findByEmail(dto.login);
+    const user = await this.usersService.findByEmailOrUsername(dto.login);
 
     if (!user) {
-      throw new UnauthorizedException('Неверный email или пароль');
+      throw new UnauthorizedException('Неверный логин или пароль');
     }
 
     const isPasswordValid = await bcrypt.compare(
@@ -64,7 +64,7 @@ export class AuthService {
     );
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Неверный email или пароль');
+      throw new UnauthorizedException('Неверный логин или пароль');
     }
 
     return this.buildAuthResponse(user);
