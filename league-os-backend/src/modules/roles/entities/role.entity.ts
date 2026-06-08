@@ -4,7 +4,7 @@ import {
     ManyToMany,
 } from 'typeorm';
 
-import { UserEntity } from './user.entity';
+import { UserEntity } from '../../users/entities/user.entity';
 import {BaseEntity} from "../../../common/base/base.entity";
 
 @Entity('roles')

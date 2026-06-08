@@ -18,6 +18,7 @@ import { NewsModule } from './modules/news/news.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { MatchOfficialsModule } from './modules/match-officials/match-officials.module';
+import { RolesModule } from './modules/roles/roles.module';
 
 
 @Module({
@@ -54,6 +55,7 @@ import { MatchOfficialsModule } from './modules/match-officials/match-officials.
     UsersModule,
     AuthModule,
     MatchOfficialsModule,
+    RolesModule,
   ],
   controllers: [AppController],
   providers: [],
