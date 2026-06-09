@@ -7,13 +7,12 @@ import {
     input,
     ViewChild,
 } from '@angular/core';
-import { AsyncPipe, DatePipe } from '@angular/common';
 import { MatchCardComponent } from '../../../entities/match/ui/match-card/match-card.component';
 import { MatchesSliderStore } from '../model/matches-slider.store';
 
 @Component({
     selector: 'app-matches-slider',
-    imports: [AsyncPipe, DatePipe, MatchCardComponent],
+    imports: [ MatchCardComponent],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
     providers: [MatchesSliderStore],
     templateUrl: './matches-slider.component.html',

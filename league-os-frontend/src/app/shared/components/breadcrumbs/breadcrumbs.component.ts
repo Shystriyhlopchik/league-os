@@ -5,7 +5,6 @@ import {
     Router,
     RouterLink,
 } from '@angular/router';
-import { AsyncPipe } from '@angular/common';
 import { filter } from 'rxjs';
 
 interface Breadcrumb {
@@ -15,7 +14,7 @@ interface Breadcrumb {
 
 @Component({
     selector: 'app-breadcrumbs',
-    imports: [RouterLink, AsyncPipe],
+    imports: [RouterLink],
     templateUrl: './breadcrumbs.component.html',
     styleUrl: './breadcrumbs.component.scss',
 })
