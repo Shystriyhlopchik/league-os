@@ -1,0 +1,89 @@
+<form
+    class="login-form"
+    [formGroup]="form"
+    (ngSubmit)="submit()"
+>
+    <label
+        class="login-form__field"
+        [class.login-form__field--error]="store.error()"
+    >
+<!--        <span class="login-form__icon login-form__icon&#45;&#45;mail"></span>-->
+
+        <span class="login-form__content">
+            <span class="login-form__label">E-MAIL</span>
+
+            <input
+                class="login-form__input"
+                type="email"
+                formControlName="login"
+                placeholder=""
+            />
+        </span>
+    </label>
+
+    <label
+        class="login-form__field"
+        [class.login-form__field--error]="store.error()"
+    >
+<!--        <span class="login-form__icon login-form__icon&#45;&#45;key"></span>-->
+
+        <span class="login-form__content">
+            <span class="login-form__label">ПАРОЛЬ</span>
+
+            <input
+                class="login-form__input"
+                [type]="passwordInputType()"
+                formControlName="password"
+                placeholder=""
+            />
+        </span>
+
+        <button
+            class="login-form__password-toggle"
+            type="button"
+            aria-label="Показать пароль"
+            (click)="togglePasswordVisibility()"
+        ></button>
+    </label>
+
+    @if (store.error()) {
+        <p class="login-form__error">
+            {{ store.error() }}
+        </p>
+    }
+
+<!--    <div class="login-form__row">-->
+<!--        <label class="login-form__remember">-->
+<!--            <input-->
+<!--                type="checkbox"-->
+<!--                formControlName="rememberMe"-->
+<!--            />-->
+
+<!--            <span></span>-->
+
+<!--            Запомнить-->
+<!--        </label>-->
+
+<!--        <a-->
+<!--            class="login-form__forgot"-->
+<!--            routerLink="/forgot-password"-->
+<!--        >-->
+<!--            Забыли пароль?-->
+<!--        </a>-->
+<!--    </div>-->
+
+    <button
+        class="login-form__submit"
+        type="submit"
+        [disabled]="store.isLoading()"
+    >
+        {{ store.isLoading() ? 'Входим...' : 'Войти' }}
+    </button>
+
+<!--    <a-->
+<!--        class="login-form__register"-->
+<!--        routerLink="/register"-->
+<!--    >-->
+<!--        Нет аккаунта? Зарегистрироваться-->
+<!--    </a>-->
+</form>

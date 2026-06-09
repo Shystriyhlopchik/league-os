@@ -27,6 +27,19 @@
     }
 }
 
+.header__menu-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .header__menu-authorization {
+        img {
+            object-fit: contain;
+            height: 24px;
+        }
+    }
+}
+
 .header__menu-button {
     width: 32px;
     height: 32px;

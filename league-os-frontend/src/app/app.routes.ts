@@ -20,6 +20,13 @@ export const routes: Routes = [
             import('./pages/news-detail/news-detail.component').then(
                 (m) => m.NewsDetailComponent,
             ),
+    },
+    {
+        path: 'login',
+        loadComponent: () =>
+            import('./pages/login/ui/login-page/login-page.component').then(
+                (m) => m.LoginPageComponent,
+            ),
     }
     // {
     //     path: '',

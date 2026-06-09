@@ -3,18 +3,27 @@
         <img src="images/Arman_liga.png" alt="Арман Лига" />
     </a>
 
-    <button
-        class="header__menu-button"
-        type="button"
-        [attr.aria-label]="menuIconLabel()"
-        [attr.aria-expanded]="isMenuOpen()"
-        aria-controls="header-menu"
-        (click)="toggleMenu()"
-    >
-        <span></span>
-        <span></span>
-        <span></span>
-    </button>
+    <div class="header__menu-buttons">
+        <a
+            href=""
+            class="header__menu-authorization header__menu-button"
+            [routerLink]="'/login'"
+        >
+            <img src="images/icons/authorization.svg" alt="Авторизация" />
+        </a>
+        <button
+            class="header__menu-button"
+            type="button"
+            [attr.aria-label]="menuIconLabel()"
+            [attr.aria-expanded]="isMenuOpen()"
+            aria-controls="header-menu"
+            (click)="toggleMenu()"
+        >
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+    </div>
 
     @if (isMenuOpen()) {
         <nav id="header-menu" class="header__menu">
