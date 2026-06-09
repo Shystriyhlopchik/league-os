@@ -1,5 +1,8 @@
 import { Routes } from '@angular/router';
 import { MainComponent } from './features/main/main.component';
+import {authGuard} from './guards/auth.guard';
+import {roleGuard} from './guards/role.guard';
+import {UserRole} from './entities/user/model/user-role.type';
 
 export const routes: Routes = [
     {
@@ -27,7 +30,38 @@ export const routes: Routes = [
             import('./pages/login/ui/login-page/login-page.component').then(
                 (m) => m.LoginPageComponent,
             ),
-    }
+    },
+    {
+        path: 'dashboard',
+        canActivate: [authGuard],
+        loadComponent: () =>
+            import('./pages/dashboard/ui/dashboard-page/dashboard-page.component').then(
+                (m) => m.DashboardPageComponent,
+            ),
+    },
+    // {
+    //     path: 'admin/referees',
+    //     canActivate: [
+    //         authGuard,
+    //         roleGuard([UserRole.ADMIN]),
+    //     ],
+    //     loadComponent: () =>
+    //         import('./pages/admin-referees/ui/admin-referees-page.component').then(
+    //             (m) => m.AdminRefereesPageComponent,
+    //         ),
+    // },
+    //
+    // {
+    //     path: 'referee/matches',
+    //     canActivate: [
+    //         authGuard,
+    //         roleGuard([UserRole.REFEREE, UserRole.ADMIN]),
+    //     ],
+    //     loadComponent: () =>
+    //         import('./pages/referee-matches/ui/referee-matches-page.component').then(
+    //             (m) => m.RefereeMatchesPageComponent,
+    //         ),
+    // },
     // {
     //     path: '',
     //     component: MainComponent,

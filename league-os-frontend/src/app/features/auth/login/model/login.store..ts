@@ -1,9 +1,9 @@
-import {inject, Injectable, signal} from '@angular/core';
-import {AuthApi} from '../../../../entities/user/api/auth.api';
-import {SessionStore} from '../../../../entities/user/model/session.store';
-import {Router} from '@angular/router';
-import {LoginDto} from '../../../../entities/user/model/auth.types';
-import {finalize} from 'rxjs';
+import { inject, Injectable, signal } from '@angular/core';
+import { AuthApi } from '../../../../entities/user/api/auth.api';
+import { SessionStore } from '../../../../entities/user/model/session.store';
+import { Router } from '@angular/router';
+import { LoginDto } from '../../../../entities/user/model/auth.types';
+import { finalize } from 'rxjs';
 
 @Injectable()
 export class LoginStore {
@@ -24,7 +24,7 @@ export class LoginStore {
             .subscribe({
                 next: (response) => {
                     this.sessionStore.setAuth(response);
-                    this.router.navigate(['/']);
+                    this.router.navigate(['/dashboard']);
                 },
                 error: (err) => {
                     this.error.set(err.error.message);

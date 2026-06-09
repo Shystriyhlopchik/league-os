@@ -61,9 +61,14 @@ export class SessionStore {
     logout(): void {
         this.tokenStorage.clear();
         this.user.set(null);
+        this.isInitialized.set(true);
     }
 
     hasRole(role: string): boolean {
         return this.roles().includes(role as never);
+    }
+
+    hasAnyRole(...roles: string[]): boolean {
+        return roles.some((role) => this.hasRole(role));
     }
 }

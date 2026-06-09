@@ -1,0 +1,37 @@
+<div class="dashboard-page">
+    <section class="dashboard-page__content">
+        <p class="dashboard-page__name">Лига ОС</p>
+
+        <p class="dashboard-page__status">
+            {{ user()?.lastName }} {{ user()?.firstName }}, вы вошли в систему
+        </p>
+
+        <section class="dashboard-page__intro">
+            <h2>Кабинет администратора</h2>
+
+            <p>Выберите действие</p>
+
+            <span> Управление командами, судьями и матчами </span>
+        </section>
+
+        <div class="dashboard-page__actions">
+            @for (action of availableActions(); track action.route) {
+                <a
+                    class="dashboard-page__action"
+                    [routerLink]="action.route"
+                >
+                    <span class="dashboard-page__action-content">
+                        <strong [style.color]="action.variant">{{ action.title }}</strong>
+                        <small>{{ action.description }}</small>
+                    </span>
+
+                    <span class="dashboard-page__action-arrow">›</span>
+                </a>
+            }
+        </div>
+
+        <button class="dashboard-page__logout" type="button" (click)="logout()">
+            Выйти
+        </button>
+    </section>
+</div>

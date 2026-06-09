@@ -1,0 +1,140 @@
+.dashboard-page {
+    min-height: 100vh;
+    background: #101716;
+    color: #f5f5f5;
+}
+
+.dashboard-page__content {
+    padding: 20px 16px;
+}
+
+.dashboard-page__name {
+    margin: 0 0 4px;
+
+    color: #ffd91a;
+    font-size: 24px;
+    font-family: "Science Gothic", Arial, sans-serif;
+    line-height: 1.2;
+    font-weight: 800;
+    font-style: italic;
+}
+
+.dashboard-page__status {
+    margin: 0 0 48px;
+
+    font-family: Roboto, "Helvetica Neue", sans-serif;
+    color: #55e58b;
+    font-size: 14px;
+    line-height: 1.2;
+    font-weight: 400;
+}
+
+.dashboard-page__intro {
+    font-family: "Oswald", Arial, sans-serif;
+    font-size: 12px;
+
+    background: #20272a;
+    border-radius: 8px;
+    margin-bottom: 22px;
+    padding: 18px;
+
+    h2 {
+        margin: 0 0 23px;
+
+        color: rgba(255, 255, 255, 0.55);
+        font-weight: 800;
+    }
+
+    p {
+
+        font-size: 24px;
+        line-height: 1.2;
+        font-weight: 800;
+        text-transform: uppercase;
+        margin: 0 auto 8px;
+    }
+
+    span {
+        color: rgba(255, 255, 255, 0.82);
+        line-height: 1.2;
+    }
+}
+
+.dashboard-page__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.dashboard-page__action {
+    min-height: 102px;
+    padding: 25px 16px;
+    box-sizing: border-box;
+
+    display: flex;
+    align-items: center;
+    gap: 28px;
+
+    color: #fff;
+    background: #222a2d;
+    border-radius: 8px;
+    text-decoration: none;
+}
+
+.dashboard-page__action-content {
+    flex: 1;
+    min-width: 0;
+
+    strong {
+        display: block;
+        margin-bottom: 8px;
+
+        font-family: "Oswald", Arial, sans-serif;
+        font-size: 20px;
+        line-height: 1.2;
+        font-weight: 800;
+    }
+
+    small {
+        display: block;
+
+        color: rgba(255, 255, 255, 0.65);
+        font-size: 12px;
+        font-family: Roboto, "Helvetica Neue", sans-serif;
+        line-height: 1.2;
+    }
+}
+
+.dashboard-page__action-arrow {
+    font-size: 54px;
+    line-height: 1.2;
+    font-weight: 300;
+}
+
+.dashboard-page__action--yellow {
+    color: #ffd91a;
+}
+
+.dashboard-page__action--red {
+    color: #ff5c69;
+}
+
+.dashboard-page__action--yellow .dashboard-page__action-content,
+.dashboard-page__action--red .dashboard-page__action-content {
+    color: #fff;
+}
+
+.dashboard-page__logout {
+    margin: 22px auto 0;
+    display: block;
+
+    color: #72DF9C;
+    background: transparent;
+    border: none;
+
+    font-size: 20px;
+    font-family: "Oswald", Arial, sans-serif;
+    line-height: 1.2;
+    font-weight: 800;
+    cursor: pointer;
+}

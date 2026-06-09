@@ -11,6 +11,7 @@ import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RolesService } from '../roles/roles.service';
+import {RoleCode} from "../users/enums/role-code.enum";
 
 @Injectable()
 export class AuthService {
@@ -27,7 +28,7 @@ export class AuthService {
       throw new ConflictException('Пользователь с таким email уже существует');
     }
 
-    const userRole = await this.rolesService.findByCode('USER');
+    const userRole = await this.rolesService.findByCode(RoleCode.User);
 
     if (!userRole) {
       throw new InternalServerErrorException('Роль USER не найдена');

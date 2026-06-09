@@ -41,7 +41,6 @@ export class NewsDetailComponent {
             )
             .subscribe({
                 next: (news) => {
-                    console.log('NEWS_DETAIL:', news);
                     this.news.set(news);
                 },
                 error: () => {
