@@ -1,0 +1,149 @@
+<div class="roster-check-page">
+    <app-page-header
+        title="Проверка составов"
+        description="Перед стартом матча подтвердите допуск"
+        (back)="goBack()"
+    />
+
+    @if (store.isLoading()) {
+        <p class="state-text">Загружаем составы...</p>
+    } @else if (store.error()) {
+        <p class="state-text state-text--error">{{ store.error() }}</p>
+    } @else {
+        @if (store.data(); as data) {
+            <app-info-card
+                title="{{ data.match.matchDatetime | date: 'd MMMM, HH:mm' }}
+                    ·
+                    {{ data.match.venueName || 'Место не указано' }}"
+                label="{{ data.match.homeTeam.name }} — {{
+                    data.match.awayTeam.name
+                }}"
+                description="Судья проверяет заявки и дисквалификации"
+            ></app-info-card>
+
+            @if (data.warnings.yellowCardsSuspensionCount > 0) {
+                <section class="warning-card warning-card--yellow">
+                    <h3>
+                        {{ data.warnings.yellowCardsSuspensionCount }}
+                        игрока с перебором желтых
+                    </h3>
+                    <p>Нужна проверка допуска</p>
+                </section>
+            }
+
+            @if (data.warnings.redCardSuspensionCount > 0) {
+                <section class="warning-card warning-card--red">
+                    <h3>
+                        {{ data.warnings.redCardSuspensionCount }}
+                        игрок с красной карточкой
+                    </h3>
+                    <p>Не должен быть в составе</p>
+                </section>
+            }
+            <div class="team-tabs">
+                <button
+                    type="button"
+                    class="team-tabs__button"
+                    [class.team-tabs__button--active]="
+                        store.selectedTeamId() === data.match.homeTeam.id
+                    "
+                    (click)="store.selectTeam(data.match.homeTeam.id)"
+                >
+                    {{ data.match.homeTeam.name }}
+                </button>
+
+                <button
+                    type="button"
+                    class="team-tabs__button"
+                    [class.team-tabs__button--active]="
+                        store.selectedTeamId() === data.match.awayTeam.id
+                    "
+                    (click)="store.selectTeam(data.match.awayTeam.id)"
+                >
+                    {{ data.match.awayTeam.name }}
+                </button>
+            </div>
+
+            <section class="roster-list">
+                @for (player of store.selectedRoster(); track player.id) {
+                    <article class="player-card">
+                        <div class="player-card__avatar">
+                            @if (player.photoUrl) {
+                                <img
+                                    [src]="player.photoUrl"
+                                    [alt]="getPlayerName(player)"
+                                />
+                            } @else {
+                                <h3>{{ getPlayerName(player) }}</h3>
+                            }
+                        </div>
+
+                        <div class="player-card__info">
+                            <h3>{{ getPlayerName(player) }}</h3>
+
+                            <p>
+                                @if (player.shirtNumber) {
+                                    №{{ player.shirtNumber }}
+                                }
+
+                                @if (player.isCaptain) {
+                                    · капитан
+                                }
+                            </p>
+                        </div>
+
+                        <span
+                            class="player-card__status"
+                            [class.player-card__status--allowed]="
+                                player.eligibilityStatus === 'allowed'
+                            "
+                            [class.player-card__status--check]="
+                                player.eligibilityStatus === 'check'
+                            "
+                            [class.player-card__status--not-allowed]="
+                                player.eligibilityStatus === 'not_allowed'
+                            "
+                        >
+                            @switch (player.eligibilityStatus) {
+                                @case ("allowed") {
+                                    Допущен
+                                }
+                                @case ("check") {
+                                    Висит на карточках
+                                }
+                                @case ("not_allowed") {
+                                    Не допускать
+                                }
+                            }
+                        </span>
+                    </article>
+                }
+            </section>
+            <section class="roster-actions">
+                <button
+                    type="button"
+                    class="roster-actions__approve"
+                    [disabled]="store.isApproving() || store.selectedTeamApproved()"
+                    (click)="approveSelectedRoster()"
+                >
+                    @if (store.selectedTeamApproved()) {
+                        Состав утверждён
+                    } @else if (store.isApproving()) {
+                        Утверждаем...
+                    } @else {
+                        Утвердить состав
+                    }
+                </button>
+
+                <button
+                    type="button"
+                    class="roster-actions__next"
+                    [disabled]="!store.canGoToMatch()"
+                    (click)="goToMatch()"
+                >
+                    К матчу
+                </button>
+            </section>
+        }
+    }
+</div>

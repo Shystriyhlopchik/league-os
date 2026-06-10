@@ -1,0 +1,236 @@
+.roster-check-page {
+    min-height: 100vh;
+    padding: 16px;
+    background: #101616;
+    color: #ffffff;
+}
+
+.state-text {
+    margin-top: 20px;
+    color: #8d9999;
+    font-weight: 700;
+
+    &--error {
+        color: #ff4d5a;
+    }
+}
+
+.warning-card {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    background: #202829;
+
+    h3 {
+        margin: 0 0 4px;
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.2;
+        font-family: "Oswald", Arial, sans-serif;
+    }
+
+    p {
+        margin: 0;
+        color: #b6c0c0;
+        font-weight: 400;
+        font-family: Roboto, "Helvetica Neue", sans-serif;
+        font-size: 12px;
+    }
+
+    &--yellow {
+        border: 1px solid #ffd400;
+
+        h3 {
+            color: #ffd400;
+        }
+    }
+
+    &--red {
+        border: 1px solid #ff4d5a;
+
+        h3 {
+            color: #ff4d5a;
+        }
+    }
+}
+
+.team-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 24px;
+
+    &__button {
+        min-height: 38px;
+        border: none;
+        border-radius: 8px;
+
+        background: #202829;
+        color: #d7dddd;
+
+        font-family: "Oswald", Arial, sans-serif;
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.2;
+
+        cursor: pointer;
+        transition:
+            background-color 0.2s ease,
+            color 0.2s ease,
+            transform 0.2s ease;
+
+        &:hover {
+            transform: translateY(-1px);
+        }
+
+        &:active {
+            transform: scale(0.98);
+        }
+
+        &--active {
+            background: #28df7a;
+            color: #071010;
+        }
+    }
+}
+
+.roster-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.player-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    padding: 14px 12px;
+    border-radius: 14px;
+    background: #202829;
+
+    &__avatar {
+        width: 52px;
+        height: 52px;
+        flex: 0 0 52px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        overflow: hidden;
+        border-radius: 50%;
+        background: #101616;
+        color: #28df7a;
+        font-weight: 800;
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+    }
+
+    &__info {
+        min-width: 0;
+        flex: 1;
+
+        h3 {
+            margin: 0;
+            font-family: "Oswald", Arial, sans-serif;
+            font-size: 16px;
+            line-height: 1.2;
+            font-weight: 400;
+        }
+
+        p {
+            margin: 4px 0 0;
+            color: #8d9999;
+            font-size: 12px;
+            font-weight: 400;
+            font-family: Roboto, "Helvetica Neue", sans-serif;
+        }
+    }
+
+    &__status {
+        flex: 0 0 auto;
+        padding: 8px 10px;
+        border-radius: 8px;
+
+        background: #101616;
+        font-size: 12px;
+        font-weight: 700;
+        font-family: Roboto, "Helvetica Neue", sans-serif;
+
+        &--allowed {
+            color: #28df7a;
+        }
+
+        &--check {
+            color: #ffd400;
+        }
+
+        &--not-allowed {
+            color: #ff4d5a;
+        }
+    }
+}
+
+.roster-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 24px;
+    padding-bottom: 32px;
+
+    button {
+        min-height: 52px;
+        border: none;
+        border-radius: 14px;
+
+        font-family: Roboto, "Helvetica Neue", sans-serif;
+        font-size: 16px;
+        font-weight: 900;
+
+        cursor: pointer;
+        transition:
+            transform 0.2s ease,
+            background-color 0.2s ease,
+            opacity 0.2s ease,
+            box-shadow 0.2s ease;
+
+        &:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+
+        &:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+
+        &:disabled {
+            cursor: not-allowed;
+            opacity: 0.45;
+        }
+    }
+
+    &__approve {
+        background: #28df7a;
+        color: #071010;
+
+        &:hover:not(:disabled) {
+            background: #36f58a;
+            box-shadow: 0 4px 12px rgb(40 223 122 / 30%);
+        }
+    }
+
+    &__next {
+        background: #ffffff;
+        color: #071010;
+
+        &:hover:not(:disabled) {
+            box-shadow: 0 4px 12px rgb(255 255 255 / 20%);
+        }
+    }
+}
