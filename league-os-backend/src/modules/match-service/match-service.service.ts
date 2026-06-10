@@ -1,15 +1,30 @@
-import { Injectable } from '@nestjs/common';
+import {Injectable, NotFoundException} from '@nestjs/common';
 import { MatchServiceMatchDto } from './dto/match-service-match.dto';
 import { MatchEntity } from '../matches/entities/match.entity';
 import { MatchStatus } from '../matches/enums/match-status.enum';
 import { Between, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
+import { TeamPlayerEntity } from '../team-players/entities/team-players.entity';
+import {
+  MatchRosterCheckDto,
+  MatchRosterPlayerDto,
+  PlayerEligibilityReason,
+  PlayerEligibilityStatus
+} from './dto/match-roster-check.dto';
+import {PlayerTournamentStatEntity} from "../player-tournament-stats/entities/player-tournament-stat.entity";
+import {SuspensionReason} from "../player-tournament-stats/enums/suspension-reason.enum";
 
 @Injectable()
 export class MatchServiceService {
   constructor(
     @InjectRepository(MatchEntity)
     private readonly matchRepository: Repository<MatchEntity>,
+
+    @InjectRepository(TeamPlayerEntity)
+    private readonly teamPlayerRepository: Repository<TeamPlayerEntity>,
+
+    @InjectRepository(PlayerTournamentStatEntity)
+    private readonly playerTournamentStatRepository: Repository<PlayerTournamentStatEntity>,
   ) {}
 
   async findAvailableMatches(): Promise<MatchServiceMatchDto[]> {
@@ -108,5 +123,191 @@ export class MatchServiceService {
           }
         : undefined,
     };
+  }
+
+  private async findTeamRoster(
+      match: MatchEntity,
+      teamId: number,
+  ): Promise<MatchRosterPlayerDto[]> {
+    const teamPlayers = await this.teamPlayerRepository
+        .createQueryBuilder('teamPlayer')
+        .leftJoinAndSelect('teamPlayer.player', 'player')
+        .where('teamPlayer.team_id = :teamId', { teamId })
+        .andWhere('teamPlayer.isActive = true')
+        .andWhere('player.isActive = true')
+        .orderBy('teamPlayer.isCaptain', 'DESC')
+        .addOrderBy('teamPlayer.shirtNumber', 'ASC')
+        .getMany();
+
+    const playerIds = teamPlayers.map((teamPlayer) => teamPlayer.playerId);
+
+    const statsByPlayerId = await this.getStatsByPlayerIds(
+        match.tournamentId,
+        teamId,
+        playerIds,
+    );
+
+    return teamPlayers.map((teamPlayer) => {
+      const stat = statsByPlayerId.get(teamPlayer.playerId);
+
+      return {
+        id: teamPlayer.player.id,
+        firstName: teamPlayer.player.firstName,
+        lastName: teamPlayer.player.lastName,
+        middleName: teamPlayer.player.middleName,
+
+        photoUrl: teamPlayer.player.photoUrl,
+        shirtNumber: teamPlayer.shirtNumber,
+        position: teamPlayer.position ?? teamPlayer.player.position,
+        isCaptain: teamPlayer.isCaptain,
+
+        yellowCards: stat?.yellowCards ?? 0,
+        redCards: stat?.redCards ?? 0,
+        secondYellowCards: stat?.secondYellowCards ?? 0,
+
+        eligibilityStatus: this.getEligibilityStatus(stat, match.id),
+        eligibilityReason: this.getEligibilityReason(stat, match.id),
+      };
+    });
+  }
+
+  async getRosterCheck(
+      matchId: number,
+  ): Promise<MatchRosterCheckDto> {
+    const match = await this.matchRepository.findOne({
+      where: {
+        id: matchId,
+      },
+      relations: {
+        homeTeam: true,
+        awayTeam: true,
+        venue: true,
+      },
+    });
+
+    if (!match) {
+      throw new NotFoundException('Матч не найден');
+    }
+
+    const [homeRoster, awayRoster] = await Promise.all([
+      this.findTeamRoster(match, match.homeTeamId),
+      this.findTeamRoster(match, match.awayTeamId),
+    ]);
+
+    const allPlayers = [...homeRoster, ...awayRoster];
+
+    return {
+      match: {
+        id: match.id,
+        matchDatetime: match.matchDatetime,
+        venueName: match.venue?.name,
+
+        homeTeam: {
+          id: match.homeTeam.id,
+          name: match.homeTeam.name,
+          logoUrl: match.homeTeam.logoUrl,
+          rosterApproved: false,
+        },
+
+        awayTeam: {
+          id: match.awayTeam.id,
+          name: match.awayTeam.name,
+          logoUrl: match.awayTeam.logoUrl,
+          rosterApproved: false,
+        },
+      },
+
+      warnings: {
+        yellowCardsOverflowCount: allPlayers.filter(
+            (player) =>
+                player.eligibilityReason ===
+                'four_yellows_suspension',
+        ).length,
+
+        redCardCount: allPlayers.filter(
+            (player) =>
+                player.eligibilityReason ===
+                'red_card_suspension' ||
+                player.eligibilityReason ===
+                'second_yellow_suspension',
+        ).length,
+      },
+
+      homeRoster,
+      awayRoster,
+    };
+  }
+
+  private async getStatsByPlayerIds(
+      tournamentId: number,
+      teamId: number,
+      playerIds: number[],
+  ): Promise<Map<number, PlayerTournamentStatEntity>> {
+    if (!playerIds.length) {
+      return new Map();
+    }
+
+    const stats = await this.playerTournamentStatRepository
+        .createQueryBuilder('stat')
+        .where('stat.tournament_id = :tournamentId', { tournamentId })
+        .andWhere('stat.team_id = :teamId', { teamId })
+        .andWhere('stat.player_id IN (:...playerIds)', { playerIds })
+        .getMany();
+
+    return new Map(stats.map((stat) => [stat.playerId, stat]));
+  }
+
+  private getEligibilityStatus(
+      stat: PlayerTournamentStatEntity | undefined,
+      matchId: number,
+  ): PlayerEligibilityStatus {
+    if (!stat) {
+      return 'allowed';
+    }
+
+    if (
+        stat.isSuspended &&
+        stat.suspendedUntilMatchId === matchId
+    ) {
+      return 'not_allowed';
+    }
+
+    if (stat.yellowCards === 3) {
+      return 'check';
+    }
+
+    return 'allowed';
+  }
+
+  private getEligibilityReason(
+      stat: PlayerTournamentStatEntity | undefined,
+      matchId: number,
+  ): PlayerEligibilityReason {
+    if (!stat) {
+      return 'none';
+    }
+
+    if (
+        stat.isSuspended &&
+        stat.suspendedUntilMatchId === matchId
+    ) {
+      if (stat.suspensionReason === SuspensionReason.FOUR_YELLOW_CARDS) {
+        return 'four_yellows_suspension';
+      }
+
+      if (stat.suspensionReason === SuspensionReason.RED_CARD) {
+        return 'red_card_suspension';
+      }
+
+      if (stat.suspensionReason === SuspensionReason.SECOND_YELLOW_CARD) {
+        return 'second_yellow_suspension';
+      }
+    }
+
+    if (stat.yellowCards === 3) {
+      return 'three_yellows';
+    }
+
+    return 'none';
   }
 }

@@ -1,6 +1,5 @@
 .info-card {
     font-family: "Oswald", Arial, sans-serif;
-    font-size: 12px;
 
     background: #20272a;
     border-radius: 8px;
@@ -11,7 +10,8 @@
         margin: 0 0 23px;
 
         color: rgba(255, 255, 255, 0.55);
-        font-weight: 800;
+        font-weight: 700;
+        font-size: 14px;
     }
 
     p {
@@ -20,12 +20,13 @@
         line-height: 1.2;
         font-weight: 700;
         text-transform: uppercase;
-        margin: 0 auto 8px;
+        margin: 0 auto 0;
     }
 
     span {
         color: rgba(255, 255, 255, 0.82);
         line-height: 1.2;
         font-family: Roboto, "Helvetica Neue", sans-serif;
+        font-size: 12px;
     }
 }

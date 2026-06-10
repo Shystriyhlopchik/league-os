@@ -1,6 +1,7 @@
-import { Controller, Get } from '@nestjs/common';
+import {Controller, Get, Param, ParseIntPipe} from '@nestjs/common';
 import { MatchServiceService } from './match-service.service';
 import { MatchServiceMatchDto } from './dto/match-service-match.dto';
+import {MatchRosterCheckDto} from "./dto/match-roster-check.dto";
 
 @Controller('match-service')
 export class MatchServiceController {
@@ -9,5 +10,15 @@ export class MatchServiceController {
   @Get('matches')
   findAvailableMatches(): Promise<MatchServiceMatchDto[]> {
     return this.matchService.findAvailableMatches();
+  }
+
+  @Get('matches/:matchId/rosters')
+  getRosterCheck(
+      @Param('matchId', ParseIntPipe)
+          matchId: number,
+  ): Promise<MatchRosterCheckDto> {
+    return this.matchService.getRosterCheck(
+        matchId,
+    );
   }
 }

@@ -20,6 +20,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { MatchOfficialsModule } from './modules/match-officials/match-officials.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { MatchServiceModule } from './modules/match-service/match-service.module';
+import { PlayerTournamentStatsModule } from './modules/player-tournament-stats/player-tournament-stats.module';
 
 
 @Module({
@@ -58,6 +59,7 @@ import { MatchServiceModule } from './modules/match-service/match-service.module
     MatchOfficialsModule,
     RolesModule,
     MatchServiceModule,
+    PlayerTournamentStatsModule,
   ],
   controllers: [AppController],
   providers: [],

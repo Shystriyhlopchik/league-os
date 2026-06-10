@@ -52,14 +52,14 @@ export const routes: Routes = [
                         (m) => m.MatchServicePageComponent,
                     ),
             },
-            // {
-            //     path: 'match-service/:matchId/rosters',
-            //     canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Referee])],
-            //     loadComponent: () =>
-            //         import('./pages/match-roster-check/ui/match-roster-check-page/match-roster-check-page.component').then(
-            //             (m) => m.MatchRosterCheckPageComponent,
-            //         ),
-            // },
+            {
+                path: 'match-service/:matchId/rosters',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Referee])],
+                loadComponent: () =>
+                    import('./pages/match-roster-check/ui/match-roster-check-page/match-roster-check-page.component').then(
+                        (m) => m.MatchRosterCheckPageComponent,
+                    ),
+            },
         ],
     },
     // {
