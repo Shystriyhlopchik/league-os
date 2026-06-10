@@ -29,37 +29,6 @@
     font-weight: 400;
 }
 
-.dashboard-page__intro {
-    font-family: "Oswald", Arial, sans-serif;
-    font-size: 12px;
-
-    background: #20272a;
-    border-radius: 8px;
-    margin-bottom: 22px;
-    padding: 18px;
-
-    h2 {
-        margin: 0 0 23px;
-
-        color: rgba(255, 255, 255, 0.55);
-        font-weight: 800;
-    }
-
-    p {
-
-        font-size: 24px;
-        line-height: 1.2;
-        font-weight: 800;
-        text-transform: uppercase;
-        margin: 0 auto 8px;
-    }
-
-    span {
-        color: rgba(255, 255, 255, 0.82);
-        line-height: 1.2;
-    }
-}
-
 .dashboard-page__actions {
     display: flex;
     flex-direction: column;

@@ -63,3 +63,14 @@
     font-style: normal;
     font-display: swap;
 }
+
+@font-face {
+    src:
+        local("Roboto-Bold"),
+        local("Roboto Bold"),
+        url(./Roboto-Bold.ttf) format("truetype");
+    font-family: "Roboto";
+    font-weight: 800;
+    font-style: normal;
+    font-display: swap;
+}

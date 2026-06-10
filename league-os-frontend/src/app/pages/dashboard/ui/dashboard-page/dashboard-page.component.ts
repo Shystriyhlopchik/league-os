@@ -3,10 +3,11 @@ import { SessionStore } from '../../../../entities/user/model/session.store';
 import { DashboardAction } from '../../model/dashboard-action.model';
 import { Router, RouterLink } from '@angular/router';
 import { UserRole } from '../../../../entities/user/model/user-role.type';
+import {InfoCardComponent} from '../../../../shared/ui/info-card/info-card.component';
 
 @Component({
     selector: 'app-dashboard-page',
-    imports: [RouterLink],
+    imports: [RouterLink, InfoCardComponent],
     templateUrl: './dashboard-page.component.html',
     styleUrl: './dashboard-page.component.scss',
 })
@@ -27,7 +28,7 @@ export class DashboardPageComponent {
         {
             title: 'Начать обслуживание матча',
             description: 'Протокол, события, счет и завершение игры',
-            route: '/referee/matches',
+            route: '/dashboard/match-service',
             roles: [UserRole.Referee, UserRole.Admin, UserRole.SuperAdmin],
             variant: '#F04E55',
         },
