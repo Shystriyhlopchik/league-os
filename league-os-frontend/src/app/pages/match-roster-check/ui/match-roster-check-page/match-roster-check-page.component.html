@@ -21,20 +21,20 @@
                 description="Судья проверяет заявки и дисквалификации"
             ></app-info-card>
 
-            @if (data.warnings.yellowCardsOverflowCount > 0) {
+            @if (data.warnings.yellowCardsSuspensionCount > 0) {
                 <section class="warning-card warning-card--yellow">
                     <h3>
-                        {{ data.warnings.yellowCardsOverflowCount }}
+                        {{ data.warnings.yellowCardsSuspensionCount }}
                         игрока с перебором желтых
                     </h3>
                     <p>Нужна проверка допуска</p>
                 </section>
             }
 
-            @if (data.warnings.redCardCount > 0) {
+            @if (data.warnings.redCardSuspensionCount > 0) {
                 <section class="warning-card warning-card--red">
                     <h3>
-                        {{ data.warnings.redCardCount }}
+                        {{ data.warnings.redCardSuspensionCount }}
                         игрок с красной карточкой
                     </h3>
                     <p>Не должен быть в составе</p>
@@ -109,7 +109,7 @@
                                     Допущен
                                 }
                                 @case ("check") {
-                                    Проверить
+                                    Висит на карточках
                                 }
                                 @case ("not_allowed") {
                                     Не допускать
@@ -118,6 +118,31 @@
                         </span>
                     </article>
                 }
+            </section>
+            <section class="roster-actions">
+                <button
+                    type="button"
+                    class="roster-actions__approve"
+                    [disabled]="store.isApproving() || store.selectedTeamApproved()"
+                    (click)="approveSelectedRoster()"
+                >
+                    @if (store.selectedTeamApproved()) {
+                        Состав утверждён
+                    } @else if (store.isApproving()) {
+                        Утверждаем...
+                    } @else {
+                        Утвердить состав
+                    }
+                </button>
+
+                <button
+                    type="button"
+                    class="roster-actions__next"
+                    [disabled]="!store.canGoToMatch()"
+                    (click)="goToMatch()"
+                >
+                    К матчу
+                </button>
             </section>
         }
     }

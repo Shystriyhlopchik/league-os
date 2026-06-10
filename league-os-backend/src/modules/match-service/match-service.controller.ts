@@ -1,4 +1,4 @@
-import {Controller, Get, Param, ParseIntPipe} from '@nestjs/common';
+import {Controller, Get, Param, ParseIntPipe, Post} from '@nestjs/common';
 import { MatchServiceService } from './match-service.service';
 import { MatchServiceMatchDto } from './dto/match-service-match.dto';
 import {MatchRosterCheckDto} from "./dto/match-roster-check.dto";
@@ -20,5 +20,13 @@ export class MatchServiceController {
     return this.matchService.getRosterCheck(
         matchId,
     );
+  }
+
+  @Post('matches/:matchId/rosters/:teamId/approve')
+  approveRoster(
+      @Param('matchId', ParseIntPipe) matchId: number,
+      @Param('teamId', ParseIntPipe) teamId: number,
+  ): Promise<MatchRosterCheckDto> {
+    return this.matchService.approveRoster(matchId, teamId);
   }
 }

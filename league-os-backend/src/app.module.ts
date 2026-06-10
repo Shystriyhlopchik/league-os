@@ -21,6 +21,7 @@ import { MatchOfficialsModule } from './modules/match-officials/match-officials.
 import { RolesModule } from './modules/roles/roles.module';
 import { MatchServiceModule } from './modules/match-service/match-service.module';
 import { PlayerTournamentStatsModule } from './modules/player-tournament-stats/player-tournament-stats.module';
+import { MatchRostersModule } from './modules/match-rosters/match-rosters.module';
 
 
 @Module({
@@ -60,6 +61,7 @@ import { PlayerTournamentStatsModule } from './modules/player-tournament-stats/p
     RolesModule,
     MatchServiceModule,
     PlayerTournamentStatsModule,
+    MatchRostersModule,
   ],
   controllers: [AppController],
   providers: [],

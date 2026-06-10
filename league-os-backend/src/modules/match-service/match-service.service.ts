@@ -1,18 +1,20 @@
-import {Injectable, NotFoundException} from '@nestjs/common';
+import {BadRequestException, Injectable, NotFoundException} from '@nestjs/common';
 import { MatchServiceMatchDto } from './dto/match-service-match.dto';
 import { MatchEntity } from '../matches/entities/match.entity';
 import { MatchStatus } from '../matches/enums/match-status.enum';
-import { Between, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import {Between, DeepPartial, LessThan, MoreThanOrEqual, Repository} from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { TeamPlayerEntity } from '../team-players/entities/team-players.entity';
 import {
   MatchRosterCheckDto,
-  MatchRosterPlayerDto,
+  MatchRosterPlayerDto, MatchRosterWarningsDto,
   PlayerEligibilityReason,
   PlayerEligibilityStatus
 } from './dto/match-roster-check.dto';
 import {PlayerTournamentStatEntity} from "../player-tournament-stats/entities/player-tournament-stat.entity";
 import {SuspensionReason} from "../player-tournament-stats/enums/suspension-reason.enum";
+import {MatchRosterEntity} from "../match-rosters/entities/match-roster.entity";
+import {MatchRosterPlayerEntity} from "../match-rosters/entities/match-roster-player.entity";
 
 @Injectable()
 export class MatchServiceService {
@@ -25,6 +27,12 @@ export class MatchServiceService {
 
     @InjectRepository(PlayerTournamentStatEntity)
     private readonly playerTournamentStatRepository: Repository<PlayerTournamentStatEntity>,
+
+    @InjectRepository(MatchRosterEntity)
+    private readonly matchRosterRepository: Repository<MatchRosterEntity>,
+
+    @InjectRepository(MatchRosterPlayerEntity)
+    private readonly matchRosterPlayerRepository: Repository<MatchRosterPlayerEntity>,
   ) {}
 
   async findAvailableMatches(): Promise<MatchServiceMatchDto[]> {
@@ -152,6 +160,8 @@ export class MatchServiceService {
 
       return {
         id: teamPlayer.player.id,
+        teamPlayerId: teamPlayer.id,
+
         firstName: teamPlayer.player.firstName,
         lastName: teamPlayer.player.lastName,
         middleName: teamPlayer.player.middleName,
@@ -189,12 +199,12 @@ export class MatchServiceService {
       throw new NotFoundException('Матч не найден');
     }
 
-    const [homeRoster, awayRoster] = await Promise.all([
-      this.findTeamRoster(match, match.homeTeamId),
-      this.findTeamRoster(match, match.awayTeamId),
-    ]);
-
-    const allPlayers = [...homeRoster, ...awayRoster];
+    const [homeRoster, awayRoster, approvedRostersByTeamId] =
+        await Promise.all([
+          this.findTeamRoster(match, match.homeTeamId),
+          this.findTeamRoster(match, match.awayTeamId),
+          this.getApprovedRostersByTeamId(match.id),
+        ]);
 
     return {
       match: {
@@ -206,32 +216,21 @@ export class MatchServiceService {
           id: match.homeTeam.id,
           name: match.homeTeam.name,
           logoUrl: match.homeTeam.logoUrl,
-          rosterApproved: false,
+          rosterApproved: approvedRostersByTeamId.has(match.homeTeamId),
         },
 
         awayTeam: {
           id: match.awayTeam.id,
           name: match.awayTeam.name,
           logoUrl: match.awayTeam.logoUrl,
-          rosterApproved: false,
+          rosterApproved: approvedRostersByTeamId.has(match.awayTeamId),
         },
       },
 
-      warnings: {
-        yellowCardsOverflowCount: allPlayers.filter(
-            (player) =>
-                player.eligibilityReason ===
-                'four_yellows_suspension',
-        ).length,
-
-        redCardCount: allPlayers.filter(
-            (player) =>
-                player.eligibilityReason ===
-                'red_card_suspension' ||
-                player.eligibilityReason ===
-                'second_yellow_suspension',
-        ).length,
-      },
+      warnings: this.buildWarnings([
+        ...homeRoster,
+        ...awayRoster,
+      ]),
 
       homeRoster,
       awayRoster,
@@ -309,5 +308,139 @@ export class MatchServiceService {
     }
 
     return 'none';
+  }
+
+  async approveRoster(
+      matchId: number,
+      teamId: number,
+  ): Promise<MatchRosterCheckDto> {
+    const match = await this.matchRepository.findOne({
+      where: { id: matchId },
+      relations: {
+        homeTeam: true,
+        awayTeam: true,
+        venue: true,
+      },
+    });
+
+    if (!match) {
+      throw new NotFoundException('Матч не найден');
+    }
+
+    const isMatchTeam =
+        match.homeTeamId === teamId || match.awayTeamId === teamId;
+
+    if (!isMatchTeam) {
+      throw new BadRequestException('Команда не участвует в этом матче');
+    }
+
+    const existingRoster = await this.matchRosterRepository.findOne({
+      where: {
+        matchId,
+        teamId,
+      },
+    });
+
+    if (existingRoster?.isApproved) {
+      return this.getRosterCheck(matchId);
+    }
+
+    const roster =
+        existingRoster ??
+        this.matchRosterRepository.create({
+          matchId,
+          teamId,
+          isApproved: false,
+        });
+
+    roster.isApproved = true;
+    roster.approvedAt = new Date();
+
+    const savedRoster = await this.matchRosterRepository.save(roster);
+
+    await this.createRosterPlayersSnapshot(match, teamId, savedRoster.id);
+
+    return this.getRosterCheck(matchId);
+  }
+
+  private async createRosterPlayersSnapshot(
+      match: MatchEntity,
+      teamId: number,
+      matchRosterId: number,
+  ): Promise<void> {
+    await this.matchRosterPlayerRepository.delete({
+      matchRosterId,
+    });
+
+    const players = await this.findTeamRoster(match, teamId);
+
+    const allowedPlayers = players.filter(
+        (player) => player.eligibilityStatus !== 'not_allowed',
+    );
+
+    const rosterPlayers: DeepPartial<MatchRosterPlayerEntity>[] =
+        allowedPlayers.map((player) => ({
+          matchRosterId,
+          playerId: player.id,
+          teamPlayerId: player.teamPlayerId,
+          shirtNumber: player.shirtNumber,
+          position: player.position,
+          isCaptain: player.isCaptain,
+          wasAllowed: player.eligibilityStatus === 'allowed',
+        }));
+
+    await this.matchRosterPlayerRepository.save(
+        this.matchRosterPlayerRepository.create(rosterPlayers),
+    );
+  }
+
+  private async getApprovedRostersByTeamId(
+      matchId: number,
+  ): Promise<Map<number, MatchRosterEntity>> {
+    const rosters = await this.matchRosterRepository.find({
+      where: {
+        matchId,
+        isApproved: true,
+      },
+    });
+
+    return new Map(
+        rosters.map((roster) => [roster.teamId, roster]),
+    );
+  }
+
+  private buildWarnings(
+      players: MatchRosterPlayerDto[],
+  ): MatchRosterWarningsDto {
+    const playersToCheckCount = players.filter(
+        (player) => player.eligibilityStatus === 'check',
+    ).length;
+
+    const yellowCardsSuspensionCount = players.filter(
+        (player) =>
+            player.eligibilityReason ===
+            'four_yellows_suspension',
+    ).length;
+
+    const redCardSuspensionCount = players.filter(
+        (player) =>
+            player.eligibilityReason ===
+            'red_card_suspension' ||
+            player.eligibilityReason ===
+            'second_yellow_suspension',
+    ).length;
+
+    return {
+      totalWarningsCount:
+          playersToCheckCount +
+          yellowCardsSuspensionCount +
+          redCardSuspensionCount,
+
+      playersToCheckCount,
+
+      yellowCardsSuspensionCount,
+
+      redCardSuspensionCount,
+    };
   }
 }

@@ -4,16 +4,18 @@ import { MatchServiceService } from './match-service.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MatchEntity } from '../matches/entities/match.entity';
 import { TeamPlayerEntity } from '../team-players/entities/team-players.entity';
-import { MatchEventEntity } from '../match-events/entities/match-event.entity';
 import { PlayerTournamentStatEntity } from '../player-tournament-stats/entities/player-tournament-stat.entity';
+import { MatchRosterEntity } from '../match-rosters/entities/match-roster.entity';
+import { MatchRosterPlayerEntity } from '../match-rosters/entities/match-roster-player.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       MatchEntity,
       TeamPlayerEntity,
-      MatchEventEntity,
       PlayerTournamentStatEntity,
+      MatchRosterEntity,
+      MatchRosterPlayerEntity,
     ]),
   ],
   controllers: [MatchServiceController],

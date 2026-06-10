@@ -1,3 +1,5 @@
+import { PlayerPosition } from '../../players/enums/player-position.enum';
+
 export class MatchRosterTeamDto {
   id: number;
   name: string;
@@ -13,12 +15,19 @@ export class MatchRosterCheckDto {
     homeTeam: MatchRosterTeamDto;
     awayTeam: MatchRosterTeamDto;
   };
-  warnings: {
-    yellowCardsOverflowCount: number;
-    redCardCount: number;
-  };
+  warnings: MatchRosterWarningsDto;
   homeRoster: MatchRosterPlayerDto[];
   awayRoster: MatchRosterPlayerDto[];
+}
+
+export class MatchRosterWarningsDto {
+  totalWarningsCount: number;
+
+  playersToCheckCount: number;
+
+  yellowCardsSuspensionCount: number;
+
+  redCardSuspensionCount: number;
 }
 
 export type PlayerEligibilityStatus = 'allowed' | 'check' | 'not_allowed';
@@ -32,12 +41,13 @@ export type PlayerEligibilityReason =
 
 export class MatchRosterPlayerDto {
   id: number;
+  teamPlayerId: number;
   firstName: string;
   lastName: string;
   middleName?: string;
   photoUrl?: string;
   shirtNumber?: number;
-  position?: string;
+  position?: PlayerPosition;
   isCaptain: boolean;
   yellowCards: number;
   redCards: number;

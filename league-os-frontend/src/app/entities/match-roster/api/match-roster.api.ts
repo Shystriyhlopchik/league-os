@@ -17,4 +17,11 @@ export class MatchRosterApi {
             `${this.apiUrl}/match-service/matches/${matchId}/rosters`,
         );
     }
+
+    approveRoster(matchId: number, teamId: number): Observable<MatchRosterCheck> {
+        return this.http.post<MatchRosterCheck>(
+            `${this.apiUrl}/match-service/matches/${matchId}/rosters/${teamId}/approve`,
+            {},
+        );
+    }
 }

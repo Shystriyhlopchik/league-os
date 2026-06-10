@@ -45,4 +45,16 @@ export class MatchRosterCheckPageComponent {
     goBack(): void {
         this.router.navigate(['/dashboard/match-service']);
     }
+
+    approveSelectedRoster(): void {
+        this.store.approveSelectedRoster(this.matchId);
+    }
+
+    goToMatch(): void {
+        this.router.navigate([
+            '/dashboard/match-service',
+            this.matchId,
+            'protocol',
+        ]);
+    }
 }

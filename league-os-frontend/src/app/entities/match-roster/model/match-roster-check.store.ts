@@ -13,6 +13,7 @@ export class MatchRosterCheckStore {
     readonly selectedTeamId = signal<number | null>(null);
     readonly isLoading = signal(false);
     readonly error = signal<string | null>(null);
+    readonly isApproving = signal(false);
 
     readonly selectedRoster = computed(() => {
         const data = this.data();
@@ -27,6 +28,38 @@ export class MatchRosterCheckStore {
         }
 
         return data.awayRoster;
+    });
+
+    readonly selectedTeamApproved = computed(() => {
+        const data = this.data();
+        const selectedTeamId = this.selectedTeamId();
+
+        if (!data || !selectedTeamId) {
+            return false;
+        }
+
+        if (selectedTeamId === data.match.homeTeam.id) {
+            return data.match.homeTeam.rosterApproved;
+        }
+
+        if (selectedTeamId === data.match.awayTeam.id) {
+            return data.match.awayTeam.rosterApproved;
+        }
+
+        return false;
+    });
+
+    readonly canGoToMatch = computed(() => {
+        const data = this.data();
+
+        if (!data) {
+            return false;
+        }
+
+        return (
+            data.match.homeTeam.rosterApproved &&
+            data.match.awayTeam.rosterApproved
+        );
     });
 
     load(matchId: number): void {
@@ -55,5 +88,33 @@ export class MatchRosterCheckStore {
 
     selectTeam(teamId: number): void {
         this.selectedTeamId.set(teamId);
+    }
+
+    approveSelectedRoster(matchId: number): void {
+        const teamId = this.selectedTeamId();
+
+        if (!teamId || this.isApproving()) {
+            return;
+        }
+
+        this.isApproving.set(true);
+        this.error.set(null);
+
+        this.api
+            .approveRoster(matchId, teamId)
+            .pipe(
+                tap((data) => {
+                    this.data.set(data);
+                }),
+                catchError(() => {
+                    this.error.set('Не удалось утвердить состав');
+
+                    return EMPTY;
+                }),
+                finalize(() => {
+                    this.isApproving.set(false);
+                }),
+            )
+            .subscribe();
     }
 }
