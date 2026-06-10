@@ -1,0 +1,42 @@
+<div class="match-service-page">
+    <app-page-header
+        title="Обслуживание матча"
+        description="Выберите игру или вернитесь назад"
+        (back)="goBack()"
+    />
+
+    <app-info-card
+        title="Кабинет администратора"
+        label="Список игр"
+        description="Матчи для протокола появятся здесь"
+    ></app-info-card>
+
+    @if (store.isLoading()) {
+        <p class="state-text">Загружаем матчи...</p>
+    } @else if (store.error()) {
+        <p class="state-text state-text--error">
+            {{ store.error() }}
+        </p>
+    } @else if (store.isEmpty()) {
+        <p class="state-text">Нет доступных матчей для обслуживания</p>
+    } @else {
+        <section class="matches-list">
+            @for (match of store.matches(); track match.id) {
+                <article class="match-item">
+                    <div>
+                        <p>{{match.matchDatetime | date: "d MMMM, HH:mm"}}</p>
+                        <strong>
+                            {{ match.homeTeam.name }} — {{ match.awayTeam.name }}
+                        </strong>
+
+                        <p>{{ match.venue?.name }}</p>
+                    </div>
+
+                    <button type="button" (click)="startMatch(match.id)">
+                        Начать
+                    </button>
+                </article>
+            }
+        </section>
+    }
+</div>

@@ -1,0 +1,12 @@
+<section class="page-heading">
+    <button class="back-button" type="button" (click)="onBackClick()">
+        <img src="images/icons/Back_Icon.png" alt="Кнопка 'назад'" />
+    </button>
+
+    <div>
+        <h2>{{ title() }}</h2>
+        @if (description()) {
+            <p>{{ description() }}</p>
+        }
+    </div>
+</section>

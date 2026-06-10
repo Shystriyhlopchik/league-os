@@ -36,10 +36,31 @@ export const routes: Routes = [
     {
         path: 'dashboard',
         canActivate: [authGuard],
-        loadComponent: () =>
-            import('./pages/dashboard/ui/dashboard-page/dashboard-page.component').then(
-                (m) => m.DashboardPageComponent,
-            ),
+        children: [
+            {
+                path: '',
+                loadComponent: () =>
+                    import('./pages/dashboard/ui/dashboard-page/dashboard-page.component').then(
+                        (m) => m.DashboardPageComponent,
+                    ),
+            },
+            {
+                path: 'match-service',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Referee])],
+                loadComponent: () =>
+                    import('./pages/match-service/ui/match-service-page/match-service-page.component').then(
+                        (m) => m.MatchServicePageComponent,
+                    ),
+            },
+            // {
+            //     path: 'match-service/:matchId/rosters',
+            //     canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Referee])],
+            //     loadComponent: () =>
+            //         import('./pages/match-roster-check/ui/match-roster-check-page/match-roster-check-page.component').then(
+            //             (m) => m.MatchRosterCheckPageComponent,
+            //         ),
+            // },
+        ],
     },
     // {
     //     path: 'admin/referees',
