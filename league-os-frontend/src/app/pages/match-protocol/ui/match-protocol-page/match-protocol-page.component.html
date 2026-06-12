@@ -1,0 +1,449 @@
+<div class="match-protocol-page">
+    <app-page-header
+        title="Протокол матча"
+        description="Обслуживание матча в реальном времени"
+        (back)="goBack()"
+    />
+
+    @if (store.isLoading()) {
+        <p class="state-text">Загружаем матч...</p>
+    } @else if (store.error()) {
+        <p class="state-text state-text--error">
+            {{ store.error() }}
+        </p>
+    } @else {
+        @if (store.match(); as match) {
+            <app-info-card
+                title="{{ match.homeTeam.name }} — {{ match.awayTeam.name }}"
+                label="{{ match.matchDatetime | date: 'd MMMM, HH:mm' }}"
+                description="{{ match.venue?.name || 'Место не указано' }}"
+            ></app-info-card>
+
+            <section class="scoreboard">
+                <div class="team">
+                    <div class="team__name">
+                        {{ match.homeTeam.shortName || match.homeTeam.name }}
+                    </div>
+                </div>
+
+                <div class="scoreboard__center">
+                    <div class="score">
+                        {{ store.session()?.homeScore ?? 0 }}
+                        :
+                        {{ store.session()?.awayScore ?? 0 }}
+                    </div>
+
+                    <div class="timer">
+                        {{ displayTime() }}
+                    </div>
+
+                    <div class="status">
+                        Статус: {{ store.session()?.status }}
+                    </div>
+
+                    <div class="status">
+                        Тайм: {{ store.session()?.currentHalf }}
+                    </div>
+                </div>
+
+                <div class="team">
+                    <div class="team__name">
+                        {{ match.awayTeam.shortName || match.awayTeam.name }}
+                    </div>
+                </div>
+            </section>
+
+            <section class="controls">
+                @if (store.isNotStarted()) {
+                    <button
+                        type="button"
+                        class="control-button control-button--primary"
+                        [disabled]="store.isActionLoading()"
+                        (click)="start()"
+                    >
+                        Старт
+                    </button>
+                }
+
+                @if (store.isRunning()) {
+                    <button
+                        type="button"
+                        class="control-button"
+                        [disabled]="store.isActionLoading()"
+                        (click)="pause()"
+                    >
+                        Пауза
+                    </button>
+
+                    <button
+                        type="button"
+                        class="control-button"
+                        [disabled]="store.isActionLoading()"
+                        (click)="finishHalf()"
+                    >
+                        Завершить тайм
+                    </button>
+                }
+
+                @if (store.isPaused()) {
+                    <button
+                        type="button"
+                        class="control-button control-button--primary"
+                        [disabled]="store.isActionLoading()"
+                        (click)="resume()"
+                    >
+                        Продолжить
+                    </button>
+                }
+
+                @if (store.isHalfTime()) {
+                    <button
+                        type="button"
+                        class="control-button control-button--primary"
+                        [disabled]="store.isActionLoading()"
+                        (click)="startSecondHalf()"
+                    >
+                        Начать 2 тайм
+                    </button>
+                }
+
+                @if (store.session()?.status === 'second_half') {
+                    <button
+                        type="button"
+                        class="control-button control-button--danger"
+                        [disabled]="store.isActionLoading()"
+                        (click)="finishMatch()"
+                    >
+                        Завершить матч
+                    </button>
+                }
+            </section>
+
+            <section class="event-actions">
+                <button
+                    type="button"
+                    class="event-button"
+                    [disabled]="!store.isRunning() || store.isActionLoading()"
+                    (click)="startGoalRecording()"
+                >
+                    Гол
+                </button>
+
+                <button
+                    type="button"
+                    class="event-button"
+                    [disabled]="!store.isRunning() || store.isActionLoading()"
+                    (click)="startCardRecording('yellow_card')"
+                >
+                    ЖК
+                </button>
+
+                <button
+                    type="button"
+                    class="event-button"
+                    [disabled]="!store.isRunning() || store.isActionLoading()"
+                    (click)="startCardRecording('second_yellow_card')"
+                >
+                    2 ЖК
+                </button>
+
+                <button
+                    type="button"
+                    class="event-button"
+                    [disabled]="!store.isRunning() || store.isActionLoading()"
+                    (click)="startCardRecording('red_card')"
+                >
+                    КК
+                </button>
+
+                <button
+                    type="button"
+                    class="event-button"
+                    [disabled]="!store.isRunning() || store.isActionLoading()"
+                    (click)="startOwnGoalRecording()"
+                >
+                    Автогол
+                </button>
+
+                <button type="button" class="event-button" disabled>
+                    Красный мяч
+                </button>
+            </section>
+
+            <section class="journal">
+                <h2>Журнал событий</h2>
+
+                @if (store.events().length === 0) {
+                    <p class="state-text">Событий пока нет</p>
+                } @else {
+                    <div class="journal__list">
+                        @for (event of store.events(); track event.id) {
+                            <article class="journal-event">
+                                <div>
+                                    <strong>{{ event.eventType }}</strong>
+
+                                    <p>
+                                        {{ event.minute }} мин ·
+                                        {{ event.second }} сек ·
+                                        {{ event.half }} тайм
+                                    </p>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    class="journal-event__cancel"
+                                    [disabled]="store.isActionLoading()"
+                                    (click)="cancelEvent(event.id)"
+                                >
+                                    Отменить
+                                </button>
+                            </article>
+                        }
+                    </div>
+                }
+            </section>
+        }
+    }
+    @if (isGoalModalOpen()) {
+        <div class="modal-backdrop">
+            <div class="event-modal">
+                <div class="event-modal__header">
+                    <div>
+                        <h2>Фиксация гола</h2>
+
+                        @if (goalDraft(); as draft) {
+                            <p>
+                                {{ draft.minute }} мин · {{ draft.second }} сек · {{ draft.half }} тайм
+                            </p>
+                        }
+                    </div>
+
+                    <button
+                        type="button"
+                        class="event-modal__close"
+                        (click)="cancelGoalRecording()"
+                    >
+                        ×
+                    </button>
+                </div>
+
+                @if (goalStep() === 'team') {
+                    <div class="event-modal__section">
+                        <h3>Выберите команду</h3>
+
+                        @if (store.match(); as match) {
+                            <button
+                                type="button"
+                                class="select-card"
+                                (click)="selectGoalTeam(match.homeTeam.id)"
+                            >
+                                {{ match.homeTeam.name }}
+                            </button>
+
+                            <button
+                                type="button"
+                                class="select-card"
+                                (click)="selectGoalTeam(match.awayTeam.id)"
+                            >
+                                {{ match.awayTeam.name }}
+                            </button>
+                        }
+                    </div>
+                }
+
+                @if (goalStep() === 'scorer') {
+                    <div class="event-modal__section">
+                        <h3>Автор гола — {{ selectedGoalTeamName() }}</h3>
+
+                        <div class="players-list">
+                            @for (player of goalPlayers(); track player.matchRosterPlayerId) {
+                                <button
+                                    type="button"
+                                    class="player-card"
+                                    (click)="selectGoalScorer(player.id)"
+                                >
+                                <span>
+                                    {{ getPlayerName(player) }}
+                                </span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+
+                @if (goalStep() === 'assist') {
+                    <div class="event-modal__section">
+                        <h3>Голевая передача</h3>
+
+                        <button
+                            type="button"
+                            class="select-card"
+                            (click)="selectGoalAssist(undefined)"
+                        >
+                            Без ассиста
+                        </button>
+
+                        <div class="players-list">
+                            @for (player of goalPlayers(); track player.matchRosterPlayerId) {
+                                @if (player.id !== goalDraft()?.playerId) {
+                                    <button
+                                        type="button"
+                                        class="player-card"
+                                        (click)="selectGoalAssist(player.id)"
+                                    >
+                                    <span>
+                                        {{ getPlayerName(player) }}
+                                    </span>
+                                    </button>
+                                }
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    @if (isCardModalOpen()) {
+        <div class="modal-backdrop">
+            <div class="event-modal">
+                <div class="event-modal__header">
+                    <div>
+                        <h2>{{ cardModalTitle() }}</h2>
+
+                        @if (cardDraft(); as draft) {
+                            <p>
+                                {{ draft.minute }} мин ·
+                                {{ draft.second }} сек ·
+                                {{ draft.half }} тайм
+                            </p>
+                        }
+                    </div>
+
+                    <button
+                        type="button"
+                        class="event-modal__close"
+                        (click)="cancelCardRecording()"
+                    >
+                        ×
+                    </button>
+                </div>
+
+                @if (cardStep() === 'team') {
+                    <div class="event-modal__section">
+                        <h3>Выберите команду</h3>
+
+                        @if (store.match(); as match) {
+                            <button
+                                type="button"
+                                class="select-card"
+                                (click)="selectCardTeam(match.homeTeam.id)"
+                            >
+                                {{ match.homeTeam.name }}
+                            </button>
+
+                            <button
+                                type="button"
+                                class="select-card"
+                                (click)="selectCardTeam(match.awayTeam.id)"
+                            >
+                                {{ match.awayTeam.name }}
+                            </button>
+                        }
+                    </div>
+                }
+
+                @if (cardStep() === 'player') {
+                    <div class="event-modal__section">
+                        <h3>Игрок — {{ selectedCardTeamName() }}</h3>
+
+                        <div class="players-list">
+                            @for (player of cardPlayers(); track player.matchRosterPlayerId) {
+                                <button
+                                    type="button"
+                                    class="player-card"
+                                    (click)="selectCardPlayer(player.id)"
+                                >
+                                <span>
+                                    {{ getPlayerName(player) }}
+                                </span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    @if (isOwnGoalModalOpen()) {
+        <div class="modal-backdrop">
+            <div class="event-modal">
+                <div class="event-modal__header">
+                    <div>
+                        <h2>Автогол</h2>
+
+                        @if (ownGoalDraft(); as draft) {
+                            <p>
+                                {{ draft.minute }} мин ·
+                                {{ draft.second }} сек ·
+                                {{ draft.half }} тайм
+                            </p>
+                        }
+                    </div>
+
+                    <button
+                        type="button"
+                        class="event-modal__close"
+                        (click)="cancelOwnGoalRecording()"
+                    >
+                        ×
+                    </button>
+                </div>
+
+                @if (ownGoalStep() === 'team') {
+                    <div class="event-modal__section">
+                        <h3>Команда игрока, забившего в свои ворота</h3>
+
+                        @if (store.match(); as match) {
+                            <button
+                                type="button"
+                                class="select-card"
+                                (click)="selectOwnGoalTeam(match.homeTeam.id)"
+                            >
+                                {{ match.homeTeam.name }}
+                            </button>
+
+                            <button
+                                type="button"
+                                class="select-card"
+                                (click)="selectOwnGoalTeam(match.awayTeam.id)"
+                            >
+                                {{ match.awayTeam.name }}
+                            </button>
+                        }
+                    </div>
+                }
+
+                @if (ownGoalStep() === 'player') {
+                    <div class="event-modal__section">
+                        <h3>Игрок — {{ selectedOwnGoalTeamName() }}</h3>
+
+                        <div class="players-list">
+                            @for (player of ownGoalPlayers(); track player.matchRosterPlayerId) {
+                                <button
+                                    type="button"
+                                    class="player-card"
+                                    (click)="selectOwnGoalPlayer(player.id)"
+                                >
+                                <span>
+                                    {{ getPlayerName(player) }}
+                                </span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+

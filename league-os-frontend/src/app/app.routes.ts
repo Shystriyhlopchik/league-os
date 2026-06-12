@@ -60,6 +60,13 @@ export const routes: Routes = [
                         (m) => m.MatchRosterCheckPageComponent,
                     ),
             },
+            {
+                path: 'match-service/:matchId/protocol',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Referee])],
+                loadComponent: () =>
+                    import('./pages/match-protocol/ui/match-protocol-page/match-protocol-page.component')
+                        .then((m) => m.MatchProtocolPageComponent),
+            }
         ],
     },
     // {

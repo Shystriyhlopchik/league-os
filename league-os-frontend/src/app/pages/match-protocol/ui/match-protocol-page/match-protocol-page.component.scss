@@ -1,0 +1,215 @@
+.match-protocol-page {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.state-text {
+    margin: 0;
+    color: #777;
+
+    &--error {
+        color: #c0392b;
+    }
+}
+
+.scoreboard {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    border-radius: 18px;
+    background: #111;
+    color: #fff;
+}
+
+.team {
+    text-align: center;
+
+    &__name {
+        font-size: 18px;
+        font-weight: 700;
+    }
+}
+
+.scoreboard__center {
+    text-align: center;
+}
+
+.score {
+    font-size: 48px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.timer {
+    margin-top: 10px;
+    font-size: 36px;
+    font-weight: 700;
+}
+
+.status {
+    margin-top: 6px;
+    color: #aaa;
+    font-size: 14px;
+}
+
+.controls,
+.event-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.control-button,
+.event-button {
+    min-height: 44px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 12px;
+    background: #ededed;
+    color: #111;
+    font-weight: 700;
+    cursor: pointer;
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: default;
+    }
+}
+
+.control-button--primary {
+    background: #111;
+    color: #fff;
+}
+
+.control-button--danger {
+    background: #c0392b;
+    color: #fff;
+}
+
+.event-button {
+    flex: 1 1 120px;
+}
+
+.journal {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    h2 {
+        margin: 0;
+        font-size: 20px;
+    }
+
+    &__list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+}
+
+.journal-event {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px;
+    border-radius: 12px;
+    background: #f3f3f3;
+
+    p {
+        margin: 4px 0 0;
+        color: #777;
+        font-size: 14px;
+    }
+
+    &__cancel {
+        border: 0;
+        background: transparent;
+        color: #c0392b;
+        font-weight: 700;
+        cursor: pointer;
+    }
+}
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    background: rgb(0 0 0 / 60%);
+}
+
+.event-modal {
+    width: min(100%, 560px);
+    max-height: 90dvh;
+    overflow: auto;
+    padding: 20px;
+    border-radius: 24px 24px 0 0;
+    background: #fff;
+    color: #111;
+
+    &__header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 20px;
+
+        h2 {
+            margin: 0;
+            font-size: 22px;
+        }
+
+        p {
+            margin: 6px 0 0;
+            color: #777;
+        }
+    }
+
+    &__close {
+        width: 36px;
+        height: 36px;
+        border: 0;
+        border-radius: 50%;
+        background: #f1f1f1;
+        font-size: 24px;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    &__section {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+
+        h3 {
+            margin: 0 0 4px;
+            font-size: 18px;
+        }
+    }
+}
+
+.select-card,
+.player-card {
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 14px;
+    border: 1px solid #e2e2e2;
+    border-radius: 14px;
+    background: #fff;
+    color: #111;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+}
+
+.players-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}

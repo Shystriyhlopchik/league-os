@@ -17,7 +17,6 @@ export const appConfig: ApplicationConfig = {
     providers: [
         provideZoneChangeDetection({ eventCoalescing: true }),
         provideRouter(routes),
-        provideHttpClient(),
         {
             provide: LOCALE_ID,
             useValue: 'ru',
