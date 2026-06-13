@@ -4,6 +4,7 @@ import {authGuard} from './guards/auth.guard';
 import {roleGuard} from './guards/role.guard';
 import {UserRole} from './entities/user/model/user-role.type';
 import {guestGuard} from './guards/guest.guard';
+import {matchProtocolLeaveGuard} from './pages/match-protocol/model/match-protocol-leave.guard';
 
 export const routes: Routes = [
     {
@@ -60,6 +61,14 @@ export const routes: Routes = [
                         (m) => m.MatchRosterCheckPageComponent,
                     ),
             },
+            {
+                path: 'match-service/:matchId/protocol',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Referee])],
+                canDeactivate: [matchProtocolLeaveGuard],
+                loadComponent: () =>
+                    import('./pages/match-protocol/ui/match-protocol-page/match-protocol-page.component')
+                        .then((m) => m.MatchProtocolPageComponent),
+            }
         ],
     },
     // {

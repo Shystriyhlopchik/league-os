@@ -62,4 +62,19 @@ export class MatchEventEntity extends BaseEntity {
     @ManyToOne(() => PlayerEntity, { nullable: true })
     @JoinColumn({ name: 'secondary_player_id' })
     secondaryPlayer?: PlayerEntity;
+
+    @Column({ name: 'half', nullable: true })
+    half?: number;
+
+    @Column({ name: 'second', nullable: true })
+    second?: number;
+
+    @Column({ name: 'client_event_id', unique: true, nullable: true })
+    clientEventId?: string;
+
+    @Column({ name: 'is_cancelled', default: false })
+    isCancelled: boolean;
+
+    @Column({ name: 'goal_value', type: 'int', default: 1 })
+    goalValue: number;
 }

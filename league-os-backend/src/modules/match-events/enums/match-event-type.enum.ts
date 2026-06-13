@@ -10,6 +10,13 @@ export enum MatchEventType {
 
     SUBSTITUTION = 'substitution',
 
+    RED_BALL = 'red_ball',
+
     MATCH_STARTED = 'match_started',
+    MATCH_PAUSED = 'match_paused',
+    MATCH_RESUMED = 'match_resumed',
+    HALF_FINISHED = 'half_finished',
+    SECOND_HALF_STARTED = 'second_half_started',
     MATCH_FINISHED = 'match_finished',
+    PROTOCOL_SIGNED = 'protocol_signed',
 }
