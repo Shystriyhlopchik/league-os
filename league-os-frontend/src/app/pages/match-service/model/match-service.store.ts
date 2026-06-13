@@ -1,13 +1,10 @@
+import { EMPTY, finalize, tap } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { EMPTY } from 'rxjs';
-import { catchError, finalize, tap } from 'rxjs/operators';
-import {MatchServiceApi} from '../../../entities/match-service/api/match-service.api';
-import {MatchServiceMatch} from '../../../entities/match-service/model/match-service.types';
+import { MatchServiceApi } from '../../../entities/match-service/api/match-service.api';
+import { MatchServiceMatch } from '../../../entities/match-service/model/match-service.types';
 
-
-@Injectable({
-    providedIn: 'root',
-})
+@Injectable()
 export class MatchServiceStore {
     private readonly matchServiceApi = inject(MatchServiceApi);
 
@@ -18,10 +15,6 @@ export class MatchServiceStore {
     readonly isEmpty = computed(() => {
         return !this.isLoading() && this.matches().length === 0;
     });
-
-    constructor() {
-        this.loadMatches();
-    }
 
     loadMatches(): void {
         this.isLoading.set(true);

@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import {Component, inject, OnInit} from '@angular/core';
 import { Router } from '@angular/router';
 import { InfoCardComponent } from '../../../../shared/ui/info-card/info-card.component';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
@@ -10,11 +10,16 @@ import {DatePipe} from '@angular/common';
     imports: [InfoCardComponent, PageHeaderComponent, DatePipe],
     templateUrl: './match-service-page.component.html',
     styleUrl: './match-service-page.component.scss',
+    providers: [MatchServiceStore]
 })
-export class MatchServicePageComponent {
+export class MatchServicePageComponent implements OnInit {
     private readonly router = inject(Router);
 
     readonly store = inject(MatchServiceStore);
+
+    ngOnInit(): void {
+        this.store.loadMatches();
+    }
 
     goBack(): void {
         this.router.navigate(['/dashboard']);
