@@ -282,8 +282,19 @@ export class MatchProtocolPageComponent {
             this.now.set(Date.now());
         }, 1000);
 
+        const beforeUnloadHandler = (event: BeforeUnloadEvent) => {
+            if (this.canLeavePage()) {
+                return;
+            }
+
+            event.preventDefault();
+        };
+
+        window.addEventListener('beforeunload', beforeUnloadHandler);
+
         this.destroyRef.onDestroy(() => {
             window.clearInterval(timerId);
+            window.removeEventListener('beforeunload', beforeUnloadHandler);
         });
 
         effect(() => {
@@ -592,5 +603,9 @@ export class MatchProtocolPageComponent {
 
     goToMatchServiceList(): void {
         this.router.navigate(['/dashboard/match-service']);
+    }
+
+    canLeavePage(): boolean {
+        return this.isProtocolSigned();
     }
 }
