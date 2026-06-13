@@ -518,5 +518,44 @@
             </div>
         </div>
     }
+    @if (store.isFinished()) {
+        <section class="protocol-sign">
+            <h2>Матч завершён</h2>
+
+            <p>
+                Проверьте события матча и подпишите протокол.
+            </p>
+
+            <button
+                type="button"
+                class="control-button control-button--primary"
+                [disabled]="store.isActionLoading()"
+                (click)="signProtocol()"
+            >
+                Подпись протокола
+            </button>
+        </section>
+    }
+    @if (store.session()?.status === 'protocol_signed') {
+        <section class="protocol-signed">
+            <h2>Протокол подписан</h2>
+            <p>Матч закрыт. Данные сохранены.</p>
+        </section>
+    }
+
+    @if (isProtocolSigned()) {
+        <section class="protocol-signed">
+            <h2>Протокол подписан</h2>
+            <p>Матч закрыт. Данные сохранены.</p>
+
+            <button
+                type="button"
+                class="control-button control-button--primary"
+                (click)="goToMatchServiceList()"
+            >
+                Вернуться к списку матчей
+            </button>
+        </section>
+    }
 </div>
 

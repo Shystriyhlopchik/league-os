@@ -75,6 +75,9 @@ export class MatchProtocolPageComponent {
     readonly ownGoalDraft = signal<OwnGoalDraft | null>(null);
     readonly isRedBallModalOpen = signal(false);
     readonly wasExpiredRedBallSynced = signal(false);
+    readonly isProtocolSigned = computed(() => {
+        return this.store.session()?.status === 'protocol_signed';
+    });
 
     readonly matchId = Number(this.route.snapshot.paramMap.get('matchId'));
 
@@ -581,5 +584,13 @@ export class MatchProtocolPageComponent {
 
     isRedBallUsed(teamId: number): boolean {
         return this.store.redBalls().usedTeamIds.includes(teamId);
+    }
+
+    signProtocol(): void {
+        this.store.signProtocol(this.matchId);
+    }
+
+    goToMatchServiceList(): void {
+        this.router.navigate(['/dashboard/match-service']);
     }
 }

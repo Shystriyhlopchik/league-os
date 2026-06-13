@@ -127,4 +127,11 @@ export class MatchServiceApi {
             },
         );
     }
+
+    signProtocol(matchId: number): Observable<MatchServiceSession> {
+        return this.http.post<MatchServiceSession>(
+            `${this.apiUrl}/match-service/matches/${matchId}/sign-protocol`,
+            {},
+        );
+    }
 }

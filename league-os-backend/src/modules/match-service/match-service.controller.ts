@@ -116,4 +116,11 @@ export class MatchServiceController {
   ) {
     return this.matchService.activateRedBall(matchId, dto);
   }
+
+  @Post('matches/:matchId/sign-protocol')
+  signProtocol(
+      @Param('matchId', ParseIntPipe) matchId: number,
+  ) {
+    return this.matchService.signProtocol(matchId);
+  }
 }

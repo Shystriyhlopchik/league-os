@@ -252,6 +252,10 @@ export class MatchProtocolStore {
             .subscribe();
     }
 
+    signProtocol(matchId: number): void {
+        this.runSessionAction(() => this.api.signProtocol(matchId));
+    }
+
     private patchRedBalls(redBalls: MatchProtocolData['redBalls']): void {
         const current = this.data();
 

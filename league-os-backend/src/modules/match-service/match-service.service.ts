@@ -1017,6 +1017,33 @@ export class MatchServiceService {
     return this.mapSession(savedSession);
   }
 
+  async signProtocol(matchId: number) {
+    const match = await this.findMatchForService(matchId);
+    const session = await this.getOrCreateSession(match);
+
+    if (session.status !== MatchServiceStatus.FINISHED) {
+      throw new BadRequestException(
+          'Подписать протокол можно только после завершения матча',
+      );
+    }
+
+    session.status = MatchServiceStatus.PROTOCOL_SIGNED;
+    session.previousStatus = null;
+    session.startedAt = null;
+    session.pausedAt = null;
+
+    const savedSession = await this.matchServiceSessionRepository.save(session);
+
+    await this.createSystemEvent({
+      match,
+      session: savedSession,
+      eventType: MatchEventType.PROTOCOL_SIGNED,
+      description: 'Протокол матча подписан',
+    });
+
+    return this.mapSession(savedSession);
+  }
+
   private readonly gameEventTypes = new Set<MatchEventType>([
     MatchEventType.GOAL,
     MatchEventType.OWN_GOAL,
