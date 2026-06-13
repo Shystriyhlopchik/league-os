@@ -6,6 +6,7 @@ import { MatchServiceSessionDto } from './dto/match-service-session.dto';
 import {CreateMatchServiceEventDto} from "./dto/create-match-service-event.dto";
 import {SyncMatchServiceEventsDto} from "./dto/sync-match-service-events.dto";
 import {StartEventRecordingDto} from "./dto/start-event-recording.dto";
+import {ActivateRedBallDto} from "./dto/match-red-ball-activation.dto";
 
 @Controller('match-service')
 export class MatchServiceController {
@@ -106,5 +107,13 @@ export class MatchServiceController {
       @Param('eventId', ParseIntPipe) eventId: number,
   ) {
     return this.matchService.cancelEvent(matchId, eventId);
+  }
+
+  @Post('matches/:matchId/red-ball/activate')
+  activateRedBall(
+      @Param('matchId', ParseIntPipe) matchId: number,
+      @Body() dto: ActivateRedBallDto,
+  ) {
+    return this.matchService.activateRedBall(matchId, dto);
   }
 }

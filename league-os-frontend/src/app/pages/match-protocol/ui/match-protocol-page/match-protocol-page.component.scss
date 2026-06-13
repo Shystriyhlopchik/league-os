@@ -213,3 +213,57 @@
     flex-direction: column;
     gap: 8px;
 }
+
+.red-ball-panel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px;
+    border-radius: 18px;
+    background: #b42318;
+    color: #fff;
+
+    &__label {
+        font-size: 13px;
+        opacity: 0.8;
+    }
+
+    &__team {
+        margin-top: 4px;
+        font-size: 20px;
+        font-weight: 800;
+    }
+
+    &__timer {
+        font-size: 32px;
+        font-weight: 900;
+        line-height: 1;
+    }
+}
+
+.event-button--red-ball {
+    background: #b42318;
+    color: #fff;
+}
+
+.select-card {
+    &:disabled {
+        opacity: 0.5;
+        cursor: default;
+    }
+
+    small {
+        display: block;
+        margin-top: 4px;
+        color: #777;
+        font-size: 12px;
+        font-weight: 500;
+    }
+}
+
+.select-card--red-ball {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}

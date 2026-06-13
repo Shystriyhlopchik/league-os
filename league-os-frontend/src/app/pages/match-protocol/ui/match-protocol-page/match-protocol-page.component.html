@@ -53,6 +53,24 @@
                 </div>
             </section>
 
+            @if (visibleActiveRedBall(); as activeRedBall) {
+                <section class="red-ball-panel">
+                    <div>
+                        <div class="red-ball-panel__label">
+                            Активен красный мяч
+                        </div>
+
+                        <div class="red-ball-panel__team">
+                            {{ activeRedBallTeamName() }}
+                        </div>
+                    </div>
+
+                    <div class="red-ball-panel__timer">
+                        {{ redBallRemainingTime() }}
+                    </div>
+                </section>
+            }
+
             <section class="controls">
                 @if (store.isNotStarted()) {
                     <button
@@ -165,7 +183,12 @@
                     Автогол
                 </button>
 
-                <button type="button" class="event-button" disabled>
+                <button
+                    type="button"
+                    class="event-button event-button--red-ball"
+                    [disabled]="!store.isRunning() || store.isActionLoading()"
+                    (click)="openRedBallModal()"
+                >
                     Красный мяч
                 </button>
             </section>
@@ -442,6 +465,56 @@
                         </div>
                     </div>
                 }
+            </div>
+        </div>
+    }
+    @if (isRedBallModalOpen()) {
+        <div class="modal-backdrop">
+            <div class="event-modal">
+                <div class="event-modal__header">
+                    <div>
+                        <h2>Красный мяч</h2>
+                        <p>Выберите команду, которая активирует красный мяч</p>
+                    </div>
+
+                    <button
+                        type="button"
+                        class="event-modal__close"
+                        (click)="closeRedBallModal()"
+                    >
+                        ×
+                    </button>
+                </div>
+
+                <div class="event-modal__section">
+                    @if (store.match(); as match) {
+                        <button
+                            type="button"
+                            class="select-card select-card--red-ball"
+                            [disabled]="isRedBallUsed(match.homeTeam.id)"
+                            (click)="activateRedBall(match.homeTeam.id)"
+                        >
+                            <span>{{ match.homeTeam.name }}</span>
+
+                            @if (isRedBallUsed(match.homeTeam.id)) {
+                                <small>Уже использован</small>
+                            }
+                        </button>
+
+                        <button
+                            type="button"
+                            class="select-card select-card--red-ball"
+                            [disabled]="isRedBallUsed(match.awayTeam.id)"
+                            (click)="activateRedBall(match.awayTeam.id)"
+                        >
+                            <span>{{ match.awayTeam.name }}</span>
+
+                            @if (isRedBallUsed(match.awayTeam.id)) {
+                                <small>Уже использован</small>
+                            }
+                        </button>
+                    }
+                </div>
             </div>
         </div>
     }

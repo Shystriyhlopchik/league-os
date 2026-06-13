@@ -2,6 +2,8 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
+    ActivateRedBallDto,
+    ActivateRedBallResponse,
     CreateMatchServiceEventDto, CreateMatchServiceEventResponse,
     MatchProtocolData, MatchProtocolEvent,
     MatchServiceMatch,
@@ -111,6 +113,18 @@ export class MatchServiceApi {
         return this.http.post<MatchServiceSession>(
             `${this.apiUrl}/match-service/matches/${matchId}/events/cancel-recording`,
             {},
+        );
+    }
+
+    activateRedBall(
+        matchId: number,
+        dto: ActivateRedBallDto,
+    ): Observable<ActivateRedBallResponse> {
+        return this.http.post<ActivateRedBallResponse>(
+            `${this.apiUrl}/match-service/matches/${matchId}/red-ball/activate`,
+            {
+                teamId: Number(dto.teamId),
+            },
         );
     }
 }

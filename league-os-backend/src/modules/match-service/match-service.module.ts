@@ -10,6 +10,7 @@ import { MatchRosterPlayerEntity } from '../match-rosters/entities/match-roster-
 import { MatchServiceSessionEntity } from './entities/match-service-session.entity';
 import { MatchEventEntity } from '../match-events/entities/match-event.entity';
 import { PlayerTournamentStatsModule } from '../player-tournament-stats/player-tournament-stats.module';
+import { MatchRedBallActivationEntity } from './entities/match-red-ball-activation.entity';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { PlayerTournamentStatsModule } from '../player-tournament-stats/player-t
       MatchRosterPlayerEntity,
       MatchServiceSessionEntity,
       MatchEventEntity,
+      MatchRedBallActivationEntity,
     ]),
     PlayerTournamentStatsModule,
   ],

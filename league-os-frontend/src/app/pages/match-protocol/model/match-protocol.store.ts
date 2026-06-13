@@ -55,6 +55,17 @@ export class MatchProtocolStore {
         return this.session()?.status === 'finished';
     });
 
+    readonly redBalls = computed(() => {
+        return this.data()?.redBalls ?? {
+            active: [],
+            usedTeamIds: [],
+        };
+    });
+
+    readonly activeRedBall = computed(() => {
+        return this.redBalls().active[0] ?? null;
+    });
+
     load(matchId: number): void {
         this.isLoading.set(true);
         this.error.set(null);
@@ -143,7 +154,11 @@ export class MatchProtocolStore {
             .pipe(
                 tap((response) => {
                     this.patchSession(response.session);
-                    this.addEvent(response.event);
+                    this.patchRedBalls(response.redBalls);
+
+                    if (!response.duplicated) {
+                        this.addEvent(response.event);
+                    }
                 }),
                 catchError((error) => {
                     this.error.set(
@@ -206,6 +221,48 @@ export class MatchProtocolStore {
                 }),
             )
             .subscribe();
+    }
+
+    activateRedBall(matchId: number, teamId: number): void {
+        this.isActionLoading.set(true);
+        this.error.set(null);
+
+        this.api
+            .activateRedBall(matchId, {
+                teamId: Number(teamId),
+            })
+            .pipe(
+                tap((response) => {
+                    this.patchSession(response.session);
+                    this.patchEvents(response.events);
+                    this.patchRedBalls(response.redBalls);
+                }),
+                catchError((error) => {
+                    this.error.set(
+                        error?.error?.message ??
+                        'Не удалось активировать красный мяч',
+                    );
+
+                    return EMPTY;
+                }),
+                finalize(() => {
+                    this.isActionLoading.set(false);
+                }),
+            )
+            .subscribe();
+    }
+
+    private patchRedBalls(redBalls: MatchProtocolData['redBalls']): void {
+        const current = this.data();
+
+        if (!current) {
+            return;
+        }
+
+        this.data.set({
+            ...current,
+            redBalls,
+        });
     }
 
     private runSessionAction(

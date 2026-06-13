@@ -74,4 +74,7 @@ export class MatchEventEntity extends BaseEntity {
 
     @Column({ name: 'is_cancelled', default: false })
     isCancelled: boolean;
+
+    @Column({ name: 'goal_value', type: 'int', default: 1 })
+    goalValue: number;
 }

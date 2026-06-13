@@ -1,6 +1,7 @@
 import { MatchStatus } from '../../matches/enums/match-status.enum';
 import { MatchServiceStatus } from '../enums/match-service-status.enum';
 import { MatchEventType } from '../../match-events/enums/match-event-type.enum';
+import {RedBallStatus} from "../entities/match-red-ball-activation.entity";
 
 export interface MatchServiceSessionDto {
     match: {
@@ -50,6 +51,8 @@ export interface MatchServiceSessionDto {
     };
 
     events: MatchServiceEventDto[];
+
+    redBalls: MatchServiceRedBallStateDto;
 }
 
 export interface MatchServiceRosterPlayerDto {
@@ -98,4 +101,18 @@ export interface MatchServiceEventDto {
         lastName: string;
         shirtNumber?: number;
     };
+}
+
+export interface MatchServiceRedBallDto {
+    id: number;
+    teamId: number;
+    activatedHalf: number;
+    activatedSecond: number;
+    durationSeconds: number;
+    status: RedBallStatus;
+}
+
+export interface MatchServiceRedBallStateDto {
+    active: MatchServiceRedBallDto[];
+    usedTeamIds: number[];
 }

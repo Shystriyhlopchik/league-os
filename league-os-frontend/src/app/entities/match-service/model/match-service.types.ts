@@ -102,6 +102,8 @@ export interface MatchProtocolData {
     };
 
     events: MatchProtocolEvent[];
+
+    redBalls: MatchRedBallState;
 }
 
 export interface StartEventRecordingDto {
@@ -135,5 +137,37 @@ export interface CreateMatchServiceEventDto {
 export interface CreateMatchServiceEventResponse {
     event: MatchProtocolEvent;
     session: MatchServiceSession;
+    redBalls: MatchRedBallState;
     duplicated: boolean;
+}
+
+export type RedBallStatus =
+    | 'active'
+    | 'completed_by_goal'
+    | 'completed_by_time'
+    | 'cancelled';
+
+export interface MatchRedBall {
+    id: number;
+    teamId: number;
+    activatedHalf: number;
+    activatedSecond: number;
+    durationSeconds: number;
+    status: RedBallStatus;
+}
+
+export interface MatchRedBallState {
+    active: MatchRedBall[];
+    usedTeamIds: number[];
+}
+
+export interface ActivateRedBallDto {
+    teamId: number;
+}
+
+export interface ActivateRedBallResponse {
+    redBall: MatchRedBall;
+    session: MatchServiceSession;
+    events: MatchProtocolEvent[];
+    redBalls: MatchRedBallState;
 }

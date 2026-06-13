@@ -24,6 +24,8 @@ import {PlayerTournamentStatsService} from "../player-tournament-stats/player-to
 import {StartEventRecordingDto} from "./dto/start-event-recording.dto";
 import {CreateMatchServiceEventDto} from "./dto/create-match-service-event.dto";
 import {SyncMatchServiceEventsDto} from "./dto/sync-match-service-events.dto";
+import {ActivateRedBallDto} from "./dto/match-red-ball-activation.dto";
+import {MatchRedBallActivationEntity, RedBallStatus} from "./entities/match-red-ball-activation.entity";
 
 type SyncEventResult =
     | {
@@ -60,6 +62,9 @@ export class MatchServiceService {
 
     @InjectRepository(MatchEventEntity)
     private readonly matchEventRepository: Repository<MatchEventEntity>,
+
+    @InjectRepository(MatchRedBallActivationEntity)
+    private readonly matchRedBallRepository: Repository<MatchRedBallActivationEntity>,
 
     private readonly playerTournamentStatsService: PlayerTournamentStatsService,
   ) {}
@@ -644,6 +649,19 @@ export class MatchServiceService {
     };
   }
 
+  private async syncExpiredRedBalls(
+      match: MatchEntity,
+      session: MatchServiceSessionEntity,
+  ): Promise<void> {
+    const currentSecond = this.getCurrentElapsedSeconds(session);
+
+    await this.completeExpiredRedBalls(
+        match.id,
+        currentSecond,
+        session.currentHalf,
+    );
+  }
+
   async getSession(matchId: number): Promise<MatchServiceSessionDto> {
     const match = await this.findMatchForService(matchId);
 
@@ -651,9 +669,12 @@ export class MatchServiceService {
 
     const session = await this.getOrCreateSession(match);
 
-    const [rosters, events] = await Promise.all([
+    await this.syncExpiredRedBalls(match, session);
+
+    const [rosters, events, redBalls] = await Promise.all([
       this.getApprovedRosterPlayers(match),
       this.getMatchEvents(match.id),
+      this.getRedBallState(match.id),
     ]);
 
     return {
@@ -685,12 +706,13 @@ export class MatchServiceService {
             }
             : undefined,
       },
-
       session: this.mapSession(session),
 
       rosters,
 
       events,
+
+      redBalls,
     };
   }
 
@@ -863,6 +885,12 @@ export class MatchServiceService {
 
     this.applyElapsedTime(session);
 
+    await this.completeExpiredRedBalls(
+        match.id,
+        session.elapsedSeconds,
+        session.currentHalf,
+    );
+
     session.previousStatus = session.status;
     session.status = MatchServiceStatus.PAUSED;
     session.pausedAt = new Date();
@@ -920,6 +948,12 @@ export class MatchServiceService {
     }
 
     this.applyElapsedTime(session);
+
+    await this.completeExpiredRedBalls(
+        match.id,
+        session.elapsedSeconds,
+        session.currentHalf,
+    );
 
     session.startedAt = null;
     session.pausedAt = null;
@@ -1007,6 +1041,12 @@ export class MatchServiceService {
       this.applyElapsedTime(session);
     }
 
+    await this.completeExpiredRedBalls(
+        match.id,
+        session.elapsedSeconds,
+        session.currentHalf,
+    );
+
     session.status = MatchServiceStatus.FINISHED;
     session.previousStatus = null;
     session.startedAt = null;
@@ -1039,6 +1079,8 @@ export class MatchServiceService {
     await this.assertBothRostersApproved(match);
 
     const session = await this.getOrCreateSession(match);
+
+    await this.syncExpiredRedBalls(match, session);
 
     if (
         session.status !== MatchServiceStatus.FIRST_HALF &&
@@ -1116,6 +1158,8 @@ export class MatchServiceService {
 
     const session = await this.getOrCreateSession(match);
 
+    await this.syncExpiredRedBalls(match, session);
+
     this.assertCanCreateGameEvent(session);
 
     if (!this.gameEventTypes.has(dto.eventType)) {
@@ -1135,6 +1179,7 @@ export class MatchServiceService {
         return {
           event: await this.mapEvent(existingEvent),
           session: this.mapSession(session),
+          redBalls: await this.getRedBallState(matchId),
           duplicated: true,
         };
       }
@@ -1165,6 +1210,12 @@ export class MatchServiceService {
     const minute = dto.minute ?? this.getEventMinute(second);
     const half = dto.half ?? session.currentHalf;
 
+    const goalValue = await this.getGoalValue({
+      matchId,
+      eventType: dto.eventType,
+      goalSecond: second,
+    });
+
     const event = this.matchEventRepository.create({
       matchId,
       teamId: dto.teamId,
@@ -1177,16 +1228,16 @@ export class MatchServiceService {
       half,
       second,
       minute,
+      goalValue,
       isCancelled: false,
     });
 
     const savedEvent = await this.matchEventRepository.save(event);
 
-    this.applyScoreByEvent({
+    await this.applyScoreByEvent({
       match,
       session,
-      eventType: dto.eventType,
-      teamId: dto.teamId,
+      event: savedEvent,
     });
 
     if (
@@ -1219,6 +1270,7 @@ export class MatchServiceService {
     return {
       event: await this.mapEvent(savedEvent),
       session: this.mapSession(savedSession),
+      redBalls: await this.getRedBallState(matchId),
       duplicated: false,
     };
   }
@@ -1253,28 +1305,104 @@ export class MatchServiceService {
     return this.mapSession(savedSession);
   }
 
-  private applyScoreByEvent(params: {
+  private async applyScoreByEvent(params: {
     match: MatchEntity;
     session: MatchServiceSessionEntity;
-    eventType: MatchEventType;
-    teamId: number;
-  }): void {
-    const { match, session, eventType, teamId } = params;
+    event: MatchEventEntity;
+  }): Promise<void> {
+    const { match, session, event } = params;
 
-    if (eventType === MatchEventType.GOAL) {
-      if (teamId === match.homeTeamId) {
-        session.homeScore += 1;
+    if (
+        event.eventType !== MatchEventType.GOAL &&
+        event.eventType !== MatchEventType.OWN_GOAL
+    ) {
+      return;
+    }
+
+    const goalValue = event.goalValue ?? 1;
+
+    if (event.eventType === MatchEventType.GOAL) {
+      if (event.teamId === match.homeTeamId) {
+        session.homeScore += goalValue;
       } else {
-        session.awayScore += 1;
+        session.awayScore += goalValue;
       }
     }
 
-    if (eventType === MatchEventType.OWN_GOAL) {
-      if (teamId === match.homeTeamId) {
-        session.awayScore += 1;
+    if (event.eventType === MatchEventType.OWN_GOAL) {
+      if (event.teamId === match.homeTeamId) {
+        session.awayScore += goalValue;
       } else {
-        session.homeScore += 1;
+        session.homeScore += goalValue;
       }
+    }
+
+    const activeRedBall = await this.findActiveRedBallForSecond({
+      matchId: match.id,
+      second: event.second ?? session.elapsedSeconds,
+    });
+
+    if (
+        activeRedBall &&
+        event.eventType === MatchEventType.GOAL &&
+        event.teamId === activeRedBall.teamId
+    ) {
+      activeRedBall.status = RedBallStatus.COMPLETED_BY_GOAL;
+      activeRedBall.completedHalf = event.half ?? session.currentHalf;
+      activeRedBall.completedSecond = event.second ?? session.elapsedSeconds;
+      activeRedBall.completedByEventId = event.id;
+
+      await this.matchRedBallRepository.save(activeRedBall);
+    }
+  }
+
+  private async findActiveRedBallForSecond(params: {
+    matchId: number;
+    second: number;
+  }): Promise<MatchRedBallActivationEntity | null> {
+    const activeRedBalls = await this.matchRedBallRepository.find({
+      where: {
+        matchId: params.matchId,
+        status: RedBallStatus.ACTIVE,
+      },
+    });
+
+    return (
+        activeRedBalls.find((redBall) => {
+          const start = redBall.activatedSecond;
+          const end = redBall.activatedSecond + redBall.durationSeconds;
+
+          return params.second >= start && params.second <= end;
+        }) ?? null
+    );
+  }
+
+  private async completeExpiredRedBalls(
+      matchId: number,
+      currentSecond: number,
+      currentHalf: number,
+  ): Promise<void> {
+    const activeRedBalls = await this.matchRedBallRepository.find({
+      where: {
+        matchId,
+        status: RedBallStatus.ACTIVE,
+      },
+    });
+
+    for (const redBall of activeRedBalls) {
+      const expired =
+          currentHalf > redBall.activatedHalf ||
+          currentSecond >= redBall.activatedSecond + redBall.durationSeconds;
+
+      if (!expired) {
+        continue;
+      }
+
+      redBall.status = RedBallStatus.COMPLETED_BY_TIME;
+      redBall.completedHalf = currentHalf;
+      redBall.completedSecond = currentSecond;
+
+      await this.matchRedBallRepository.save(redBall);
     }
   }
 
@@ -1390,19 +1518,28 @@ export class MatchServiceService {
   }): void {
     const { match, session, event } = params;
 
+    if (
+        event.eventType !== MatchEventType.GOAL &&
+        event.eventType !== MatchEventType.OWN_GOAL
+    ) {
+      return;
+    }
+
+    const goalValue = event.goalValue ?? 1;
+
     if (event.eventType === MatchEventType.GOAL) {
       if (event.teamId === match.homeTeamId) {
-        session.homeScore = Math.max(session.homeScore - 1, 0);
+        session.homeScore = Math.max(session.homeScore - goalValue, 0);
       } else {
-        session.awayScore = Math.max(session.awayScore - 1, 0);
+        session.awayScore = Math.max(session.awayScore - goalValue, 0);
       }
     }
 
     if (event.eventType === MatchEventType.OWN_GOAL) {
       if (event.teamId === match.homeTeamId) {
-        session.awayScore = Math.max(session.awayScore - 1, 0);
+        session.awayScore = Math.max(session.awayScore - goalValue, 0);
       } else {
-        session.homeScore = Math.max(session.homeScore - 1, 0);
+        session.homeScore = Math.max(session.homeScore - goalValue, 0);
       }
     }
   }
@@ -1441,6 +1578,12 @@ export class MatchServiceService {
       event,
     });
 
+    await this.restoreRedBallIfGoalCancelled({
+      match,
+      session,
+      event,
+    });
+
     const savedEvent = await this.matchEventRepository.save(event);
     const savedSession = await this.matchServiceSessionRepository.save(session);
 
@@ -1448,6 +1591,191 @@ export class MatchServiceService {
       cancelledEvent: await this.mapEvent(savedEvent),
       session: this.mapSession(savedSession),
       events: await this.getMatchEvents(matchId),
+      redBalls: await this.getRedBallState(matchId),
     };
+  }
+
+  async activateRedBall(matchId: number, dto: ActivateRedBallDto) {
+    const match = await this.findMatchForService(matchId);
+    const session = await this.getOrCreateSession(match);
+
+    this.assertCanCreateGameEvent(session);
+    this.assertTeamBelongsToMatch(match, dto.teamId);
+
+    const alreadyUsed = await this.matchRedBallRepository.findOne({
+      where: {
+        matchId,
+        teamId: dto.teamId,
+      },
+    });
+
+    if (alreadyUsed) {
+      throw new BadRequestException(
+          'Команда уже использовала красный мяч в этом матче',
+      );
+    }
+
+    const currentSecond = this.getCurrentElapsedSeconds(session);
+
+    const activation = this.matchRedBallRepository.create({
+      matchId,
+      teamId: dto.teamId,
+      activatedHalf: session.currentHalf,
+      activatedSecond: currentSecond,
+      durationSeconds: 120,
+      status: RedBallStatus.ACTIVE,
+    });
+
+    const savedActivation = await this.matchRedBallRepository.save(activation);
+
+    const event = this.matchEventRepository.create({
+      matchId,
+      teamId: dto.teamId,
+      eventType: MatchEventType.RED_BALL,
+      half: session.currentHalf,
+      second: currentSecond,
+      minute: this.getEventMinute(currentSecond),
+      description: 'Команда активировала красный мяч',
+      isCancelled: false,
+    });
+
+    await this.matchEventRepository.save(event);
+
+    const redBalls = await this.getRedBallState(match.id);
+
+    return {
+      redBall: savedActivation,
+      session: this.mapSession(session),
+      events: await this.getMatchEvents(matchId),
+      redBalls,
+    };
+  }
+
+  private async getActiveRedBallForGoal(params: {
+    matchId: number;
+    scoringTeamId: number;
+    goalSecond: number;
+  }): Promise<MatchRedBallActivationEntity | null> {
+    const { matchId, goalSecond } = params;
+
+    const activeRedBalls = await this.matchRedBallRepository.find({
+      where: {
+        matchId,
+        status: RedBallStatus.ACTIVE,
+      },
+    });
+
+    return (
+        activeRedBalls.find((redBall) => {
+          const start = redBall.activatedSecond;
+          const end = redBall.activatedSecond + redBall.durationSeconds;
+
+          return goalSecond >= start && goalSecond <= end;
+        }) ?? null
+    );
+  }
+
+  private async getRedBallState(matchId: number) {
+    const redBalls = await this.matchRedBallRepository.find({
+      where: {
+        matchId,
+      },
+      order: {
+        id: 'ASC',
+      },
+    });
+
+    return {
+      active: redBalls
+          .filter((redBall) => redBall.status === RedBallStatus.ACTIVE)
+          .map((redBall) => ({
+            id: redBall.id,
+            teamId: redBall.teamId,
+            activatedHalf: redBall.activatedHalf,
+            activatedSecond: redBall.activatedSecond,
+            durationSeconds: redBall.durationSeconds,
+            status: redBall.status,
+          })),
+
+      usedTeamIds: redBalls
+          .filter((redBall) => redBall.status !== RedBallStatus.CANCELLED)
+          .map((redBall) => redBall.teamId),
+    };
+  }
+
+  private async restoreRedBallIfGoalCancelled(params: {
+    match: MatchEntity;
+    session: MatchServiceSessionEntity;
+    event: MatchEventEntity;
+  }): Promise<void> {
+    const { match, session, event } = params;
+
+    if (event.eventType !== MatchEventType.GOAL) {
+      return;
+    }
+
+    const redBall = await this.matchRedBallRepository.findOne({
+      where: {
+        matchId: match.id,
+        teamId: event.teamId,
+        completedByEventId: event.id,
+        status: RedBallStatus.COMPLETED_BY_GOAL,
+      },
+    });
+
+    if (!redBall) {
+      return;
+    }
+
+    const currentSecond = this.getCurrentElapsedSeconds(session);
+
+    const isExpired =
+        session.currentHalf > redBall.activatedHalf ||
+        currentSecond >= redBall.activatedSecond + redBall.durationSeconds;
+
+    if (isExpired) {
+      redBall.status = RedBallStatus.COMPLETED_BY_TIME;
+      redBall.completedHalf = session.currentHalf;
+      redBall.completedSecond = currentSecond;
+      redBall.completedByEventId = null;
+    } else {
+      redBall.status = RedBallStatus.ACTIVE;
+      redBall.completedHalf = null;
+      redBall.completedSecond = null;
+      redBall.completedByEventId = null;
+    }
+
+    await this.matchRedBallRepository.save(redBall);
+  }
+
+  private async getGoalValue(params: {
+    matchId: number;
+    eventType: MatchEventType;
+    goalSecond: number;
+  }): Promise<number> {
+    const { matchId, eventType, goalSecond } = params;
+
+    if (
+        eventType !== MatchEventType.GOAL &&
+        eventType !== MatchEventType.OWN_GOAL
+    ) {
+      return 1;
+    }
+
+    const activeRedBalls = await this.matchRedBallRepository.find({
+      where: {
+        matchId,
+        status: RedBallStatus.ACTIVE,
+      },
+    });
+
+    const hasActiveRedBall = activeRedBalls.some((redBall) => {
+      const start = redBall.activatedSecond;
+      const end = redBall.activatedSecond + redBall.durationSeconds;
+
+      return goalSecond >= start && goalSecond <= end;
+    });
+
+    return hasActiveRedBall ? 2 : 1;
   }
 }

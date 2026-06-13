@@ -1,7 +1,7 @@
 import {
     Component,
     computed,
-    DestroyRef,
+    DestroyRef, effect,
     inject,
     signal,
 } from '@angular/core';
@@ -73,6 +73,8 @@ export class MatchProtocolPageComponent {
     readonly isOwnGoalModalOpen = signal(false);
     readonly ownGoalStep = signal<OwnGoalStep>('team');
     readonly ownGoalDraft = signal<OwnGoalDraft | null>(null);
+    readonly isRedBallModalOpen = signal(false);
+    readonly wasExpiredRedBallSynced = signal(false);
 
     readonly matchId = Number(this.route.snapshot.paramMap.get('matchId'));
 
@@ -215,6 +217,61 @@ export class MatchProtocolPageComponent {
         return '';
     });
 
+    readonly activeRedBallTeamName = computed(() => {
+        const activeRedBall = this.store.activeRedBall();
+        const match = this.store.match();
+
+        if (!activeRedBall || !match) {
+            return '';
+        }
+
+        if (activeRedBall.teamId === match.homeTeam.id) {
+            return match.homeTeam.shortName || match.homeTeam.name;
+        }
+
+        if (activeRedBall.teamId === match.awayTeam.id) {
+            return match.awayTeam.shortName || match.awayTeam.name;
+        }
+
+        return '';
+    });
+
+    readonly redBallRemainingSeconds = computed(() => {
+        const activeRedBall = this.store.activeRedBall();
+
+        if (!activeRedBall) {
+            return 0;
+        }
+
+        const passedSeconds = this.displaySeconds() - activeRedBall.activatedSecond;
+        const remaining = activeRedBall.durationSeconds - passedSeconds;
+
+        return Math.max(remaining, 0);
+    });
+
+    readonly redBallRemainingTime = computed(() => {
+        const totalSeconds = this.redBallRemainingSeconds();
+
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+
+        return `${this.pad(minutes)}:${this.pad(seconds)}`;
+    });
+
+    readonly visibleActiveRedBall = computed(() => {
+        const activeRedBall = this.store.activeRedBall();
+
+        if (!activeRedBall) {
+            return null;
+        }
+
+        if (this.redBallRemainingSeconds() <= 0) {
+            return null;
+        }
+
+        return activeRedBall;
+    });
+
     constructor() {
         this.store.load(this.matchId);
 
@@ -224,6 +281,28 @@ export class MatchProtocolPageComponent {
 
         this.destroyRef.onDestroy(() => {
             window.clearInterval(timerId);
+        });
+
+        effect(() => {
+            const activeRedBall = this.store.activeRedBall();
+            const remainingSeconds = this.redBallRemainingSeconds();
+
+            if (!activeRedBall) {
+                this.wasExpiredRedBallSynced.set(false);
+                return;
+            }
+
+            if (remainingSeconds > 0) {
+                this.wasExpiredRedBallSynced.set(false);
+                return;
+            }
+
+            if (this.wasExpiredRedBallSynced()) {
+                return;
+            }
+
+            this.wasExpiredRedBallSynced.set(true);
+            this.store.load(this.matchId);
         });
     }
 
@@ -252,9 +331,7 @@ export class MatchProtocolPageComponent {
     }
 
     finishMatch(): void {
-        if (confirm('Завершить матч?')) {
-            this.store.finishMatch(this.matchId);
-        }
+        this.store.finishMatch(this.matchId);
     }
 
     startGoalRecording(): void {
@@ -487,5 +564,22 @@ export class MatchProtocolPageComponent {
     cancelOwnGoalRecording(): void {
         this.store.cancelEventRecording(this.matchId);
         this.closeOwnGoalModal();
+    }
+
+    openRedBallModal(): void {
+        this.isRedBallModalOpen.set(true);
+    }
+
+    closeRedBallModal(): void {
+        this.isRedBallModalOpen.set(false);
+    }
+
+    activateRedBall(teamId: number): void {
+        this.store.activateRedBall(this.matchId, teamId);
+        this.closeRedBallModal();
+    }
+
+    isRedBallUsed(teamId: number): boolean {
+        return this.store.redBalls().usedTeamIds.includes(teamId);
     }
 }
