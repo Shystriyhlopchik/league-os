@@ -1,0 +1,60 @@
+<section class="team-players-registration">
+    <div class="team-players-registration__header">
+        <h1 class="team-players-registration__title">
+            Регистрация игроков
+        </h1>
+
+        <p class="team-players-registration__description">
+            Выберите команду, для которой нужно добавить или изменить игроков.
+        </p>
+    </div>
+
+    @if (store.isLoading()) {
+        <div class="team-players-registration__state">
+            Загружаем команды...
+        </div>
+    } @else if (store.error()) {
+        <div class="team-players-registration__state team-players-registration__state--error">
+            {{ store.error() }}
+        </div>
+    } @else if (store.isEmpty()) {
+        <div class="team-players-registration__state">
+            Команды пока не добавлены.
+        </div>
+    } @else {
+        <div class="team-players-registration__grid">
+            @for (team of store.teams(); track team.id) {
+                <a
+                    class="team-card"
+                    [routerLink]="['/dashboard/team-players', team.id]"
+                >
+                    <div class="team-card__logo">
+                        @if (team.logoUrl) {
+                            <img
+                                class="team-card__image"
+                                [src]="team.logoUrl"
+                                [alt]="team.name"
+                            />
+                        } @else {
+                            <span class="team-card__placeholder">
+                                {{ team.name[0] }}
+                            </span>
+                        }
+                    </div>
+
+                    <div class="team-card__content">
+                        <h2 class="team-card__title">
+                            {{ team.name }}
+                        </h2>
+
+                        @if (team.village || team.city) {
+                            <p class="team-card__village">
+                                {{ team.village || team.city }}
+                            </p>
+                        }
+                    </div>
+                </a>
+            }
+        </div>
+    }
+</section>

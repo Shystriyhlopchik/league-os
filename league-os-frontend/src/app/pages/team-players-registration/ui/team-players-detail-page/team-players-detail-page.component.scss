@@ -1,0 +1,314 @@
+.team-players-detail {
+    min-height: 100%;
+    padding: 24px;
+    color: #fff;
+    background: #050505;
+
+    &__back {
+        display: inline-block;
+        margin-bottom: 20px;
+        color: #b5b5b5;
+        text-decoration: none;
+        font-size: 14px;
+
+        &:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
+    }
+
+    &__header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    &__title {
+        margin: 0 0 8px;
+        font-size: 28px;
+        font-weight: 700;
+        color: #fff;
+    }
+
+    &__description {
+        margin: 0;
+        color: #b5b5b5;
+    }
+
+    &__add-button {
+        min-height: 44px;
+        padding: 0 18px;
+        border: 1px solid #fff;
+        border-radius: 999px;
+        color: #050505;
+        font-size: 14px;
+        font-weight: 700;
+        background: #fff;
+        cursor: pointer;
+        transition:
+            background-color 0.2s ease,
+            color 0.2s ease,
+            border-color 0.2s ease;
+
+        &:hover {
+            color: #fff;
+            background: transparent;
+        }
+    }
+
+    &__state {
+        padding: 24px;
+        border: 1px solid #2a2a2a;
+        border-radius: 16px;
+        color: #b5b5b5;
+        background: #121212;
+
+        &--error {
+            color: #ff8a8a;
+            border-color: #5c2222;
+            background: #1a0f0f;
+        }
+    }
+}
+
+.team-players-table {
+    overflow: hidden;
+    border: 1px solid #2a2a2a;
+    border-radius: 16px;
+    background: #121212;
+
+    &__head,
+    &__row {
+        display: grid;
+        grid-template-columns: 80px minmax(180px, 1fr) minmax(140px, 200px) 100px;
+        gap: 16px;
+        align-items: center;
+        padding: 14px 16px;
+    }
+
+    &__head {
+        color: #9a9a9a;
+        font-size: 13px;
+        font-weight: 600;
+        border-bottom: 1px solid #2a2a2a;
+        background: #181818;
+    }
+
+    &__row {
+        color: #fff;
+        font-size: 15px;
+
+        &:not(:last-child) {
+            border-bottom: 1px solid #242424;
+        }
+    }
+
+    &__number {
+        color: #b5b5b5;
+        font-weight: 700;
+    }
+
+    &__name {
+        font-weight: 600;
+    }
+
+    &__position,
+    &__captain {
+        color: #b5b5b5;
+    }
+}
+
+@media (max-width: 700px) {
+    .team-players-detail {
+        &__header {
+            flex-direction: column;
+        }
+
+        &__add-button {
+            width: 100%;
+        }
+    }
+
+    .team-players-table {
+        &__head {
+            display: none;
+        }
+
+        &__row {
+            grid-template-columns: 56px 1fr;
+            gap: 8px 12px;
+        }
+
+        &__position,
+        &__captain {
+            grid-column: 2;
+            font-size: 13px;
+        }
+    }
+}
+
+.player-form {
+    margin-bottom: 24px;
+    padding: 20px;
+    border: 1px solid #2a2a2a;
+    border-radius: 18px;
+    background: #121212;
+
+    &__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+    }
+
+    &__title {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 700;
+        color: #fff;
+    }
+
+    &__close {
+        width: 36px;
+        height: 36px;
+        border: 1px solid #333;
+        border-radius: 50%;
+        color: #fff;
+        background: #181818;
+        cursor: pointer;
+
+        &:hover {
+            border-color: #fff;
+        }
+    }
+
+    &__grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    &__field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    &__label {
+        font-size: 13px;
+        color: #b5b5b5;
+    }
+
+    &__input {
+        height: 44px;
+        padding: 0 12px;
+        border: 1px solid #333;
+        border-radius: 12px;
+        color: #fff;
+        background: #050505;
+        outline: none;
+
+        &:focus {
+            border-color: #fff;
+        }
+
+        &::placeholder {
+            color: #666;
+        }
+    }
+
+    &__checkbox {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 44px;
+        margin-top: 21px;
+        color: #fff;
+        cursor: pointer;
+
+        input {
+            width: 18px;
+            height: 18px;
+        }
+    }
+
+    &__error {
+        margin-top: 16px;
+        padding: 12px 14px;
+        border: 1px solid #5c2222;
+        border-radius: 12px;
+        color: #ff8a8a;
+        background: #1a0f0f;
+    }
+
+    &__actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 20px;
+    }
+
+    &__cancel,
+    &__submit {
+        min-height: 42px;
+        padding: 0 18px;
+        border-radius: 999px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    &__cancel {
+        border: 1px solid #333;
+        color: #fff;
+        background: transparent;
+
+        &:hover {
+            border-color: #fff;
+        }
+    }
+
+    &__submit {
+        border: 1px solid #fff;
+        color: #050505;
+        background: #fff;
+
+        &:hover:not(:disabled) {
+            color: #fff;
+            background: transparent;
+        }
+
+        &:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    }
+}
+
+@media (max-width: 900px) {
+    .player-form {
+        &__grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+}
+
+@media (max-width: 640px) {
+    .player-form {
+        &__grid {
+            grid-template-columns: 1fr;
+        }
+
+        &__actions {
+            flex-direction: column;
+        }
+
+        &__cancel,
+        &__submit {
+            width: 100%;
+        }
+    }
+}

@@ -1,40 +1,45 @@
 import {
     IsBoolean,
+    IsDateString,
     IsEnum,
     IsInt,
-    IsNotEmpty,
     IsOptional,
-    IsString,
     Max,
     Min,
 } from 'class-validator';
 
 import { PlayerPosition } from '../../players/enums/player-position.enum';
 
-export class CreateTeamPlayerDto {
-    @IsString()
-    @IsNotEmpty()
-    firstName: string;
+export class LinkTeamPlayerDto {
+    @IsInt()
+    teamId: number;
 
-    @IsString()
-    @IsNotEmpty()
-    lastName: string;
+    @IsInt()
+    playerId: number;
 
-    @IsString()
     @IsOptional()
-    middleName?: string;
-
     @IsInt()
     @Min(1)
     @Max(99)
-    @IsOptional()
     shirtNumber?: number;
 
-    @IsEnum(PlayerPosition)
     @IsOptional()
+    @IsEnum(PlayerPosition)
     position?: PlayerPosition;
 
-    @IsBoolean()
     @IsOptional()
+    @IsBoolean()
     isCaptain?: boolean;
+
+    @IsOptional()
+    @IsBoolean()
+    isActive?: boolean;
+
+    @IsOptional()
+    @IsDateString()
+    joinedAt?: string;
+
+    @IsOptional()
+    @IsDateString()
+    leftAt?: string;
 }
