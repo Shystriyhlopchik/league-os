@@ -1,0 +1,185 @@
+<section class="team-players-detail">
+    <a
+        class="team-players-detail__back"
+        [routerLink]="['/dashboard/team-players']"
+    >
+        ← Назад к выбору команды
+    </a>
+
+    <div class="team-players-detail__header">
+        <div>
+            <h1 class="team-players-detail__title">
+                Состав команды
+            </h1>
+
+            <p class="team-players-detail__description">
+                ID команды: {{ teamId }}
+            </p>
+        </div>
+
+        @if (!isFormOpened()) {
+            <button
+                class="team-players-detail__add-button"
+                type="button"
+                (click)="openForm()"
+            >
+                Добавить игрока
+            </button>
+        }
+    </div>
+
+    @if (isFormOpened()) {
+        <form
+            class="player-form"
+            [formGroup]="form"
+            (ngSubmit)="submit()"
+        >
+            <div class="player-form__header">
+                <h2 class="player-form__title">
+                    Новый игрок
+                </h2>
+
+                <button
+                    class="player-form__close"
+                    type="button"
+                    (click)="closeForm()"
+                >
+                    ✕
+                </button>
+            </div>
+
+            <div class="player-form__grid">
+                <label class="player-form__field">
+                    <span class="player-form__label">Фамилия *</span>
+                    <input
+                        class="player-form__input"
+                        type="text"
+                        formControlName="lastName"
+                        placeholder="Иванов"
+                    />
+                </label>
+
+                <label class="player-form__field">
+                    <span class="player-form__label">Имя *</span>
+                    <input
+                        class="player-form__input"
+                        type="text"
+                        formControlName="firstName"
+                        placeholder="Иван"
+                    />
+                </label>
+
+                <label class="player-form__field">
+                    <span class="player-form__label">Отчество</span>
+                    <input
+                        class="player-form__input"
+                        type="text"
+                        formControlName="middleName"
+                        placeholder="Иванович"
+                    />
+                </label>
+
+                <label class="player-form__field">
+                    <span class="player-form__label">Номер</span>
+                    <input
+                        class="player-form__input"
+                        type="number"
+                        formControlName="shirtNumber"
+                        min="1"
+                        max="99"
+                        placeholder="10"
+                    />
+                </label>
+
+                <label class="player-form__field">
+                    <span class="player-form__label">Позиция</span>
+                    <select
+                        class="player-form__input"
+                        formControlName="position"
+                    >
+                        <option value="">Не указана</option>
+                        <option value="goalkeeper">Вратарь</option>
+                        <option value="defender">Защитник</option>
+                        <option value="midfielder">Полузащитник</option>
+                        <option value="forward">Нападающий</option>
+                    </select>
+                </label>
+
+                <label class="player-form__checkbox">
+                    <input
+                        type="checkbox"
+                        formControlName="isCaptain"
+                    />
+                    <span>Капитан команды</span>
+                </label>
+            </div>
+
+            @if (store.createError()) {
+                <div class="player-form__error">
+                    {{ store.createError() }}
+                </div>
+            }
+
+            <div class="player-form__actions">
+                <button
+                    class="player-form__cancel"
+                    type="button"
+                    (click)="closeForm()"
+                >
+                    Отмена
+                </button>
+
+                <button
+                    class="player-form__submit"
+                    type="submit"
+                    [disabled]="store.isCreating()"
+                >
+                    {{ store.isCreating() ? 'Сохраняем...' : 'Сохранить игрока' }}
+                </button>
+            </div>
+        </form>
+    }
+
+    @if (store.isLoading()) {
+        <div class="team-players-detail__state">
+            Загружаем игроков...
+        </div>
+    } @else if (store.error()) {
+        <div class="team-players-detail__state team-players-detail__state--error">
+            {{ store.error() }}
+        </div>
+    } @else if (store.isEmpty()) {
+        <div class="team-players-detail__state">
+            В этой команде пока нет игроков.
+        </div>
+    } @else {
+        <div class="team-players-table">
+            <div class="team-players-table__head">
+                <div>№</div>
+                <div>Игрок</div>
+                <div>Позиция</div>
+                <div>Капитан</div>
+            </div>
+
+            @for (teamPlayer of store.players(); track teamPlayer.id) {
+                <div class="team-players-table__row">
+                    <div class="team-players-table__number">
+                        {{ teamPlayer.shirtNumber || '—' }}
+                    </div>
+
+                    <div class="team-players-table__name">
+                        {{ getPlayerFullName(teamPlayer) }}
+                    </div>
+
+                    <div class="team-players-table__position">
+                        {{ teamPlayer.position || teamPlayer.player.position || '—' }}
+                    </div>
+
+                    <div class="team-players-table__captain">
+                        {{ teamPlayer.isCaptain ? 'Да' : 'Нет' }}
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</section>

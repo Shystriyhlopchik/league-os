@@ -68,7 +68,23 @@ export const routes: Routes = [
                 loadComponent: () =>
                     import('./pages/match-protocol/ui/match-protocol-page/match-protocol-page.component')
                         .then((m) => m.MatchProtocolPageComponent),
-            }
+            },
+            {
+                path: 'team-players',
+                canActivate: [authGuard],
+                loadComponent: () =>
+                    import('./pages/team-players-registration/ui/team-players-registration-page/team-players-registration-page.component').then(
+                        (m) => m.TeamPlayersRegistrationPageComponent,
+                    ),
+            },
+            {
+                path: 'team-players/:teamId',
+                canActivate: [authGuard],
+                loadComponent: () =>
+                    import('./pages/team-players-registration/ui/team-players-detail-page/team-players-detail-page.component').then(
+                        (m) => m.TeamPlayersDetailPageComponent,
+                    ),
+            },
         ],
     },
     // {

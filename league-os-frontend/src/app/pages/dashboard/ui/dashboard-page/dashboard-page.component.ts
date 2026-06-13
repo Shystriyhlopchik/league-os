@@ -32,6 +32,13 @@ export class DashboardPageComponent {
             roles: [UserRole.Referee, UserRole.Admin, UserRole.SuperAdmin],
             variant: '#F04E55',
         },
+        {
+            title: 'Регистрация игроков',
+            description: 'Регистрация игроков различных команд',
+            route: '/dashboard/team-players',
+            roles: [UserRole.Admin, UserRole.SuperAdmin],
+            variant: '#2ECC71',
+        },
     ];
 
     readonly availableActions = computed(() => {
