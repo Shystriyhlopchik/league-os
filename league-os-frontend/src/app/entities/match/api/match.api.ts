@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
 import { Match } from '../model/match.types';
+import {MatchProtocol} from '../model/match-protocol.types';
 
 @Injectable({
     providedIn: 'root',
@@ -21,6 +22,12 @@ export class MatchApi {
     getBySeason(seasonId: number | string): Observable<Match[]> {
         return this.http.get<Match[]>(
             `${this.apiUrl}/matches/season/${seasonId}`,
+        );
+    }
+
+    getProtocol(matchId: number | string): Observable<MatchProtocol> {
+        return this.http.get<MatchProtocol>(
+            `${this.apiUrl}/matches/${matchId}/protocol`,
         );
     }
 }

@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import {Component, input, output} from '@angular/core';
 import { MatchCardVm } from '../../model/match-card.vm';
 import {DatePipe} from '@angular/common';
 
@@ -10,4 +10,9 @@ import {DatePipe} from '@angular/common';
 })
 export class MatchCardComponent {
     readonly match = input.required<MatchCardVm>();
+    readonly cardClick = output<number | string>();
+
+    onCardClick(): void {
+        this.cardClick.emit(this.match().id);
+    }
 }

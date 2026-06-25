@@ -1,13 +1,12 @@
 @if (matches(); as matches) {
     @if (matches.length) {
-        <swiper-container
-            #swiperEl
-            class="match-swiper"
-            init="false"
-        >
+        <swiper-container #swiperEl class="match-swiper" init="false">
             @for (match of matches; track match.id) {
                 <swiper-slide>
-                    <app-match-card [match]="match" />
+                    <app-match-card
+                        [match]="match"
+                        (cardClick)="openProtocol($event)"
+                    />
                 </swiper-slide>
             }
         </swiper-container>
