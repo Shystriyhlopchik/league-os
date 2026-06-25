@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { MatchCardComponent } from '../../../entities/match/ui/match-card/match-card.component';
 import { MatchesSliderStore } from '../model/matches-slider.store';
+import {Router} from '@angular/router';
 
 @Component({
     selector: 'app-matches-slider',
@@ -22,6 +23,7 @@ export class MatchesSliderComponent {
     private readonly store = inject(MatchesSliderStore);
 
     readonly seasonId = input.required<number | string>();
+    private readonly router = inject(Router);
 
     readonly matches = this.store.matches;
     readonly isLoading = this.store.isLoading;
@@ -56,5 +58,9 @@ export class MatchesSliderComponent {
         });
 
         swiperEl.initialize();
+    }
+
+    openProtocol(matchId: number | string): void {
+        this.router.navigate(['/matches', matchId, 'protocol']);
     }
 }

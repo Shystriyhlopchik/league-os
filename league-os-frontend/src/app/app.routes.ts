@@ -35,6 +35,13 @@ export const routes: Routes = [
             ),
     },
     {
+        path: 'matches/:matchId/protocol',
+        loadComponent: () =>
+            import('./pages/match-view-protocol/ui/match-view-protocol-page/match-view-protocol-page.component').then(
+                (m) => m.MatchViewProtocolPageComponent,
+            ),
+    },
+    {
         path: 'dashboard',
         canActivate: [authGuard],
         children: [

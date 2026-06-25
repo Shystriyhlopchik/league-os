@@ -1,18 +1,13 @@
 <article
     class="match-card"
-    role="button"
-    tabindex="0"
-    (click)="onCardClick()"
-    (keydown.enter)="onCardClick()"
-    (keydown.space)="onCardClick()"
 >
     <header class="match-card__header">
         <div class="match-card__season">
             <img
                 [src]="match().competitionLogoUrl"
-                [alt]="match().competitionName"
+                [alt]="match().tournamentName"
             />
-            <span>Сезон {{ match().seasonYear }}, {{ match().round }}</span>
+            <span>{{ match().seasonName }}, {{ match().round }}</span>
         </div>
 
         <time class="match-card__date">
@@ -24,12 +19,12 @@
         <div class="match-card__team">
             <img
                 class="match-card__logo"
-                [src]="match().homeTeamLogoUrl"
-                [alt]="'Логотип команды ' + match().homeTeamName"
+                [src]="match().homeTeam.logoUrl"
+                [alt]="'Логотип команды ' + match().homeTeam.name"
             />
 
             <span class="match-card__team-name">
-                {{ match().homeTeamName }}
+                {{ match().homeTeam.name }}
             </span>
         </div>
 
@@ -38,8 +33,8 @@
                 -:-
             } @else {
                 <strong class="match-card__score">
-                    {{ match().homeTeamScore }} :
-                    {{ match().awayTeamScore }}
+                    {{ match().homeScore }} :
+                    {{ match().awayScore }}
                 </strong>
             }
 
@@ -61,12 +56,12 @@
         <div class="match-card__team">
             <img
                 class="match-card__logo"
-                [src]="match().awayTeamLogoUrl"
-                [alt]="'Логотип команды ' + match().awayTeamName"
+                [src]="match().awayTeam.logoUrl"
+                [alt]="'Логотип команды ' + match().awayTeam.name"
             />
 
             <span class="match-card__team-name">
-                {{ match().awayTeamName }}
+                {{ match().awayTeam.name }}
             </span>
         </div>
     </div>

@@ -3,8 +3,6 @@
 }
 
 .match-card {
-    //width: 230px;
-    max-width: 320px;
     min-height: 173px;
     padding: 14px 16px 10px;
     box-sizing: border-box;
@@ -14,16 +12,8 @@
 
     font-family: Oswald, "Inter", sans-serif;
     text-align: center;
-    cursor: pointer;
-    transition:
-        transform 0.2s ease,
-        border-color 0.2s ease;
 }
 
-.match-card:hover {
-    transform: translateY(-2px);
-    border-color: rgba(255, 227, 0, 0.45);
-}
 
 .match-card__header {
     margin-bottom: 10px;
@@ -35,7 +25,7 @@
     justify-content: center;
     gap: 4px;
 
-    font-size: 12px;
+    font-size: 16px;
     line-height: 1.2;
     color: rgba(245, 245, 245, 0.7);
 
@@ -71,15 +61,15 @@
 }
 
 .match-card__logo {
-    width: 54px;
-    height: 54px;
+    //width: 54px;
+    height: 75px;
     object-fit: contain;
 }
 
 .match-card__team-name {
     margin-top: 8px;
 
-    font-size: 12px;
+    font-size: 16px;
     line-height: 1.2;
 }
 
@@ -91,7 +81,7 @@
 }
 
 .match-card__score {
-    font-size: 20px;
+    font-size: 36px;
     line-height: 1.2;
     font-family: "Bebas Neue", sans-serif;
     font-weight: 400;
@@ -108,7 +98,7 @@
 .match-card__venue {
     margin-top: 9px;
 
-    font-size: 12px;
+    font-size: 16px;
     line-height: 1.2;
     color: rgba(245, 245, 245, 0.7);
 }
