@@ -1,9 +1,15 @@
-import {BadRequestException, Injectable, NotFoundException} from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MatchEntity } from './entities/match.entity';
 import { DeepPartial, Repository } from 'typeorm';
 import { BaseCrudService } from '../../common/base/base-crud.service';
-import { formatLocalDateTime } from "./helper/formatLocalDateTime";
+import { formatLocalDateTime } from './helper/formatLocalDateTime';
+import { MatchRosterPlayerEntity } from '../match-rosters/entities/match-roster-player.entity';
+import { MatchRosterEntity } from '../match-rosters/entities/match-roster.entity';
 
 const ERR_MESSAGE = 'Команды в матче не могут быть одинаковыми';
 
@@ -12,6 +18,12 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
   constructor(
     @InjectRepository(MatchEntity)
     private readonly matchesRepository: Repository<MatchEntity>,
+
+    @InjectRepository(MatchRosterEntity)
+    private readonly matchRosterRepository: Repository<MatchRosterEntity>,
+
+    @InjectRepository(MatchRosterPlayerEntity)
+    private readonly matchRosterPlayerRepository: Repository<MatchRosterPlayerEntity>,
   ) {
     super(matchesRepository, 'Матч');
   }
@@ -165,11 +177,11 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
       },
 
       venue: match.venue
-          ? {
+        ? {
             id: match.venue.id,
             name: match.venue.name,
           }
-          : null,
+        : null,
     }));
   }
 
@@ -195,6 +207,8 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
       },
       order: {
         events: {
+          half: 'ASC',
+          second: 'ASC',
           minute: 'ASC',
           addedMinute: 'ASC',
           id: 'ASC',
@@ -206,46 +220,54 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
       throw new NotFoundException('Матч не найден');
     }
 
+    const rosters = await this.getProtocolRosters(match);
+
     return {
-      id: match.id,
-      status: match.status,
-      round: match.round,
-      matchDateTime: match.matchDatetime,
+      match: {
+        id: match.id,
+        status: match.status,
+        round: match.round,
+        matchDateTime: formatLocalDateTime(match.matchDatetime),
 
-      tournament: {
-        id: match.tournament.id,
-        name: match.tournament.name,
-        season: {
-          id: match.tournament.season.id,
-          name: match.tournament.season.name,
-          year: match.tournament.season.year,
-        },
-        competition: {
-          id: match.tournament.season.competition.id,
-          name: match.tournament.season.competition.name,
-          logoUrl: match.tournament.season.competition.logoUrl,
-        },
-      },
+        tournament: {
+          id: match.tournament.id,
+          name: match.tournament.name,
 
-      venue: match.venue
+          season: {
+            id: match.tournament.season.id,
+            name: match.tournament.season.name,
+            year: match.tournament.season.year,
+          },
+
+          competition: {
+            id: match.tournament.season.competition.id,
+            name: match.tournament.season.competition.name,
+            logoUrl: match.tournament.season.competition.logoUrl,
+          },
+        },
+
+        venue: match.venue
           ? {
-            id: match.venue.id,
-            name: match.venue.name,
-          }
+              id: match.venue.id,
+              name: match.venue.name,
+            }
           : null,
 
-      homeTeam: {
-        id: match.homeTeam.id,
-        name: match.homeTeam.name,
-        logoUrl: match.homeTeam.logoUrl,
-        score: match.homeScore,
-      },
+        homeTeam: {
+          id: match.homeTeam.id,
+          name: match.homeTeam.name,
+          shortName: match.homeTeam.shortName,
+          logoUrl: match.homeTeam.logoUrl,
+          score: match.homeScore,
+        },
 
-      awayTeam: {
-        id: match.awayTeam.id,
-        name: match.awayTeam.name,
-        logoUrl: match.awayTeam.logoUrl,
-        score: match.awayScore,
+        awayTeam: {
+          id: match.awayTeam.id,
+          name: match.awayTeam.name,
+          shortName: match.awayTeam.shortName,
+          logoUrl: match.awayTeam.logoUrl,
+          score: match.awayScore,
+        },
       },
 
       officials: match.officials.map((official) => ({
@@ -257,40 +279,113 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
       events: match.events.map((event) => ({
         id: event.id,
         type: event.eventType,
+
         minute: event.minute,
         addedMinute: event.addedMinute,
+        half: event.half,
+        second: event.second,
 
-        team: {
-          id: event.team.id,
-          name: event.team.name,
-        },
+        team: event.team
+          ? {
+              id: event.team.id,
+              name: event.team.name,
+              shortName: event.team.shortName,
+            }
+          : null,
 
         player: event.player
-            ? {
+          ? {
               id: event.player.id,
               firstName: event.player.firstName,
               lastName: event.player.lastName,
+              middleName: event.player.middleName,
             }
-            : null,
+          : null,
 
         assistPlayer: event.assistPlayer
-            ? {
+          ? {
               id: event.assistPlayer.id,
               firstName: event.assistPlayer.firstName,
               lastName: event.assistPlayer.lastName,
+              middleName: event.assistPlayer.middleName,
             }
-            : null,
+          : null,
 
         secondaryPlayer: event.secondaryPlayer
-            ? {
+          ? {
               id: event.secondaryPlayer.id,
               firstName: event.secondaryPlayer.firstName,
               lastName: event.secondaryPlayer.lastName,
+              middleName: event.secondaryPlayer.middleName,
             }
-            : null,
+          : null,
 
         description: event.description,
       })),
+
+      rosters,
     };
+  }
+
+  private async getProtocolRosters(match: MatchEntity) {
+    const matchRosters = await this.matchRosterRepository.find({
+      where: {
+        matchId: match.id,
+        isApproved: true,
+      },
+      relations: {
+        team: true,
+      },
+    });
+
+    const rosterByTeamId = new Map(
+      matchRosters.map((roster) => [roster.teamId, roster]),
+    );
+
+    const [home, away] = await Promise.all([
+      this.getProtocolRosterPlayers(rosterByTeamId.get(match.homeTeamId)),
+      this.getProtocolRosterPlayers(rosterByTeamId.get(match.awayTeamId)),
+    ]);
+
+    return {
+      home,
+      away,
+    };
+  }
+
+  private async getProtocolRosterPlayers(roster?: MatchRosterEntity) {
+    if (!roster) {
+      return [];
+    }
+
+    const rosterPlayers = await this.matchRosterPlayerRepository.find({
+      where: {
+        matchRosterId: roster.id,
+      },
+      relations: {
+        player: true,
+      },
+      order: {
+        shirtNumber: 'ASC',
+        id: 'ASC',
+      },
+    });
+
+    return rosterPlayers.map((rosterPlayer) => ({
+      id: rosterPlayer.playerId,
+      matchRosterPlayerId: rosterPlayer.id,
+      teamPlayerId: rosterPlayer.teamPlayerId,
+
+      firstName: rosterPlayer.player.firstName,
+      lastName: rosterPlayer.player.lastName,
+      middleName: rosterPlayer.player.middleName,
+      photoUrl: rosterPlayer.player.photoUrl,
+
+      shirtNumber: rosterPlayer.shirtNumber,
+      position: rosterPlayer.position ?? rosterPlayer.player.position,
+
+      isCaptain: rosterPlayer.isCaptain,
+      wasAllowed: rosterPlayer.wasAllowed,
+    }));
   }
 }
