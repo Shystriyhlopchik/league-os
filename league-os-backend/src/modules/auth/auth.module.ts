@@ -8,9 +8,18 @@ import { RolesModule } from '../roles/roles.module';
 import { ConfigService } from '@nestjs/config';
 import type { JwtModuleOptions } from '@nestjs/jwt';
 import type { StringValue } from 'ms';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { UserAuthAccountEntity } from './entities/user-auth-account.entity';
+import { PlayerEntity } from '../players/entities/player.entity';
+import { TeamPlayerEntity } from '../team-players/entities/team-players.entity';
 
 @Module({
   imports: [
+    TypeOrmModule.forFeature([
+      UserAuthAccountEntity,
+      PlayerEntity,
+      TeamPlayerEntity,
+    ]),
     RolesModule,
     UsersModule,
     JwtModule.registerAsync({

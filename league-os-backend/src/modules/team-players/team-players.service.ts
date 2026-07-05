@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -10,6 +11,8 @@ import { TeamEntity } from '../teams/entities/team.entity';
 import { PlayerEntity } from '../players/entities/player.entity';
 import { CreateTeamPlayerDto } from './dto/create-team-player.dto';
 import { TeamPlayerEntity } from './entities/team-players.entity';
+import { UsersService } from '../users/users.service';
+import { RoleCode } from '../users/enums/role-code.enum';
 
 const TEAM_NOT_FOUND_MESSAGE = 'Команда не найдена';
 const DUPLICATE_SHIRT_NUMBER_MESSAGE =
@@ -62,6 +65,8 @@ export class TeamPlayersService {
 
     @InjectRepository(PlayerEntity)
     private readonly playersRepository: Repository<PlayerEntity>,
+
+    private readonly usersService: UsersService,
   ) {}
 
   async findByTeam(teamId: number): Promise<TeamPlayerEntity[]> {
@@ -85,8 +90,10 @@ export class TeamPlayersService {
   async createForTeam(
     teamId: number,
     dto: CreateTeamPlayerDto,
+    currentUserId: number,
   ): Promise<TeamPlayerEntity> {
     await this.ensureTeamExists(teamId);
+    await this.ensureCanManageTeam(teamId, currentUserId);
     await this.ensureShirtNumberAvailable(teamId, dto.shirtNumber);
 
     const savedPlayer = await this.createPlayer(dto);
@@ -97,6 +104,34 @@ export class TeamPlayersService {
     );
 
     return this.findTeamPlayerWithPlayer(savedTeamPlayer.id);
+  }
+
+  private async ensureCanManageTeam(
+    teamId: number,
+    currentUserId: number,
+  ): Promise<void> {
+    const user = await this.usersService.findById(currentUserId);
+    const userRoles = user?.roles?.map((role) => role.code) ?? [];
+
+    if (
+      userRoles.includes(RoleCode.Admin) ||
+      userRoles.includes(RoleCode.SuperAdmin)
+    ) {
+      return;
+    }
+
+    const captainLink = await this.teamPlayersRepository
+      .createQueryBuilder('team_player')
+      .innerJoin('team_player.player', 'player')
+      .where('team_player.team_id = :teamId', { teamId })
+      .andWhere('"team_player"."isActive" = :isActive', { isActive: true })
+      .andWhere('"team_player"."isCaptain" = :isCaptain', { isCaptain: true })
+      .andWhere('player.user_id = :currentUserId', { currentUserId })
+      .getOne();
+
+    if (!captainLink) {
+      throw new ForbiddenException('Недостаточно прав для изменения состава команды');
+    }
   }
 
   private async ensureTeamExists(teamId: number): Promise<void> {

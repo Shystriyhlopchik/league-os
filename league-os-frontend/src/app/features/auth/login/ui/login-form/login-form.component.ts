@@ -29,7 +29,7 @@ export class LoginFormComponent {
     readonly form = new FormGroup({
         login: new FormControl('', {
             nonNullable: true,
-            validators: [Validators.required, Validators.email],
+            validators: [Validators.required],
         }),
         password: new FormControl('', {
             nonNullable: true,

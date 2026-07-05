@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { ConfirmPlayerLinkDto } from './dto/confirm-player-link.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -22,6 +23,15 @@ export class AuthController {
     @UseGuards(JwtAuthGuard)
     @Get('me')
     me(@Req() req: any) {
-        return req.user;
+        return this.authService.me(req.user.id);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('player-link/confirm')
+    confirmPlayerLink(
+        @Req() req: any,
+        @Body() dto: ConfirmPlayerLinkDto,
+    ) {
+        return this.authService.confirmPlayerLink(req.user.id, dto);
     }
 }

@@ -1,0 +1,138 @@
+@if (store.hasPlayerLinkCandidates()) {
+    <section class="player-link">
+        <h3 class="player-link__title">
+            Подтверждение игрока
+        </h3>
+
+        @for (candidate of store.playerLinkCandidates(); track candidate.teamPlayerId) {
+            <div class="player-link__card">
+                <p class="player-link__question">
+                    Являетесь ли вы игроком {{ getPlayerFullName(candidate) }} команды "{{ candidate.teamName }}"?
+                </p>
+
+                <button
+                    class="player-link__confirm"
+                    type="button"
+                    [disabled]="store.isLinking()"
+                    (click)="confirmPlayerLink(candidate)"
+                >
+                    Да, это я
+                </button>
+            </div>
+        }
+
+        @if (store.linkError()) {
+            <p class="register-form__error">
+                {{ store.linkError() }}
+            </p>
+        }
+
+        <button
+            class="player-link__skip"
+            type="button"
+            [disabled]="store.isLinking()"
+            (click)="store.skipPlayerLink()"
+        >
+            Нет, перейти в кабинет
+        </button>
+    </section>
+} @else {
+    <form
+        class="register-form"
+        [formGroup]="form"
+        (ngSubmit)="submit()"
+    >
+        <label class="register-form__field">
+            <span class="register-form__label">Фамилия *</span>
+            <input
+                class="register-form__input"
+                type="text"
+                formControlName="lastName"
+            />
+        </label>
+
+        <label class="register-form__field">
+            <span class="register-form__label">Имя *</span>
+            <input
+                class="register-form__input"
+                type="text"
+                formControlName="firstName"
+            />
+        </label>
+
+        <label class="register-form__field">
+            <span class="register-form__label">Отчество</span>
+            <input
+                class="register-form__input"
+                type="text"
+                formControlName="middleName"
+            />
+        </label>
+
+        <label class="register-form__field">
+            <span class="register-form__label">Логин *</span>
+            <input
+                class="register-form__input"
+                type="text"
+                formControlName="username"
+            />
+        </label>
+
+        <label class="register-form__field">
+            <span class="register-form__label">E-mail</span>
+            <input
+                class="register-form__input"
+                type="email"
+                formControlName="email"
+            />
+        </label>
+
+        <label class="register-form__field">
+            <span class="register-form__label">Пароль *</span>
+            <input
+                class="register-form__input"
+                type="password"
+                formControlName="password"
+            />
+        </label>
+
+        <label
+            class="register-form__field"
+            [class.register-form__field--error]="form.controls.passwordConfirmation.hasError('passwordMismatch')"
+        >
+            <span class="register-form__label">Повторите пароль *</span>
+            <input
+                class="register-form__input"
+                type="password"
+                formControlName="passwordConfirmation"
+            />
+        </label>
+
+        @if (form.controls.passwordConfirmation.hasError('passwordMismatch')) {
+            <p class="register-form__error">
+                Пароли не совпадают
+            </p>
+        }
+
+        @if (store.error()) {
+            <p class="register-form__error">
+                {{ store.error() }}
+            </p>
+        }
+
+        <button
+            class="register-form__submit"
+            type="submit"
+            [disabled]="store.isLoading()"
+        >
+            {{ store.isLoading() ? 'Регистрируем...' : 'Зарегистрироваться' }}
+        </button>
+
+        <a
+            class="register-form__login"
+            routerLink="/login"
+        >
+            Уже есть аккаунт? Войти
+        </a>
+    </form>
+}

@@ -5,10 +5,13 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { TeamsService } from './teams.service';
 import { TeamPlayersService } from '../team-players/team-players.service';
 import { CreateTeamPlayerDto } from '../team-players/dto/create-team-player.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('teams')
 export class TeamsController {
@@ -28,10 +31,12 @@ export class TeamsController {
   }
 
   @Post(':teamId/players')
+  @UseGuards(JwtAuthGuard)
   createPlayerForTeam(
     @Param('teamId', ParseIntPipe) teamId: number,
     @Body() dto: CreateTeamPlayerDto,
+    @Req() req: any,
   ) {
-    return this.teamPlayersService.createForTeam(teamId, dto);
+    return this.teamPlayersService.createForTeam(teamId, dto, req.user.id);
   }
 }

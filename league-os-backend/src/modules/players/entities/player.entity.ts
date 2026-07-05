@@ -1,7 +1,7 @@
 import {
     Column,
     CreateDateColumn,
-    Entity, OneToMany,
+    Entity, JoinColumn, OneToMany, OneToOne,
     PrimaryGeneratedColumn,
     UpdateDateColumn,
 } from 'typeorm';
@@ -9,6 +9,7 @@ import {BaseEntity} from "../../../common/base/base.entity";
 import {PlayerPosition} from "../enums/player-position.enum";
 import {PreferredFoot} from "../enums/preferred-foot.enum";
 import {MatchEventEntity} from "../../match-events/entities/match-event.entity";
+import { UserEntity } from '../../users/entities/user.entity';
 
 @Entity('players')
 export class PlayerEntity extends BaseEntity {
@@ -23,6 +24,13 @@ export class PlayerEntity extends BaseEntity {
 
     @Column({ unique: true })
     slug: string;
+
+    @Column({ name: 'user_id', nullable: true, unique: true })
+    userId?: number;
+
+    @OneToOne(() => UserEntity, { nullable: true })
+    @JoinColumn({ name: 'user_id' })
+    user?: UserEntity;
 
     @Column({ type: 'date', nullable: true })
     birthDate?: string;
