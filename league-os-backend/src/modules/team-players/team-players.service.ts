@@ -11,6 +11,46 @@ import { PlayerEntity } from '../players/entities/player.entity';
 import { CreateTeamPlayerDto } from './dto/create-team-player.dto';
 import { TeamPlayerEntity } from './entities/team-players.entity';
 
+const TEAM_NOT_FOUND_MESSAGE = 'Команда не найдена';
+const DUPLICATE_SHIRT_NUMBER_MESSAGE =
+  'Игрок с таким номером уже есть в этой команде';
+
+const CYRILLIC_TRANSLITERATION: Record<string, string> = {
+  ё: 'e',
+  й: 'i',
+  ц: 'c',
+  у: 'u',
+  к: 'k',
+  е: 'e',
+  н: 'n',
+  г: 'g',
+  ш: 'sh',
+  щ: 'sch',
+  з: 'z',
+  х: 'h',
+  ъ: '',
+  ф: 'f',
+  ы: 'y',
+  в: 'v',
+  а: 'a',
+  п: 'p',
+  р: 'r',
+  о: 'o',
+  л: 'l',
+  д: 'd',
+  ж: 'zh',
+  э: 'e',
+  я: 'ya',
+  ч: 'ch',
+  с: 's',
+  м: 'm',
+  и: 'i',
+  т: 't',
+  ь: '',
+  б: 'b',
+  ю: 'yu',
+};
+
 @Injectable()
 export class TeamPlayersService {
   constructor(
@@ -25,15 +65,7 @@ export class TeamPlayersService {
   ) {}
 
   async findByTeam(teamId: number): Promise<TeamPlayerEntity[]> {
-    const team = await this.teamsRepository.findOne({
-      where: {
-        id: teamId,
-      },
-    });
-
-    if (!team) {
-      throw new NotFoundException('Команда не найдена');
-    }
+    await this.ensureTeamExists(teamId);
 
     return this.teamPlayersRepository.find({
       where: {
@@ -54,6 +86,20 @@ export class TeamPlayersService {
     teamId: number,
     dto: CreateTeamPlayerDto,
   ): Promise<TeamPlayerEntity> {
+    await this.ensureTeamExists(teamId);
+    await this.ensureShirtNumberAvailable(teamId, dto.shirtNumber);
+
+    const savedPlayer = await this.createPlayer(dto);
+    const savedTeamPlayer = await this.createTeamPlayer(
+      teamId,
+      savedPlayer.id,
+      dto,
+    );
+
+    return this.findTeamPlayerWithPlayer(savedTeamPlayer.id);
+  }
+
+  private async ensureTeamExists(teamId: number): Promise<void> {
     const team = await this.teamsRepository.findOne({
       where: {
         id: teamId,
@@ -61,59 +107,76 @@ export class TeamPlayersService {
     });
 
     if (!team) {
-      throw new NotFoundException('Команда не найдена');
+      throw new NotFoundException(TEAM_NOT_FOUND_MESSAGE);
+    }
+  }
+
+  private async ensureShirtNumberAvailable(
+    teamId: number,
+    shirtNumber?: number,
+  ): Promise<void> {
+    if (!shirtNumber) {
+      return;
     }
 
-    if (dto.shirtNumber) {
-      const existingNumber = await this.teamPlayersRepository.findOne({
-        where: {
-          teamId,
-          shirtNumber: dto.shirtNumber,
-          isActive: true,
-        },
-      });
+    const existingNumber = await this.teamPlayersRepository.findOne({
+      where: {
+        teamId,
+        shirtNumber,
+        isActive: true,
+      },
+    });
 
-      if (existingNumber) {
-        throw new BadRequestException(
-          'Игрок с таким номером уже есть в этой команде',
-        );
-      }
+    if (existingNumber) {
+      throw new BadRequestException(DUPLICATE_SHIRT_NUMBER_MESSAGE);
     }
+  }
 
+  private async createPlayer(dto: CreateTeamPlayerDto): Promise<PlayerEntity> {
     const slug = await this.generatePlayerSlug(dto.lastName, dto.firstName);
+    const player = this.playersRepository.create({
+      firstName: dto.firstName.trim(),
+      lastName: dto.lastName.trim(),
+      middleName: dto.middleName?.trim() || undefined,
+      slug,
+      position: dto.position ?? undefined,
+      isActive: true,
+    });
 
-      const player = new PlayerEntity();
+    return this.playersRepository.save(player);
+  }
 
-      player.firstName = dto.firstName.trim();
-      player.lastName = dto.lastName.trim();
-      player.middleName = dto.middleName?.trim() || undefined;
-      player.slug = slug;
-      player.position = dto.position ?? undefined;
-      player.isActive = true;
+  private createTeamPlayer(
+    teamId: number,
+    playerId: number,
+    dto: CreateTeamPlayerDto,
+  ): Promise<TeamPlayerEntity> {
+    const teamPlayer = this.teamPlayersRepository.create({
+      teamId,
+      playerId,
+      shirtNumber: dto.shirtNumber ?? undefined,
+      position: dto.position ?? undefined,
+      isCaptain: dto.isCaptain ?? false,
+      isActive: true,
+      joinedAt: this.getCurrentDate(),
+    });
 
-      const savedPlayer: PlayerEntity = await this.playersRepository.save(player);
+    return this.teamPlayersRepository.save(teamPlayer);
+  }
 
-      const teamPlayer = new TeamPlayerEntity();
-
-      teamPlayer.teamId = teamId;
-      teamPlayer.playerId = savedPlayer.id;
-      teamPlayer.shirtNumber = dto.shirtNumber ?? undefined;
-      teamPlayer.position = dto.position ?? undefined;
-      teamPlayer.isCaptain = dto.isCaptain ?? false;
-      teamPlayer.isActive = true;
-      teamPlayer.joinedAt = new Date().toISOString().slice(0, 10);
-
-      const savedTeamPlayer: TeamPlayerEntity =
-          await this.teamPlayersRepository.save(teamPlayer);
-
+  private findTeamPlayerWithPlayer(id: number): Promise<TeamPlayerEntity> {
     return this.teamPlayersRepository.findOneOrFail({
       where: {
-        id: savedTeamPlayer.id,
+        id,
       },
       relations: {
         player: true,
       },
     });
+  }
+
+  private getCurrentDate(): string {
+    return new Date().toISOString().slice(0, 10);
   }
 
   private async generatePlayerSlug(
@@ -142,39 +205,7 @@ export class TeamPlayersService {
     return value
       .toLowerCase()
       .trim()
-      .replace(/ё/g, 'e')
-      .replace(/й/g, 'i')
-      .replace(/ц/g, 'c')
-      .replace(/у/g, 'u')
-      .replace(/к/g, 'k')
-      .replace(/е/g, 'e')
-      .replace(/н/g, 'n')
-      .replace(/г/g, 'g')
-      .replace(/ш/g, 'sh')
-      .replace(/щ/g, 'sch')
-      .replace(/з/g, 'z')
-      .replace(/х/g, 'h')
-      .replace(/ъ/g, '')
-      .replace(/ф/g, 'f')
-      .replace(/ы/g, 'y')
-      .replace(/в/g, 'v')
-      .replace(/а/g, 'a')
-      .replace(/п/g, 'p')
-      .replace(/р/g, 'r')
-      .replace(/о/g, 'o')
-      .replace(/л/g, 'l')
-      .replace(/д/g, 'd')
-      .replace(/ж/g, 'zh')
-      .replace(/э/g, 'e')
-      .replace(/я/g, 'ya')
-      .replace(/ч/g, 'ch')
-      .replace(/с/g, 's')
-      .replace(/м/g, 'm')
-      .replace(/и/g, 'i')
-      .replace(/т/g, 't')
-      .replace(/ь/g, '')
-      .replace(/б/g, 'b')
-      .replace(/ю/g, 'yu')
+      .replace(/[а-яё]/g, (letter) => CYRILLIC_TRANSLITERATION[letter] ?? '')
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
   }
