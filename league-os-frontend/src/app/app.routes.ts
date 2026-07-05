@@ -35,6 +35,14 @@ export const routes: Routes = [
             ),
     },
     {
+        path: 'register',
+        canActivate: [guestGuard],
+        loadComponent: () =>
+            import('./pages/register/ui/register-page/register-page.component').then(
+                (m) => m.RegisterPageComponent,
+            ),
+    },
+    {
         path: 'matches/:matchId/protocol',
         loadComponent: () =>
             import('./pages/match-view-protocol/ui/match-view-protocol-page/match-view-protocol-page.component').then(

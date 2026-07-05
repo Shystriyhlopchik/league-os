@@ -2,7 +2,12 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { Observable } from 'rxjs';
-import { AuthResponse, LoginDto } from '../model/auth.types';
+import {
+    AuthResponse,
+    ConfirmPlayerLinkDto,
+    LoginDto,
+    RegisterDto,
+} from '../model/auth.types';
 import { User } from '../model/user.types';
 
 @Injectable({
@@ -14,6 +19,20 @@ export class AuthApi {
 
     login(dto: LoginDto): Observable<AuthResponse> {
         return this.http.post<AuthResponse>(`${this.apiUrl}/auth/login`, dto);
+    }
+
+    register(dto: RegisterDto): Observable<AuthResponse> {
+        return this.http.post<AuthResponse>(
+            `${this.apiUrl}/auth/register`,
+            dto,
+        );
+    }
+
+    confirmPlayerLink(dto: ConfirmPlayerLinkDto): Observable<AuthResponse> {
+        return this.http.post<AuthResponse>(
+            `${this.apiUrl}/auth/player-link/confirm`,
+            dto,
+        );
     }
 
     me(): Observable<User> {

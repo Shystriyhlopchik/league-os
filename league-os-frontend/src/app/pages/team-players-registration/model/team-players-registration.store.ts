@@ -4,14 +4,21 @@ import { catchError, finalize, tap } from 'rxjs/operators';
 
 import { TeamsApi } from '../../../entities/team/api/teams.api';
 import { Team } from '../../../entities/team/model/team.types';
+import { SessionStore } from '../../../entities/user/model/session.store';
+import { UserRole } from '../../../entities/user/model/user-role.type';
 
 @Injectable()
 export class TeamPlayersRegistrationStore {
     private readonly teamsApi = inject(TeamsApi);
+    private readonly sessionStore = inject(SessionStore);
 
-    readonly teams = signal<Team[]>([]);
+    private readonly allTeams = signal<Team[]>([]);
     readonly isLoading = signal(false);
     readonly error = signal<string | null>(null);
+
+    readonly teams = computed(() => {
+        return this.filterTeamsForCurrentUser(this.allTeams());
+    });
 
     readonly isEmpty = computed(() => {
         return !this.isLoading() && this.teams().length === 0;
@@ -25,11 +32,11 @@ export class TeamPlayersRegistrationStore {
             .getTeams()
             .pipe(
                 tap((teams) => {
-                    this.teams.set(teams);
+                    this.allTeams.set(teams);
                 }),
                 catchError(() => {
                     this.error.set('Не удалось загрузить команды');
-                    this.teams.set([]);
+                    this.allTeams.set([]);
 
                     return EMPTY;
                 }),
@@ -38,5 +45,22 @@ export class TeamPlayersRegistrationStore {
                 }),
             )
             .subscribe();
+    }
+
+    private filterTeamsForCurrentUser(teams: Team[]): Team[] {
+        if (
+            this.sessionStore.hasAnyRole(
+                UserRole.Admin,
+                UserRole.SuperAdmin,
+            )
+        ) {
+            return teams;
+        }
+
+        const manageableTeamIds = new Set(
+            this.sessionStore.user()?.manageableTeamIds ?? [],
+        );
+
+        return teams.filter((team) => manageableTeamIds.has(team.id));
     }
 }
