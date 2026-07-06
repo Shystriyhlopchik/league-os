@@ -38,8 +38,9 @@
                 -:-
             } @else {
                 <strong class="match-card__score">
-                    {{ match().homeTeamScore }} :
-                    {{ match().awayTeamScore }}
+                    <span>{{ match().homeTeamScore }}</span>
+                    <span class="match-card__score-separator">:</span>
+                    <span>{{ match().awayTeamScore }}</span>
                 </strong>
             }
 
