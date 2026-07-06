@@ -35,7 +35,11 @@
 
         <div class="match-card__center">
             @if (match().status === "scheduled") {
-                -:-
+                <strong class="match-card__score">
+                    <span>-</span>
+                    <span class="match-card__score-separator">:</span>
+                    <span>-</span>
+                </strong>
             } @else {
                 <strong class="match-card__score">
                     <span>{{ match().homeTeamScore }}</span>
