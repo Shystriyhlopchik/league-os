@@ -32,10 +32,10 @@ export class MatchesSliderComponent {
 
     readonly initialSlideIndex = computed(() => {
         const index = this.matches().findIndex(
-            (match) => match.status !== 'finished',
+            (match) => match.status === 'scheduled',
         );
 
-        return index === -1 ? this.matches().length-1 : index;
+        return index === -1 ? this.matches().length-1 : index-1;
     });
 
     constructor() {
