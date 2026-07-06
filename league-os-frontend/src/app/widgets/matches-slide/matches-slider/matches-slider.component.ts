@@ -1,5 +1,6 @@
 import {
-    Component, computed,
+    Component,
+    computed,
     CUSTOM_ELEMENTS_SCHEMA,
     effect,
     ElementRef,
@@ -9,11 +10,11 @@ import {
 } from '@angular/core';
 import { MatchCardComponent } from '../../../entities/match/ui/match-card/match-card.component';
 import { MatchesSliderStore } from '../model/matches-slider.store';
-import {Router} from '@angular/router';
+import { Router } from '@angular/router';
 
 @Component({
     selector: 'app-matches-slider',
-    imports: [ MatchCardComponent],
+    imports: [MatchCardComponent],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
     providers: [MatchesSliderStore],
     templateUrl: './matches-slider.component.html',
@@ -35,7 +36,7 @@ export class MatchesSliderComponent {
             (match) => match.status === 'scheduled',
         );
 
-        return index === -1 ? this.matches().length-1 : index-1;
+        return index === -1 ? this.matches().length - 1 : index - 1;
     });
 
     constructor() {
