@@ -5,6 +5,7 @@ import { StatisticsPreviewComponent } from '../../widgets/statistics-preview/sta
 import {NewsPreviewComponent} from '../../widgets/news-preview/ui/news-preview/news-preview.component';
 import {AdvertisingBannerComponent} from '../../widgets/advertising-banner/advertising-banner.component';
 import {StatsSummaryComponent} from '../../widgets/stats-summary/stats-summary.component';
+import {TeamsMapComponent} from '../../widgets/teams-map/teams-map.component';
 
 @Component({
     selector: 'app-home',
@@ -15,6 +16,7 @@ import {StatsSummaryComponent} from '../../widgets/stats-summary/stats-summary.c
         NewsPreviewComponent,
         AdvertisingBannerComponent,
         StatsSummaryComponent,
+        TeamsMapComponent,
     ],
     templateUrl: './home.component.html',
     styleUrl: './home.component.scss',

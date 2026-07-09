@@ -1,0 +1,28 @@
+<div class="teams-map">
+    <img
+        class="teams-map__image"
+        src="/images/maps/sarabakasy_map.svg"
+        alt="Карта расположения команд"
+    />
+
+    <div class="teams-map__layer" aria-label="Команды на карте">
+        @for (team of teams; track team.id) {
+            <a
+                class="teams-map__team"
+                [routerLink]="['/teams', team.slug]"
+                [style.left.%]="team.x"
+                [style.top.%]="team.y"
+                [style.--pulse-delay]="team.delay + 's'"
+                [title]="team.name"
+                [attr.aria-label]="team.name"
+            >
+                <img
+                    class="teams-map__logo"
+                    [src]="team.logoUrl"
+                    [alt]="team.name"
+                    loading="lazy"
+                />
+            </a>
+        }
+    </div>
+</div>
