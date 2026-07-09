@@ -16,7 +16,7 @@ export const TEAMS_MAP_MARKERS: TeamsMapMarker[] = [
         logoUrl: 'images/teams/sytra_logo.svg',
         x: 45,
         y: 51,
-        delay: 0,
+        delay: 3,
     },
     {
         id: 2,
@@ -25,7 +25,7 @@ export const TEAMS_MAP_MARKERS: TeamsMapMarker[] = [
         logoUrl: 'images/teams/sarbaki.svg',
         x: 25,
         y: 57,
-        delay: 0.4,
+        delay: 1,
     },
     {
         id: 3,
@@ -33,8 +33,8 @@ export const TEAMS_MAP_MARKERS: TeamsMapMarker[] = [
         slug: 'poboi',
         logoUrl: 'images/teams/poboi.svg',
         x: 66,
-        y: 5,
-        delay: 0.8,
+        y: 10,
+        delay: 1,
     },
     {
         id: 4,
@@ -43,6 +43,6 @@ export const TEAMS_MAP_MARKERS: TeamsMapMarker[] = [
         logoUrl: 'images/teams/shorkino.png',
         x: 58,
         y: 72,
-        delay: 1.2,
+        delay: 2,
     },
 ];
