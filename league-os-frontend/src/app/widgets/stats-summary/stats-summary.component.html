@@ -1,13 +1,25 @@
 <section class="stats-summary" aria-label="Таблица статистики">
-    <app-section-title>Статистика сезона 2026</app-section-title>
-    <dl class="stats-summary__grid">
-        @for (item of items; track item.key) {
-            <div
-                class="stats-summary__tile stats-summary__tile--{{ item.modifier }}"
-            >
-                <dt class="stats-summary__label">{{ item.label }}</dt>
-                <dd class="stats-summary__value">{{ stats[item.key] }}</dd>
-            </div>
+    @if (store.isLoading()) {
+        <div class="stats-summary__state">
+            Загрузка статистики...
+        </div>
+    } @else if (store.error()) {
+        <div class="stats-summary__state stats-summary__state--error">
+            {{ store.error() }}
+        </div>
+    } @else {
+        @if (store.stats(); as stats) {
+            <app-section-title>{{ title() }}</app-section-title>
+            <dl class="stats-summary__grid">
+                @for (item of items; track item.key) {
+                    <div
+                        class="stats-summary__tile stats-summary__tile--{{ item.modifier }}"
+                    >
+                        <dt class="stats-summary__label">{{ item.label }}</dt>
+                        <dd class="stats-summary__value">{{ stats[item.key] }}</dd>
+                    </div>
+                }
+            </dl>
         }
-    </dl>
+    }
 </section>

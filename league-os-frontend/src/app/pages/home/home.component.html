@@ -7,19 +7,7 @@
         <h2>статистика</h2>
         <div class="home__statistics">
             <app-statistics-preview />
-            <app-stats-summary
-                [stats]="{
-                played: 8,
-                wins: 16,
-                draws: 3,
-                remaining: 3,
-                penalties: 10,
-                assists: 30,
-                goals: 32,
-                yellowCards: 2,
-                redCards: 2,
-            }"
-            />
+            <app-stats-summary [tournamentId]="1" />
         </div>
         <app-teams-map></app-teams-map>
 <!--        <app-teams-showcase />-->

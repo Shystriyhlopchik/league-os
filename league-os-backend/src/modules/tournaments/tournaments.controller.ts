@@ -9,4 +9,11 @@ export class TournamentsController {
     getBySeason(@Param('seasonId', ParseIntPipe) seasonId: number) {
         return this.tournamentsService.findBySeason(seasonId);
     }
+
+    @Get(':tournamentId/stats-summary')
+    getStatsSummary(
+        @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    ) {
+        return this.tournamentsService.getStatsSummary(tournamentId);
+    }
 }
