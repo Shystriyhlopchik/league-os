@@ -13,7 +13,6 @@ export class NewsPreviewComponent {
     private readonly store = inject(NewsPreviewStore);
     readonly variant = input<'preview' | 'page'>('preview');
 
-    readonly title = input('Новости');
     readonly limit = input(5);
 
     readonly news = this.store.news;
