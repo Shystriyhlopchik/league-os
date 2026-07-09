@@ -76,4 +76,40 @@ export class TeamPlayersDetailStore {
             )
             .subscribe();
     }
+
+    updatePlayer(
+        teamId: number,
+        teamPlayerId: number,
+        dto: CreateTeamPlayerDto,
+        onSuccess?: () => void,
+    ): void {
+        this.isCreating.set(true);
+        this.createError.set(null);
+
+        this.teamPlayersApi
+            .update(teamId, teamPlayerId, dto)
+            .pipe(
+                tap((updatedPlayer) => {
+                    this.players.update((players) =>
+                        players.map((player) =>
+                            player.id === updatedPlayer.id ? updatedPlayer : player,
+                        ),
+                    );
+                    onSuccess?.();
+                }),
+                catchError((error) => {
+                    const message =
+                        error?.error?.message ||
+                        'Не удалось сохранить изменения игрока';
+
+                    this.createError.set(message);
+
+                    return EMPTY;
+                }),
+                finalize(() => {
+                    this.isCreating.set(false);
+                }),
+            )
+            .subscribe();
+    }
 }

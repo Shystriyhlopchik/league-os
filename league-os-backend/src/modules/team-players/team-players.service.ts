@@ -10,9 +10,12 @@ import { Repository } from 'typeorm';
 import { TeamEntity } from '../teams/entities/team.entity';
 import { PlayerEntity } from '../players/entities/player.entity';
 import { CreateTeamPlayerDto } from './dto/create-team-player.dto';
+import { UpdateTeamPlayerDto } from './dto/update-team-player.dto';
 import { TeamPlayerEntity } from './entities/team-players.entity';
 import { UsersService } from '../users/users.service';
 import { RoleCode } from '../users/enums/role-code.enum';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 const TEAM_NOT_FOUND_MESSAGE = 'Команда не найдена';
 const DUPLICATE_SHIRT_NUMBER_MESSAGE =
@@ -91,12 +94,13 @@ export class TeamPlayersService {
     teamId: number,
     dto: CreateTeamPlayerDto,
     currentUserId: number,
+    photo?: { buffer: Buffer },
   ): Promise<TeamPlayerEntity> {
     await this.ensureTeamExists(teamId);
     await this.ensureCanManageTeam(teamId, currentUserId);
     await this.ensureShirtNumberAvailable(teamId, dto.shirtNumber);
 
-    const savedPlayer = await this.createPlayer(dto);
+    const savedPlayer = await this.createPlayer(dto, photo);
     const savedTeamPlayer = await this.createTeamPlayer(
       teamId,
       savedPlayer.id,
@@ -104,6 +108,53 @@ export class TeamPlayersService {
     );
 
     return this.findTeamPlayerWithPlayer(savedTeamPlayer.id);
+  }
+
+  async updateForTeam(
+    teamId: number,
+    teamPlayerId: number,
+    dto: UpdateTeamPlayerDto,
+    currentUserId: number,
+    photo?: { buffer: Buffer },
+  ): Promise<TeamPlayerEntity> {
+    await this.ensureTeamExists(teamId);
+    await this.ensureCanManageTeam(teamId, currentUserId);
+
+    const teamPlayer = await this.teamPlayersRepository.findOne({
+      where: { id: teamPlayerId, teamId },
+      relations: { player: true },
+    });
+
+    if (!teamPlayer) {
+      throw new NotFoundException('Игрок команды не найден');
+    }
+
+    await this.ensureShirtNumberAvailable(
+      teamId,
+      dto.shirtNumber,
+      teamPlayerId,
+    );
+
+    const player = teamPlayer.player;
+
+    if (dto.firstName !== undefined) player.firstName = dto.firstName.trim();
+    if (dto.lastName !== undefined) player.lastName = dto.lastName.trim();
+    if (dto.middleName !== undefined) {
+      player.middleName = dto.middleName?.trim() || undefined;
+    }
+    if (dto.birthDate !== undefined) player.birthDate = dto.birthDate;
+    if (dto.preferredFoot !== undefined) player.preferredFoot = dto.preferredFoot;
+    if (dto.position !== undefined) player.position = dto.position;
+    if (photo) player.photoUrl = await this.savePlayerPhoto(player.slug, photo.buffer);
+
+    if (dto.shirtNumber !== undefined) teamPlayer.shirtNumber = dto.shirtNumber;
+    if (dto.position !== undefined) teamPlayer.position = dto.position;
+    if (dto.isCaptain !== undefined) teamPlayer.isCaptain = dto.isCaptain;
+
+    await this.playersRepository.save(player);
+    await this.teamPlayersRepository.save(teamPlayer);
+
+    return this.findTeamPlayerWithPlayer(teamPlayer.id);
   }
 
   private async ensureCanManageTeam(
@@ -149,36 +200,66 @@ export class TeamPlayersService {
   private async ensureShirtNumberAvailable(
     teamId: number,
     shirtNumber?: number,
+    excludedTeamPlayerId?: number,
   ): Promise<void> {
     if (!shirtNumber) {
       return;
     }
 
-    const existingNumber = await this.teamPlayersRepository.findOne({
-      where: {
-        teamId,
-        shirtNumber,
-        isActive: true,
-      },
-    });
+    const query = this.teamPlayersRepository
+      .createQueryBuilder('team_player')
+      .where('team_player.team_id = :teamId', { teamId })
+      .andWhere('"team_player"."shirtNumber" = :shirtNumber', { shirtNumber })
+      .andWhere('"team_player"."isActive" = :isActive', { isActive: true });
+
+    if (excludedTeamPlayerId !== undefined) {
+      query.andWhere('team_player.id != :excludedTeamPlayerId', {
+        excludedTeamPlayerId,
+      });
+    }
+
+    const existingNumber = await query.getOne();
 
     if (existingNumber) {
       throw new BadRequestException(DUPLICATE_SHIRT_NUMBER_MESSAGE);
     }
   }
 
-  private async createPlayer(dto: CreateTeamPlayerDto): Promise<PlayerEntity> {
+  private async createPlayer(
+    dto: CreateTeamPlayerDto,
+    photo?: { buffer: Buffer },
+  ): Promise<PlayerEntity> {
     const slug = await this.generatePlayerSlug(dto.lastName, dto.firstName);
+    const photoUrl = photo ? await this.savePlayerPhoto(slug, photo.buffer) : undefined;
     const player = this.playersRepository.create({
       firstName: dto.firstName.trim(),
       lastName: dto.lastName.trim(),
       middleName: dto.middleName?.trim() || undefined,
       slug,
+      birthDate: dto.birthDate,
+      preferredFoot: dto.preferredFoot,
+      photoUrl,
       position: dto.position ?? undefined,
       isActive: true,
     });
 
     return this.playersRepository.save(player);
+  }
+
+  private async savePlayerPhoto(slug: string, buffer: Buffer): Promise<string> {
+    const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+
+    if (buffer.length < pngSignature.length || !buffer.subarray(0, 8).equals(pngSignature)) {
+      throw new BadRequestException('Фото игрока должно быть в формате PNG');
+    }
+
+    const directory = join(process.cwd(), 'uploads', 'players');
+    const fileName = `${slug}-${Date.now()}.png`;
+
+    await mkdir(directory, { recursive: true });
+    await writeFile(join(directory, fileName), buffer);
+
+    return `/uploads/players/${fileName}`;
   }
 
   private createTeamPlayer(

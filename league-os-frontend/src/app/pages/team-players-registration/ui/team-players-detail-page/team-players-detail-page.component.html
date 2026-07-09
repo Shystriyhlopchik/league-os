@@ -36,7 +36,7 @@
         >
             <div class="player-form__header">
                 <h2 class="player-form__title">
-                    Новый игрок
+                    {{ editingPlayer() ? 'Редактирование игрока' : 'Новый игрок' }}
                 </h2>
 
                 <button
@@ -49,6 +49,31 @@
             </div>
 
             <div class="player-form__grid">
+                <label class="player-form__photo-field">
+                    <span class="player-form__label">Фото игрока</span>
+                    <span class="player-form__photo-control">
+                        <span class="player-form__photo-button">Выбрать PNG</span>
+                        <span class="player-form__photo-name">
+                            {{ photoName() || 'Файл не выбран' }}
+                        </span>
+                    </span>
+                    <input
+                        class="player-form__file-input"
+                        type="file"
+                        accept="image/png,.png"
+                        (change)="onPhotoSelected($event)"
+                    />
+                    <span class="player-form__hint">
+                        Рекомендуем PNG без фона, вертикальное фото 1000 × 1500 px, до 5 МБ.
+                        @if (editingPlayer()?.player?.photoUrl) {
+                            Новое фото заменит текущее.
+                        }
+                    </span>
+                    @if (photoError()) {
+                        <span class="player-form__validation-error">{{ photoError() }}</span>
+                    }
+                </label>
+
                 <label class="player-form__field">
                     <span class="player-form__label">Фамилия *</span>
                     <input
@@ -89,6 +114,29 @@
                         max="99"
                         placeholder="10"
                     />
+                </label>
+
+                <label class="player-form__field">
+                    <span class="player-form__label">Дата рождения</span>
+                    <input
+                        class="player-form__input"
+                        type="date"
+                        formControlName="birthDate"
+                        [max]="today"
+                    />
+                </label>
+
+                <label class="player-form__field">
+                    <span class="player-form__label">Рабочая нога</span>
+                    <select
+                        class="player-form__input"
+                        formControlName="preferredFoot"
+                    >
+                        <option value="">Не указана</option>
+                        <option value="left">Левая</option>
+                        <option value="right">Правая</option>
+                        <option value="both">Обе</option>
+                    </select>
                 </label>
 
                 <label class="player-form__field">
@@ -134,7 +182,10 @@
                     type="submit"
                     [disabled]="store.isCreating()"
                 >
-                    {{ store.isCreating() ? 'Сохраняем...' : 'Сохранить игрока' }}
+                    {{ store.isCreating()
+                        ? 'Сохраняем...'
+                        : editingPlayer() ? 'Сохранить изменения' : 'Сохранить игрока'
+                    }}
                 </button>
             </div>
         </form>
@@ -156,9 +207,13 @@
         <div class="team-players-table">
             <div class="team-players-table__head">
                 <div>№</div>
+                <div>Фото</div>
                 <div>Игрок</div>
+                <div>Дата рождения</div>
+                <div>Рабочая нога</div>
                 <div>Позиция</div>
                 <div>Капитан</div>
+                <div>Действия</div>
             </div>
 
             @for (teamPlayer of store.players(); track teamPlayer.id) {
@@ -167,16 +222,49 @@
                         {{ teamPlayer.shirtNumber || '—' }}
                     </div>
 
+                    <div class="team-players-table__photo">
+                        @if (teamPlayer.player.photoUrl) {
+                            <img
+                                [src]="getPhotoUrl(teamPlayer.player.photoUrl)"
+                                [alt]="'Фото игрока ' + getPlayerFullName(teamPlayer)"
+                            />
+                        } @else {
+                            <span aria-label="Фото отсутствует">—</span>
+                        }
+                    </div>
+
                     <div class="team-players-table__name">
                         {{ getPlayerFullName(teamPlayer) }}
                     </div>
 
+                    <div class="team-players-table__birth-date">
+                        <span class="team-players-table__mobile-label">Дата рождения:</span>
+                        {{ formatBirthDate(teamPlayer.player.birthDate) }}
+                    </div>
+
+                    <div class="team-players-table__preferred-foot">
+                        <span class="team-players-table__mobile-label">Рабочая нога:</span>
+                        {{ getPreferredFootLabel(teamPlayer.player.preferredFoot) }}
+                    </div>
+
                     <div class="team-players-table__position">
+                        <span class="team-players-table__mobile-label">Позиция:</span>
                         {{ teamPlayer.position || teamPlayer.player.position || '—' }}
                     </div>
 
                     <div class="team-players-table__captain">
+                        <span class="team-players-table__mobile-label">Капитан:</span>
                         {{ teamPlayer.isCaptain ? 'Да' : 'Нет' }}
+                    </div>
+
+                    <div class="team-players-table__actions">
+                        <button
+                            class="team-players-table__edit-button"
+                            type="button"
+                            (click)="editPlayer(teamPlayer)"
+                        >
+                            Редактировать
+                        </button>
                     </div>
                 </div>
             }
