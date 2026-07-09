@@ -1,11 +1,11 @@
 <section class="statistics-preview">
-    <h2 class="statistics-preview__title">Статистика</h2>
+<!--    <app-competition-tabs-->
+<!--        [tournaments]="tournaments()"-->
+<!--        [selectedId]="selectedTournamentId()"-->
+<!--        (selected)="selectCompetition($event)"-->
+<!--    />-->
 
-    <app-competition-tabs
-        [tournaments]="tournaments()"
-        [selectedId]="selectedTournamentId()"
-        (selected)="selectCompetition($event)"
-    />
+    <app-section-title>Таблица</app-section-title>
 
     <app-standings-table [rows]="rows()" />
 

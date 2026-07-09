@@ -1,49 +1,89 @@
-.statistics-preview__table {
+:host {
+    display: block;
     width: 100%;
+}
+
+.standings-table {
+    width: 100%;
+    max-width: 765px;
+    overflow-x: auto;
+}
+
+.standings-table__table {
+    width: 100%;
+    min-width: 320px;
+    table-layout: fixed;
     border-collapse: separate;
-    border-spacing: 0 4px;
+    border-spacing: 0 6px;
+
     font-family: Oswald, "Inter", sans-serif;
-
-    th {
-        padding: 0 10px 2px;
-        text-align: center;
-        text-transform: uppercase;
-
-        font-size: 16px;
-        line-height: 1;
-        font-weight: 400;
-        color: #f5f5f5;
-    }
-
-    td {
-        height: 48px;
-        padding: 0 10px;
-        background: #30363a;
-
-        font-size: 20px;
-        line-height: 1;
-
-        text-align: center;
-        vertical-align: middle;
-    }
-
-    tbody {
-        font-size: 20px;
-    }
+    color: #f5f5f5;
 }
 
-.statistics-preview__team-head {
-    text-align: left !important;
+.standings-table__col--place {
+    width: clamp(42px, 8vw, 72px);
 }
 
-.statistics-preview__cell--numeric {
+.standings-table__col--status {
+    width: clamp(34px, 6vw, 64px);
+}
+
+.standings-table__col--team {
+    width: auto;
+}
+
+.standings-table__col--played,
+.standings-table__col--points {
+    width: clamp(42px, 7vw, 72px);
+}
+
+.standings-table__head {
+    padding: 0 clamp(10px, 2vw, 28px) 4px;
+
+    color: #f5f5f5;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1;
+    text-align: left;
+    text-transform: uppercase;
+}
+
+.standings-table__head--played,
+.standings-table__head--points {
+    text-align: right;
+}
+
+.standings-table__cell {
+    height: 48px;
+    padding: 0 clamp(10px, 2vw, 28px);
+
+    background: #30363a;
+    font-size: 20px;
+    line-height: 1;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.standings-table__cell--place,
+.standings-table__cell--played,
+.standings-table__cell--points {
     font-family: "Bebas Neue", sans-serif;
 }
 
-.statistics-preview__status {
-    display: block;
+.standings-table__cell--played,
+.standings-table__cell--points {
+    text-align: right;
+}
+
+.standings-table__cell--status {
+    padding-inline: 0;
+}
+
+.standings-table__status {
     width: 9px;
     height: 9px;
+    margin: 0 auto;
+    display: block;
     border-radius: 50%;
 
     &--green {
@@ -59,21 +99,27 @@
     }
 }
 
-.statistics-preview__team {
+.standings-table__team {
+    min-width: 0;
     display: flex;
     align-items: center;
-    gap: 12px;
-
-    text-align: left !important;
-
-    span {
-        font-weight: 400;
-    }
+    gap: clamp(16px, 3vw, 40px);
 }
 
-.statistics-preview__team-logo {
-    width: 30px;
-    height: 30px;
-    object-fit: contain;
+.standings-table__team-logo {
+    width: 32px;
+    height: 32px;
     flex: 0 0 auto;
+    object-fit: contain;
+}
+
+.standings-table__team-name {
+    min-width: 0;
+    overflow: hidden;
+
+    font-weight: 400;
+    line-height: 1.15;
+    font-size: 20px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }

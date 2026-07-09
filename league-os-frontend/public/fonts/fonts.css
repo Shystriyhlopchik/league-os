@@ -74,3 +74,36 @@
     font-style: normal;
     font-display: swap;
 }
+
+@font-face {
+    src:
+        local("Russo-One"),
+        local("Russo One"),
+        url(./RussoOne-Regular.ttf) format("truetype");
+    font-family: "Russo One";
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    src:
+        local("Play-Bold"),
+        local("Play Bold"),
+        url(./Play-Bold.ttf) format("truetype");
+    font-family: "Play";
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    src:
+        local("Play-Regular"),
+        local("Play Regular"),
+        url(./Play-Regular.ttf) format("truetype");
+    font-family: "Play";
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}

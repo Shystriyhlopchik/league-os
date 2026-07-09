@@ -9,11 +9,17 @@ import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { of, switchMap, tap } from 'rxjs';
 import {TournamentsApi} from '../../entities/tournaments/api/tournaments.api';
 import {Tournament} from '../../entities/tournaments/model/tournaments.model';
+import {SectionTitleComponent} from '../../shared/ui/section-title/section-title.component';
 
 @Component({
     selector: 'app-statistics-preview',
     standalone: true,
-    imports: [RouterLink, StandingsTableComponent, CompetitionTabsComponent],
+    imports: [
+        RouterLink,
+        StandingsTableComponent,
+        CompetitionTabsComponent,
+        SectionTitleComponent,
+    ],
     templateUrl: './statistics-preview.component.html',
     styleUrl: './statistics-preview.component.scss',
 })
@@ -29,14 +35,14 @@ export class StatisticsPreviewComponent {
         this.tournamentApi.getTournamentsSeason(1).pipe(
             tap((tournaments) => {
                 if (tournaments.length) {
-                    this.selectedTournamentId.set(tournaments[0].id)
+                    this.selectedTournamentId.set(tournaments[0].id);
                 }
-            })
+            }),
         ),
         {
             initialValue: [] as Tournament[],
         },
-    )
+    );
 
     readonly rows = toSignal(
         toObservable(this.selectedTournamentId).pipe(

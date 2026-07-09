@@ -9,7 +9,10 @@
     box-sizing: border-box;
 }
 
-/* Каждый слайд занимает 60% ширины — то есть 1 полный слайд + 20% следующего */
 swiper-slide {
-    width: 90% !important;
+    width: clamp(288px, calc(100vw - 32px), 355px) !important;
+}
+
+swiper-container {
+    padding-inline-start: 16px;
 }

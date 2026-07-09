@@ -1,4 +1,15 @@
 <app-matches-slider [seasonId]="1" />
-<app-news-preview [limit]="3" />
-<app-statistics-preview />
-<app-teams-showcase />
+<div class="home__body">
+    <div class="home__section">
+        <app-advertising-banner />
+        <h2>новости</h2>
+        <app-news-preview [limit]="3" />
+        <h2>статистика</h2>
+        <div class="home__statistics">
+            <app-statistics-preview />
+            <app-stats-summary [tournamentId]="1" />
+        </div>
+        <app-teams-map></app-teams-map>
+<!--        <app-teams-showcase />-->
+    </div>
+</div>

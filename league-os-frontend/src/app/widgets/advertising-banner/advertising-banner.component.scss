@@ -1,0 +1,94 @@
+:host {
+    display: block;
+    background-color: #16191A;
+    padding-block-start: 16px;
+    padding-block-end: 16px;
+}
+
+.advertising-banner {
+    --advertising-banner-bg: #080b0a;
+    --advertising-banner-border: rgba(46, 204, 113, 0.32);
+    --advertising-banner-focus: #2ecc71;
+    --advertising-banner-text: #ffffff;
+
+    width: 100%;
+}
+
+.advertising-banner__link {
+    width: calc(100% - 32px);
+    max-width: 1424px;
+    height: 30px;
+    margin: 0 auto;
+    padding: 0 8px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    box-sizing: border-box;
+    overflow: hidden;
+    color: var(--advertising-banner-text);
+    text-decoration: none;
+    background-color: var(--advertising-banner-bg);
+    background-image:
+        radial-gradient(circle at 28% 48%, rgba(46, 204, 113, 0.34), transparent 24%),
+        linear-gradient(118deg, transparent 0 22%, rgba(46, 204, 113, 0.2) 22% 23%, transparent 23% 100%),
+        linear-gradient(64deg, transparent 0 56%, rgba(255, 217, 26, 0.18) 56% 57%, transparent 57% 100%),
+        url("/images/advertising-banner-mobile.png");
+    background-position: center;
+    background-size: cover;
+    border: 1px solid var(--advertising-banner-border);
+    transition:
+        border-color 0.2s ease,
+        opacity 0.2s ease,
+        filter 0.2s ease;
+
+    &:hover {
+        filter: brightness(1.08);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--advertising-banner-focus);
+        outline-offset: 4px;
+    }
+}
+
+.advertising-banner__text {
+    display: block;
+    color: inherit;
+    font-family: "Russo One", "Arial Narrow", Arial, sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: 0;
+    text-align: center;
+    text-transform: lowercase;
+}
+
+@media (min-width: 768px) {
+    :host {
+        padding-block-start: 16px;
+        padding-block-end: 16px;
+    }
+
+    .advertising-banner {
+        padding: 0;
+    }
+
+    .advertising-banner__link {
+        width: 100%;
+        height: 68px;
+        padding: 18px 32px;
+        background-image:
+            radial-gradient(circle at 36% 50%, rgba(46, 204, 113, 0.34), transparent 22%),
+            linear-gradient(110deg, transparent 0 28%, rgba(46, 204, 113, 0.22) 28% 29%, transparent 29% 100%),
+            linear-gradient(68deg, transparent 0 58%, rgba(255, 217, 26, 0.16) 58% 59%, transparent 59% 100%),
+            url("/images/advertising-banner-desktop.png");
+        border-right: 0;
+        border-left: 0;
+    }
+
+    .advertising-banner__text {
+        font-size: clamp(12px, 3vw, 24px);
+    }
+}

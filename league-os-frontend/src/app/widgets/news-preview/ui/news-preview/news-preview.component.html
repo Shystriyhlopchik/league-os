@@ -13,12 +13,30 @@
     } @else if (isEmpty()) {
         <div class="news-preview__empty">Новостей пока нет.</div>
     } @else {
-        <div class="news-preview__grid">
-            @for (item of news(); track item.id; let first = $first) {
+        <div
+            class="news-preview__grid"
+            [class.news-preview__grid--single]="news().length === 1"
+        >
+            @if (news()[0]; as featuredNews) {
                 <app-news-card
-                    [news]="item"
-                    [variant]="first ? 'large' : 'small'"
+                    class="news-preview__featured"
+                    [news]="featuredNews"
+                    variant="large"
                 />
+            }
+
+            @if (news().length > 1) {
+                <div class="news-preview__side-list">
+                    @for (item of news(); track item.id; let first = $first) {
+                        @if (!first) {
+                            <app-news-card
+                                class="news-preview__side-item"
+                                [news]="item"
+                                variant="small"
+                            />
+                        }
+                    }
+                </div>
             }
         </div>
 

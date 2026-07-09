@@ -1,0 +1,22 @@
+.section-title {
+    position: relative;
+    margin: 0;
+    padding-left: 8px;
+
+    font-family: "Oswald", sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-transform: uppercase;
+    color: #ffffff;
+
+    &::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 4px;
+        height: 100%;
+        background: #27AE60;
+    }
+}

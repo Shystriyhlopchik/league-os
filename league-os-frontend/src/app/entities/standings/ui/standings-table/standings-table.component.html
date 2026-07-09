@@ -1,54 +1,78 @@
-<table class="statistics-preview__table">
-    <thead>
-        <tr>
-            <th>№</th>
-            <th></th>
-            <th class="statistics-preview__team-head">команда</th>
-            <th>И</th>
-            <th>О</th>
-        </tr>
-    </thead>
+<div class="standings-table">
+    <table class="standings-table__table">
+        <colgroup>
+            <col class="standings-table__col standings-table__col--place" />
+            <col class="standings-table__col standings-table__col--status" />
+            <col class="standings-table__col standings-table__col--team" />
+            <col class="standings-table__col standings-table__col--played" />
+            <col class="standings-table__col standings-table__col--points" />
+        </colgroup>
 
-    <tbody>
-        @for (
-            team of rows();
-            track team.team.id;
-            let index = $index;
-            let isFirst = $first;
-            let isLast = $last
-        ) {
+        <thead>
             <tr>
-                <td class="statistics-preview__cell--numeric">
-                    {{ index + 1 }}
-                </td>
-                <td>
-                    <span
-                        class="statistics-preview__status"
-                        [class.statistics-preview__status--green]="isFirst"
-                        [class.statistics-preview__status--white]="
-                            !isFirst && !isLast
-                        "
-                        [class.statistics-preview__status--yellow]="isLast"
-                    ></span>
-                </td>
-
-                <td class="statistics-preview__team">
-                    <img
-                        class="statistics-preview__team-logo"
-                        [src]="team.team.logoUrl"
-                        [alt]="team.team.name"
-                    />
-
-                    <span>{{ team.team.name }}</span>
-                </td>
-
-                <td class="statistics-preview__cell--numeric">
-                    {{ team.played }}
-                </td>
-                <td class="statistics-preview__cell--numeric">
-                    {{ team.points }}
-                </td>
+                <th
+                    class="standings-table__head standings-table__head--place"
+                    colspan="2"
+                >
+                    №
+                </th>
+                <th class="standings-table__head standings-table__head--team">
+                    команда
+                </th>
+                <th class="standings-table__head standings-table__head--played">
+                    И
+                </th>
+                <th class="standings-table__head standings-table__head--points">
+                    О
+                </th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+
+        <tbody>
+            @for (
+                team of rows();
+                track team.team.id;
+                let index = $index;
+                let isFirst = $first;
+                let isLast = $last
+            ) {
+                <tr>
+                    <td class="standings-table__cell standings-table__cell--place">
+                        {{ index + 1 }}
+                    </td>
+                    <td class="standings-table__cell standings-table__cell--status">
+                        <span
+                            class="standings-table__status"
+                            [class.standings-table__status--green]="isFirst"
+                            [class.standings-table__status--white]="
+                                !isFirst && !isLast
+                            "
+                            [class.standings-table__status--yellow]="isLast"
+                        ></span>
+                    </td>
+
+                    <td class="standings-table__cell standings-table__cell--team">
+                        <div class="standings-table__team">
+                            <img
+                                class="standings-table__team-logo"
+                                [src]="team.team.logoUrl"
+                                [alt]="team.team.name"
+                            />
+
+                            <span class="standings-table__team-name">
+                                {{ team.team.name }}
+                            </span>
+                        </div>
+                    </td>
+
+                    <td class="standings-table__cell standings-table__cell--played">
+                        {{ team.played }}
+                    </td>
+                    <td class="standings-table__cell standings-table__cell--points">
+                        {{ team.points }}
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

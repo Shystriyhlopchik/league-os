@@ -1,14 +1,26 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { TournamentEntity } from './entities/tournaments.entity';
-import { Repository } from 'typeorm';
+import { In, IsNull, Not, Repository } from 'typeorm';
+
 import { BaseCrudService } from '../../common/base/base-crud.service';
+import { MatchEventEntity } from '../match-events/entities/match-event.entity';
+import { MatchEventType } from '../match-events/enums/match-event-type.enum';
+import { MatchEntity } from '../matches/entities/match.entity';
+import { MatchStatus } from '../matches/enums/match-status.enum';
+import { TournamentStatsSummaryDto } from './dto/tournament-stats-summary.dto';
+import { TournamentEntity } from './entities/tournaments.entity';
 
 @Injectable()
 export class TournamentsService extends BaseCrudService<TournamentEntity> {
   constructor(
     @InjectRepository(TournamentEntity)
     private readonly tournamentsRepository: Repository<TournamentEntity>,
+
+    @InjectRepository(MatchEntity)
+    private readonly matchesRepository: Repository<MatchEntity>,
+
+    @InjectRepository(MatchEventEntity)
+    private readonly matchEventsRepository: Repository<MatchEventEntity>,
   ) {
     super(tournamentsRepository, 'Турнир');
   }
@@ -57,5 +69,148 @@ export class TournamentsService extends BaseCrudService<TournamentEntity> {
         colorPrimary: tournament.season.competition.colorPrimary,
       },
     }));
+  }
+
+  async getStatsSummary(tournamentId: number): Promise<TournamentStatsSummaryDto> {
+    const tournament = await this.tournamentsRepository.findOne({
+      where: {
+        id: tournamentId,
+      },
+      relations: {
+        season: true,
+      },
+    });
+
+    if (!tournament) {
+      throw new NotFoundException('Tournament not found');
+    }
+
+    const emptyStats = (): TournamentStatsSummaryDto => ({
+      tournamentId,
+      seasonId: tournament.seasonId,
+      competitionId: tournament.season.competitionId,
+      year: tournament.season.year ?? null,
+      played: 0,
+      wins: 0,
+      draws: 0,
+      remaining: 0,
+      penalties: 0,
+      assists: 0,
+      goals: 0,
+      yellowCards: 0,
+      redCards: 0,
+    });
+
+    const matches = await this.matchesRepository.find({
+      where: {
+        tournamentId,
+      },
+      select: {
+        id: true,
+        status: true,
+        homeScore: true,
+        awayScore: true,
+      },
+    });
+
+    const matchIds = matches.map((match) => match.id);
+    const playedMatches = matches.filter(
+      (match) => match.status === MatchStatus.FINISHED,
+    );
+
+    const played = playedMatches.length;
+    const wins = playedMatches.filter(
+      (match) => match.homeScore !== match.awayScore,
+    ).length;
+    const draws = playedMatches.filter(
+      (match) => match.homeScore === match.awayScore,
+    ).length;
+    const remaining = matches.filter((match) =>
+      [MatchStatus.SCHEDULED, MatchStatus.LIVE].includes(match.status),
+    ).length;
+
+    if (matchIds.length === 0) {
+      return {
+        ...emptyStats(),
+        played,
+        wins,
+        draws,
+        remaining,
+      };
+    }
+
+    const [penalties, assists, yellowCards, redCards, goals] =
+      await Promise.all([
+        this.matchEventsRepository.count({
+          where: {
+            matchId: In(matchIds),
+            isCancelled: false,
+            eventType: In([
+              MatchEventType.PENALTY_GOAL,
+              MatchEventType.PENALTY_MISSED,
+            ]),
+          },
+        }),
+        this.matchEventsRepository.count({
+          where: {
+            matchId: In(matchIds),
+            isCancelled: false,
+            assistPlayerId: Not(IsNull()),
+          },
+        }),
+        this.matchEventsRepository.count({
+          where: {
+            matchId: In(matchIds),
+            isCancelled: false,
+            eventType: In([
+              MatchEventType.YELLOW_CARD,
+              MatchEventType.SECOND_YELLOW_CARD,
+            ]),
+          },
+        }),
+        this.matchEventsRepository.count({
+          where: {
+            matchId: In(matchIds),
+            isCancelled: false,
+            eventType: MatchEventType.RED_CARD,
+          },
+        }),
+        this.getGoalsCount(matchIds),
+      ]);
+
+    return {
+      tournamentId,
+      seasonId: tournament.seasonId,
+      competitionId: tournament.season.competitionId,
+      year: tournament.season.year ?? null,
+      played,
+      wins,
+      draws,
+      remaining,
+      penalties,
+      assists,
+      goals,
+      yellowCards,
+      redCards,
+    };
+  }
+
+  private async getGoalsCount(matchIds: number[]): Promise<number> {
+    const goalEvents = await this.matchEventsRepository.find({
+      where: {
+        matchId: In(matchIds),
+        isCancelled: false,
+        eventType: In([
+          MatchEventType.GOAL,
+          MatchEventType.OWN_GOAL,
+          MatchEventType.PENALTY_GOAL,
+        ]),
+      },
+      select: {
+        goalValue: true,
+      },
+    });
+
+    return goalEvents.reduce((sum, event) => sum + event.goalValue, 0);
   }
 }

@@ -1,37 +1,147 @@
 <header class="header">
-    <a class="header__logo" routerLink="/" aria-label="Арман Лига">
-        <img src="images/Arman_liga.png" alt="Арман Лига" />
-    </a>
-
-    <div class="header__menu-buttons">
-        <a
-            href=""
-            class="header__menu-authorization header__menu-button"
-            [routerLink]="'/login'"
-        >
-            <img src="images/icons/authorization.svg" alt="Авторизация" />
+    <div class="header__inner">
+        <a class="header__logo" routerLink="/" aria-label="Арман Лига">
+            <img
+                class="header__logo-image"
+                src="images/Arman_liga.png"
+                alt="Арман Лига"
+            />
         </a>
-        <button
-            class="header__menu-button"
-            type="button"
-            [attr.aria-label]="menuIconLabel()"
-            [attr.aria-expanded]="isMenuOpen()"
-            aria-controls="header-menu"
-            (click)="toggleMenu()"
+
+        <nav
+            class="header__nav header__nav--desktop"
+            aria-label="Основная навигация"
         >
-            <span></span>
-            <span></span>
-            <span></span>
-        </button>
+            <a
+                class="header__nav-link"
+                routerLink="/matches"
+                (click)="closeMenu()"
+            >
+                Матчи
+            </a>
+            <a
+                class="header__nav-link"
+                routerLink="/news"
+                (click)="closeMenu()"
+            >
+                Новости
+            </a>
+            <a class="header__nav-link" routerLink="/" (click)="closeMenu()">
+                О лиге
+            </a>
+            <a class="header__nav-link" routerLink="/" (click)="closeMenu()">
+                Регламент соревнований
+            </a>
+        </nav>
+
+        <div class="header__actions">
+            <div class="header__socials" aria-label="Социальные сети">
+                <a
+                    class="header__social-link"
+                    href="https://vk.com/arman_football.league"
+                    aria-label="ВКонтакте"
+                >
+                    <img
+                        class="header__social-icon"
+                        src="images/VK.png"
+                        alt=""
+                    />
+                </a>
+                <a
+                    class="header__social-link"
+                    href="https://t.me/ArmanLiga"
+                    aria-label="Telegram"
+                >
+                    <img
+                        class="header__social-icon"
+                        src="images/telegram.png"
+                        alt=""
+                    />
+                </a>
+                <a
+                    class="header__social-link"
+                    href="https://max.ru/join/2pBzTFTbrv1mc6L4flPIxiKCrurt3P3SUVxCU7BeIfc"
+                    aria-label="Instagram"
+                >
+                    <img
+                        class="header__social-icon header__social-icon--sm"
+                        src="images/Max_logo_black.svg"
+                        alt=""
+                    />
+                </a>
+            </div>
+
+            <a
+                class="header__action header__action--authorization"
+                [routerLink]="'/login'"
+                aria-label="Авторизация"
+            >
+                <img
+                    class="header__authorization-icon"
+                    src="images/icons/authorization.svg"
+                    alt=""
+                />
+            </a>
+
+            <button
+                class="header__action header__action--menu"
+                type="button"
+                [attr.aria-label]="menuIconLabel()"
+                [attr.aria-expanded]="isMenuOpen()"
+                aria-controls="header-menu"
+                (click)="toggleMenu()"
+            >
+                <span class="header__menu-line"></span>
+                <span class="header__menu-line"></span>
+                <span class="header__menu-line"></span>
+            </button>
+        </div>
     </div>
 
     @if (isMenuOpen()) {
-        <nav id="header-menu" class="header__menu">
-            <a routerLink="/" (click)="closeMenu()">Главная</a>
-            <a routerLink="/tournaments" (click)="closeMenu()">Турниры</a>
-            <a routerLink="/teams" (click)="closeMenu()">Команды</a>
-            <a routerLink="/matches" (click)="closeMenu()">Матчи</a>
-            <a routerLink="/login" (click)="closeMenu()">Войти</a>
+        <nav
+            id="header-menu"
+            class="header__nav header__nav--mobile"
+            aria-label="Мобильная навигация"
+        >
+            <a class="header__nav-link" routerLink="/" (click)="closeMenu()"
+                >Главная</a
+            >
+            <a
+                class="header__nav-link"
+                routerLink="/tournaments"
+                (click)="closeMenu()"
+            >
+                Турниры
+            </a>
+            <a
+                class="header__nav-link"
+                routerLink="/teams"
+                (click)="closeMenu()"
+            >
+                Команды
+            </a>
+            <a
+                class="header__nav-link"
+                routerLink="/matches"
+                (click)="closeMenu()"
+            >
+                Матчи
+            </a>
+            <a
+                class="header__nav-link"
+                routerLink="/news"
+                (click)="closeMenu()"
+            >
+                Новости
+            </a>
+            <a
+                class="header__nav-link"
+                routerLink="/login"
+                (click)="closeMenu()"
+            >
+                Войти
+            </a>
         </nav>
     }
 </header>
