@@ -2,10 +2,6 @@
     class="news-preview"
     [class.news-preview--page]="variant() === 'page'"
 >
-    <h1 class="news-preview__title">
-        {{ title() }}
-    </h1>
-
     @if (isLoading()) {
         <div class="news-preview__empty">Загрузка новостей...</div>
     } @else if (error()) {
