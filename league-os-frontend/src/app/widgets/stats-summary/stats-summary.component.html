@@ -1,0 +1,13 @@
+<section class="stats-summary" aria-label="Таблица статистики">
+    <app-section-title>Статистика сезона 2026</app-section-title>
+    <dl class="stats-summary__grid">
+        @for (item of items; track item.key) {
+            <div
+                class="stats-summary__tile stats-summary__tile--{{ item.modifier }}"
+            >
+                <dt class="stats-summary__label">{{ item.label }}</dt>
+                <dd class="stats-summary__value">{{ stats[item.key] }}</dd>
+            </div>
+        }
+    </dl>
+</section>

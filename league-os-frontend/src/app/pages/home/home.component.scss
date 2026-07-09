@@ -2,3 +2,36 @@
     display: flex;
     flex-direction: column;
 }
+
+.home__body {
+    width: 100%;
+    background-color: #16191A;
+}
+
+.home__section {
+    max-width: 1200px;
+    margin: 0 auto;
+
+    h2 {
+        font-family: Play, Arial, sans-serif;
+        font-weight: 700;
+        font-size: 36px;
+        line-height: 1.2;
+        color: #27AE60;
+        margin: 32px 16px 0 16px;
+        text-transform: uppercase;
+    }
+}
+
+.home__statistics {
+    display: flex;
+    gap: 40px;
+    padding: 16px;
+}
+
+@media (max-width: 540px) {
+    .home__statistics {
+        flex-direction: column;
+    }
+}
+

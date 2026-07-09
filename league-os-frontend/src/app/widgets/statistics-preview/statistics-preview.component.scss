@@ -3,9 +3,11 @@
 }
 
 .statistics-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: end;
+
     width: 100%;
-    min-height: 506px;
-    padding: 34px 16px 24px;
     box-sizing: border-box;
 
     background: #16191a;
@@ -13,28 +15,18 @@
     font-family: "Oswald", Arial, sans-serif;
 }
 
-.statistics-preview__title {
-    margin: 0 0 24px;
-
-    font-family: "Montserrat", Arial, sans-serif;
-    font-size: 24px;
-    line-height: 1.26;
-    font-weight: 700;
-    text-transform: uppercase;
+app-section-title {
+    align-self: flex-start;
+    margin-block-end: 16px;
 }
 
 .statistics-preview__link {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 6px;
-
     margin-top: 14px;
 
     font-size: 20px;
     line-height: 1.2;
     font-weight: 400;
-    color: #6ee7a8;
+    color: #12d47a;
     text-decoration: none;
 
     span {

@@ -1,0 +1,135 @@
+:host {
+    display: block;
+    width: 100%;
+    max-width: 485px;
+}
+
+.stats-summary {
+    width: 100%;
+    max-width: 485px;
+    font-family: "Oswald", sans-serif;
+    font-size: 16px;
+    color: #f5f5f5;
+
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.stats-summary__grid {
+    width: 100%;
+    margin: 0;
+
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: minmax(44px, auto);
+    gap: 6px;
+}
+
+.stats-summary__tile {
+    min-width: 0;
+    min-height: 44px;
+    padding: 8px 10px;
+
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+
+    box-sizing: border-box;
+    background: #30363a;
+    border-radius: 2px;
+}
+
+.stats-summary__tile--played,
+.stats-summary__tile--yellow-cards,
+.stats-summary__tile--red-cards {
+    grid-column: 1 / -1;
+}
+
+.stats-summary__tile--remaining {
+    align-items: start;
+}
+
+.stats-summary__label {
+    min-width: 0;
+    margin: 0;
+
+    color: #ffffff;
+    font-weight: 400;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+}
+
+.stats-summary__value {
+    margin: 0;
+
+    color: #12d47a;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1;
+    text-align: right;
+}
+
+@media (min-width: 768px) {
+    .stats-summary {
+        font-size: 20px;
+    }
+
+    .stats-summary__grid {
+        grid-template-columns: repeat(8, minmax(0, 1fr));
+        grid-template-areas:
+            "played played played played played played played played"
+            "wins wins draws draws remaining remaining remaining remaining"
+            "penalties penalties penalties assists assists assists goals goals"
+            "yellow yellow yellow yellow red red red red";
+        grid-auto-rows: minmax(52px, auto);
+        gap: 8px;
+    }
+
+    .stats-summary__tile {
+        min-height: 52px;
+        padding: 10px 12px;
+    }
+
+    .stats-summary__tile--played {
+        grid-area: played;
+    }
+
+    .stats-summary__tile--wins {
+        grid-area: wins;
+    }
+
+    .stats-summary__tile--draws {
+        grid-area: draws;
+    }
+
+    .stats-summary__tile--remaining {
+        grid-area: remaining;
+        align-content: space-between;
+    }
+
+    .stats-summary__tile--penalties {
+        grid-area: penalties;
+    }
+
+    .stats-summary__tile--assists {
+        grid-area: assists;
+    }
+
+    .stats-summary__tile--goals {
+        grid-area: goals;
+    }
+
+    .stats-summary__tile--yellow-cards {
+        grid-area: yellow;
+    }
+
+    .stats-summary__tile--red-cards {
+        grid-area: red;
+    }
+
+    .stats-summary__value {
+        font-size: 20px;
+    }
+}

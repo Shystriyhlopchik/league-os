@@ -1,8 +1,25 @@
+:host {
+    display: block;
+    min-width: 0;
+}
+
 .news-card {
     display: block;
     color: #f5f5f5;
     text-decoration: none;
     font-family: Oswald, 'Inter', sans-serif;
+    transition:
+        opacity 0.2s ease,
+        transform 0.2s ease;
+
+    &:hover {
+        opacity: 0.88;
+    }
+
+    &:focus-visible {
+        outline: 2px solid #2ecc71;
+        outline-offset: 4px;
+    }
 }
 
 .news-card__image {
@@ -14,7 +31,7 @@
 
 .news-card__title {
     margin: 8px 0 2px;
-    font-size: 16px;
+    font-size: 14px;
     line-height: 1.2;
     font-weight: 500;
 }
@@ -37,5 +54,69 @@
 
     .news-card__date {
         font-size: 16px;
+    }
+}
+
+@media (min-width: 1024px) {
+    .news-card {
+        &:hover {
+            transform: translateY(-2px);
+        }
+    }
+
+    :host-context(.news-preview:not(.news-preview--page)) {
+        .news-card:not(.news-card--large) {
+            height: var(--news-preview-side-card-height, 96px);
+            display: grid;
+            grid-template-columns: clamp(160px, 13vw, 220px) minmax(0, 1fr);
+            align-items: start;
+            column-gap: 8px;
+            overflow: hidden;
+
+            .news-card__image {
+                height: var(--news-preview-side-card-height, 96px);
+            }
+
+            .news-card__content {
+                min-width: 0;
+            }
+
+            .news-card__title {
+                margin: 0;
+                font-size: clamp(14px, 1vw, 24px);
+                line-height: 1.18;
+                overflow: hidden;
+                display: -webkit-box;
+                -webkit-box-orient: vertical;
+                -webkit-line-clamp: 2;
+            }
+
+            .news-card__date {
+                display: block;
+                margin-top: 8px;
+                font-size: clamp(16px, 1vw, 20px);
+                line-height: 1.2;
+                white-space: nowrap;
+            }
+        }
+
+        .news-card--large {
+            .news-card__image {
+                height: var(--news-preview-featured-image-height, clamp(420px, 43vw, 578px));
+            }
+
+            .news-card__title {
+                margin-top: 10px;
+                font-size: clamp(14px, 2.55vw, 24px);
+                line-height: 1.05;
+            }
+
+            .news-card__date {
+                display: block;
+                margin-top: 6px;
+                font-size: clamp(20px, 1.4vw, 28px);
+                line-height: 1.1;
+            }
+        }
     }
 }
