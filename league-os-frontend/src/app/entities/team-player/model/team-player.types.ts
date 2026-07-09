@@ -6,6 +6,7 @@ export interface Player {
     slug: string;
     birthDate?: string | null;
     photoUrl?: string | null;
+    preferredFoot?: 'left' | 'right' | 'both' | null;
     position?: string | null;
     isActive: boolean;
 }
@@ -30,4 +31,7 @@ export interface CreateTeamPlayerDto {
     shirtNumber?: number | null;
     position?: string | null;
     isCaptain?: boolean;
+    birthDate?: string | null;
+    preferredFoot?: 'left' | 'right' | 'both' | null;
+    photo?: File | null;
 }

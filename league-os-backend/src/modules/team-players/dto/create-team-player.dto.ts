@@ -5,11 +5,14 @@ import {
     IsNotEmpty,
     IsOptional,
     IsString,
+    IsDateString,
     Max,
     Min,
 } from 'class-validator';
 
 import { PlayerPosition } from '../../players/enums/player-position.enum';
+import { PreferredFoot } from '../../players/enums/preferred-foot.enum';
+import { Transform, Type } from 'class-transformer';
 
 export class CreateTeamPlayerDto {
     @IsString()
@@ -25,6 +28,7 @@ export class CreateTeamPlayerDto {
     middleName?: string;
 
     @IsInt()
+    @Type(() => Number)
     @Min(1)
     @Max(99)
     @IsOptional()
@@ -35,6 +39,15 @@ export class CreateTeamPlayerDto {
     position?: PlayerPosition;
 
     @IsBoolean()
+    @Transform(({ value }) => value === true || value === 'true')
     @IsOptional()
     isCaptain?: boolean;
+
+    @IsDateString()
+    @IsOptional()
+    birthDate?: string;
+
+    @IsEnum(PreferredFoot)
+    @IsOptional()
+    preferredFoot?: PreferredFoot;
 }
