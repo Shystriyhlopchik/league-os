@@ -13,6 +13,7 @@ import {
   LessThan,
   MoreThanOrEqual,
   Repository,
+  Brackets,
 } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { TeamPlayerEntity } from '../team-players/entities/team-players.entity';
@@ -41,6 +42,8 @@ import {
   MatchRedBallActivationEntity,
   RedBallStatus,
 } from './entities/match-red-ball-activation.entity';
+import { UsersService } from '../users/users.service';
+import { RoleCode } from '../users/enums/role-code.enum';
 
 type SyncEventResult =
   | {
@@ -82,6 +85,7 @@ export class MatchServiceService {
     private readonly matchRedBallRepository: Repository<MatchRedBallActivationEntity>,
 
     private readonly playerTournamentStatsService: PlayerTournamentStatsService,
+    private readonly usersService: UsersService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -150,6 +154,255 @@ export class MatchServiceService {
     });
 
     return Array.from(matchesById.values()).map((match) => this.toDto(match));
+  }
+
+  async findRegistrationMatches(
+    currentUserId: number,
+  ): Promise<MatchServiceMatchDto[]> {
+    const user = await this.usersService.findById(currentUserId);
+    const roles = user?.roles?.map((role) => role.code) ?? [];
+    const canManageAllTeams =
+      roles.includes(RoleCode.Admin) || roles.includes(RoleCode.SuperAdmin);
+
+    const query = this.matchRepository
+      .createQueryBuilder('match')
+      .innerJoinAndSelect('match.homeTeam', 'homeTeam')
+      .innerJoinAndSelect('match.awayTeam', 'awayTeam')
+      .leftJoinAndSelect('match.venue', 'venue')
+      .innerJoinAndSelect('match.tournament', 'tournament')
+      .where('match.status = :status', { status: MatchStatus.SCHEDULED })
+      .andWhere('match.match_datetime >= :now', { now: new Date() })
+      .orderBy('match.match_datetime', 'ASC')
+      .addOrderBy('match.id', 'ASC');
+
+    if (!canManageAllTeams) {
+      const captainLinks = await this.teamPlayerRepository
+        .createQueryBuilder('teamPlayer')
+        .innerJoin('teamPlayer.player', 'player')
+        .where('player.user_id = :currentUserId', { currentUserId })
+        .andWhere('"teamPlayer"."isCaptain" = :isCaptain', { isCaptain: true })
+        .andWhere('"teamPlayer"."isActive" = :isActive', { isActive: true })
+        .getMany();
+      const teamIds = captainLinks.map((link) => link.teamId);
+
+      if (teamIds.length === 0) {
+        return [];
+      }
+
+      query.andWhere(
+        new Brackets((builder) => {
+          builder
+            .where('match.home_team_id IN (:...teamIds)', { teamIds })
+            .orWhere('match.away_team_id IN (:...teamIds)', { teamIds });
+        }),
+      );
+    }
+
+    const matches = await query.getMany();
+
+    return matches.map((match) => this.toDto(match));
+  }
+
+  async getMatchRegistration(
+    matchId: number,
+    teamId: number,
+    currentUserId: number,
+  ) {
+    const match = await this.findRegistrationMatch(matchId, teamId);
+    await this.ensureCanManageRegistrationTeam(teamId, currentUserId);
+
+    const [players, roster] = await Promise.all([
+      this.findTeamRoster(match, teamId),
+      this.matchRosterRepository.findOne({ where: { matchId, teamId } }),
+    ]);
+    const selectedPlayers = roster
+      ? await this.matchRosterPlayerRepository.find({
+          where: { matchRosterId: roster.id },
+        })
+      : [];
+    const selectedTeamPlayerIds = new Set(
+      selectedPlayers.map((player) => player.teamPlayerId),
+    );
+    const team = teamId === match.homeTeamId ? match.homeTeam : match.awayTeam;
+
+    return {
+      match: this.toDto(match),
+      team: {
+        id: team.id,
+        name: team.name,
+        logoUrl: team.logoUrl,
+      },
+      isApproved: roster?.isSubmitted ?? false,
+      players: players.map((player) => ({
+        ...player,
+        isSelected: selectedTeamPlayerIds.has(player.teamPlayerId),
+      })),
+    };
+  }
+
+  async saveMatchRegistration(
+    matchId: number,
+    teamId: number,
+    teamPlayerIds: number[],
+    currentUserId: number,
+  ) {
+    const match = await this.findRegistrationMatch(matchId, teamId);
+    await this.ensureCanManageRegistrationTeam(teamId, currentUserId);
+    const availablePlayers = await this.findTeamRoster(match, teamId);
+    const playersByTeamPlayerId = new Map(
+      availablePlayers.map((player) => [player.teamPlayerId, player]),
+    );
+    const selectedPlayers = teamPlayerIds.map((id) => playersByTeamPlayerId.get(id));
+
+    if (selectedPlayers.some((player) => !player)) {
+      throw new BadRequestException('В заявке есть игрок, который не состоит в команде');
+    }
+
+    const suspendedPlayer = selectedPlayers.find(
+      (player) => player?.eligibilityStatus === 'not_allowed',
+    );
+
+    if (suspendedPlayer) {
+      throw new BadRequestException(
+        `Игрок ${suspendedPlayer.lastName} ${suspendedPlayer.firstName} дисквалифицирован на этот матч`,
+      );
+    }
+
+    await this.dataSource.transaction(async (manager) => {
+      const rosterRepository = manager.getRepository(MatchRosterEntity);
+      const rosterPlayerRepository = manager.getRepository(MatchRosterPlayerEntity);
+      let roster = await rosterRepository.findOne({ where: { matchId, teamId } });
+
+      if (roster?.isSubmitted) {
+        throw new BadRequestException('Утверждённую заявку нельзя редактировать');
+      }
+
+      if (!roster) {
+        roster = await rosterRepository.save(
+          rosterRepository.create({ matchId, teamId, isApproved: false }),
+        );
+      }
+
+      await rosterPlayerRepository.delete({ matchRosterId: roster.id });
+
+      if (selectedPlayers.length > 0) {
+        await rosterPlayerRepository.save(
+          selectedPlayers.map((player) =>
+            rosterPlayerRepository.create({
+              matchRosterId: roster!.id,
+              playerId: player!.id,
+              teamPlayerId: player!.teamPlayerId,
+              shirtNumber: player!.shirtNumber,
+              position: player!.position,
+              isCaptain: player!.isCaptain,
+              wasAllowed: player!.eligibilityStatus === 'allowed',
+            }),
+          ),
+        );
+      }
+    });
+
+    return this.getMatchRegistration(matchId, teamId, currentUserId);
+  }
+
+  async approveMatchRegistration(
+    matchId: number,
+    teamId: number,
+    currentUserId: number,
+  ) {
+    await this.findRegistrationMatch(matchId, teamId);
+    await this.ensureCanManageRegistrationTeam(teamId, currentUserId);
+    const roster = await this.matchRosterRepository.findOne({
+      where: { matchId, teamId },
+    });
+
+    if (!roster) {
+      throw new BadRequestException('Сначала сохраните заявку');
+    }
+
+    if (!roster.isSubmitted) {
+      const rosterPlayers = await this.matchRosterPlayerRepository.find({
+        where: { matchRosterId: roster.id },
+      });
+
+      if (rosterPlayers.length < 5) {
+        throw new BadRequestException(
+          'Для утверждения заявки необходимо выбрать минимум 5 игроков',
+        );
+      }
+
+      const match = await this.findRegistrationMatch(matchId, teamId);
+      const availablePlayers = await this.findTeamRoster(match, teamId);
+      const eligibilityByTeamPlayerId = new Map(
+        availablePlayers.map((player) => [player.teamPlayerId, player]),
+      );
+      const suspendedPlayer = rosterPlayers
+        .map((player) => eligibilityByTeamPlayerId.get(player.teamPlayerId!))
+        .find((player) => player?.eligibilityStatus === 'not_allowed');
+
+      if (suspendedPlayer) {
+        throw new BadRequestException(
+          `Игрок ${suspendedPlayer.lastName} ${suspendedPlayer.firstName} дисквалифицирован на этот матч`,
+        );
+      }
+
+      roster.isSubmitted = true;
+      roster.submittedAt = new Date();
+      roster.submittedByUserId = currentUserId;
+      await this.matchRosterRepository.save(roster);
+    }
+
+    return this.getMatchRegistration(matchId, teamId, currentUserId);
+  }
+
+  private async findRegistrationMatch(
+    matchId: number,
+    teamId: number,
+  ): Promise<MatchEntity> {
+    const match = await this.matchRepository.findOne({
+      where: { id: matchId, status: MatchStatus.SCHEDULED },
+      relations: {
+        homeTeam: true,
+        awayTeam: true,
+        venue: true,
+        tournament: true,
+      },
+    });
+
+    if (!match) {
+      throw new NotFoundException('Предстоящий матч не найден');
+    }
+
+    if (match.homeTeamId !== teamId && match.awayTeamId !== teamId) {
+      throw new BadRequestException('Команда не участвует в этом матче');
+    }
+
+    return match;
+  }
+
+  private async ensureCanManageRegistrationTeam(
+    teamId: number,
+    currentUserId: number,
+  ): Promise<void> {
+    const user = await this.usersService.findById(currentUserId);
+    const roles = user?.roles?.map((role) => role.code) ?? [];
+
+    if (roles.includes(RoleCode.Admin) || roles.includes(RoleCode.SuperAdmin)) {
+      return;
+    }
+
+    const captainLink = await this.teamPlayerRepository
+      .createQueryBuilder('teamPlayer')
+      .innerJoin('teamPlayer.player', 'player')
+      .where('teamPlayer.team_id = :teamId', { teamId })
+      .andWhere('player.user_id = :currentUserId', { currentUserId })
+      .andWhere('"teamPlayer"."isCaptain" = :isCaptain', { isCaptain: true })
+      .andWhere('"teamPlayer"."isActive" = :isActive', { isActive: true })
+      .getOne();
+
+    if (!captainLink) {
+      throw new BadRequestException('Нет прав на управление заявкой этой команды');
+    }
   }
 
   private toDto(match: MatchEntity): MatchServiceMatchDto {
@@ -231,6 +484,43 @@ export class MatchServiceService {
     });
   }
 
+  private async findSubmittedTeamRoster(
+    match: MatchEntity,
+    roster: MatchRosterEntity,
+  ): Promise<MatchRosterPlayerDto[]> {
+    const rosterPlayers = await this.matchRosterPlayerRepository.find({
+      where: { matchRosterId: roster.id },
+      relations: { player: true },
+      order: { shirtNumber: 'ASC', id: 'ASC' },
+    });
+    const statsByPlayerId = await this.getStatsByPlayerIds(
+      match.tournamentId,
+      roster.teamId,
+      rosterPlayers.map((player) => player.playerId),
+    );
+
+    return rosterPlayers.map((rosterPlayer) => {
+      const stat = statsByPlayerId.get(rosterPlayer.playerId);
+
+      return {
+        id: rosterPlayer.playerId,
+        teamPlayerId: rosterPlayer.teamPlayerId!,
+        firstName: rosterPlayer.player.firstName,
+        lastName: rosterPlayer.player.lastName,
+        middleName: rosterPlayer.player.middleName,
+        photoUrl: rosterPlayer.player.photoUrl,
+        shirtNumber: rosterPlayer.shirtNumber,
+        position: rosterPlayer.position ?? rosterPlayer.player.position,
+        isCaptain: rosterPlayer.isCaptain,
+        yellowCards: stat?.yellowCards ?? 0,
+        redCards: stat?.redCards ?? 0,
+        secondYellowCards: stat?.secondYellowCards ?? 0,
+        eligibilityStatus: this.getEligibilityStatus(stat, match.id),
+        eligibilityReason: this.getEligibilityReason(stat, match.id),
+      };
+    });
+  }
+
   async getRosterCheck(matchId: number): Promise<MatchRosterCheckDto> {
     const match = await this.matchRepository.findOne({
       where: {
@@ -247,13 +537,22 @@ export class MatchServiceService {
       throw new NotFoundException('Матч не найден');
     }
 
-    const [homeRoster, awayRoster, approvedRostersByTeamId] = await Promise.all(
-      [
-        this.findTeamRoster(match, match.homeTeamId),
-        this.findTeamRoster(match, match.awayTeamId),
-        this.getApprovedRostersByTeamId(match.id),
-      ],
+    const savedRosters = await this.matchRosterRepository.find({
+      where: { matchId: match.id },
+    });
+    const savedRosterByTeamId = new Map(
+      savedRosters.map((roster) => [roster.teamId, roster]),
     );
+    const homeSavedRoster = savedRosterByTeamId.get(match.homeTeamId);
+    const awaySavedRoster = savedRosterByTeamId.get(match.awayTeamId);
+    const [homeRoster, awayRoster] = await Promise.all([
+      homeSavedRoster?.isSubmitted
+        ? this.findSubmittedTeamRoster(match, homeSavedRoster)
+        : this.findTeamRoster(match, match.homeTeamId),
+      awaySavedRoster?.isSubmitted
+        ? this.findSubmittedTeamRoster(match, awaySavedRoster)
+        : this.findTeamRoster(match, match.awayTeamId),
+    ]);
 
     return {
       match: {
@@ -265,14 +564,14 @@ export class MatchServiceService {
           id: match.homeTeam.id,
           name: match.homeTeam.name,
           logoUrl: match.homeTeam.logoUrl,
-          rosterApproved: approvedRostersByTeamId.has(match.homeTeamId),
+          rosterApproved: homeSavedRoster?.isApproved ?? false,
         },
 
         awayTeam: {
           id: match.awayTeam.id,
           name: match.awayTeam.name,
           logoUrl: match.awayTeam.logoUrl,
-          rosterApproved: approvedRostersByTeamId.has(match.awayTeamId),
+          rosterApproved: awaySavedRoster?.isApproved ?? false,
         },
       },
 
@@ -409,6 +708,21 @@ export class MatchServiceService {
         });
 
         roster = await matchRosterRepository.save(roster);
+      }
+
+      if (roster.isSubmitted) {
+        const submittedPlayersCount = await matchRosterPlayerRepository.count({
+          where: { matchRosterId: roster.id },
+        });
+
+        if (submittedPlayersCount === 0) {
+          throw new BadRequestException('Нельзя утвердить пустую заявку');
+        }
+
+        roster.isApproved = true;
+        roster.approvedAt = new Date();
+        await matchRosterRepository.save(roster);
+        return;
       }
 
       await matchRosterPlayerRepository.delete({
@@ -985,6 +1299,7 @@ export class MatchServiceService {
       match.awayScore = session.awayScore;
 
       await this.matchRepository.save(match);
+      await this.playerTournamentStatsService.serveSuspensionsForMatch(match.id);
     }
 
     const savedSession = await this.matchServiceSessionRepository.save(session);
@@ -1100,6 +1415,7 @@ export class MatchServiceService {
 
     const savedSession = await this.matchServiceSessionRepository.save(session);
     await this.matchRepository.save(match);
+    await this.playerTournamentStatsService.serveSuspensionsForMatch(match.id);
 
     await this.createSystemEvent({
       match,

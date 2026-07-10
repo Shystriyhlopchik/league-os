@@ -23,6 +23,39 @@ export interface MatchServiceVenue {
     name: string;
 }
 
+export type PlayerEligibilityStatus = 'allowed' | 'check' | 'not_allowed';
+export type PlayerEligibilityReason =
+    | 'none'
+    | 'three_yellows'
+    | 'four_yellows_suspension'
+    | 'red_card_suspension'
+    | 'second_yellow_suspension';
+
+export interface MatchRegistrationPlayer {
+    id: number;
+    teamPlayerId: number;
+    firstName: string;
+    lastName: string;
+    middleName?: string;
+    photoUrl?: string;
+    shirtNumber?: number;
+    position?: string;
+    isCaptain: boolean;
+    yellowCards: number;
+    redCards: number;
+    secondYellowCards: number;
+    eligibilityStatus: PlayerEligibilityStatus;
+    eligibilityReason: PlayerEligibilityReason;
+    isSelected: boolean;
+}
+
+export interface MatchRegistration {
+    match: MatchServiceMatch;
+    team: MatchServiceTeam;
+    isApproved: boolean;
+    players: MatchRegistrationPlayer[];
+}
+
 export type MatchServiceStatus =
     | 'not_started'
     | 'first_half'

@@ -33,9 +33,16 @@ export class DashboardPageComponent {
             variant: '#F04E55',
         },
         {
-            title: 'Регистрация игроков',
-            description: 'Регистрация игроков различных команд',
+            title: 'Моя команда',
+            description: 'Регистрация, редактирование общей заявки',
             route: '/dashboard/team-players',
+            roles: [UserRole.Admin, UserRole.SuperAdmin, UserRole.Captain],
+            variant: '#2ECC71',
+        },
+        {
+            title: 'Регистрация на игру',
+            description: 'Заявка команды на игру',
+            route: '/dashboard/match-registrations',
             roles: [UserRole.Admin, UserRole.SuperAdmin, UserRole.Captain],
             variant: '#2ECC71',
         },

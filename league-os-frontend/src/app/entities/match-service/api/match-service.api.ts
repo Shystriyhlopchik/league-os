@@ -6,7 +6,7 @@ import {
     ActivateRedBallResponse,
     CreateMatchServiceEventDto, CreateMatchServiceEventResponse,
     MatchProtocolData, MatchProtocolEvent,
-    MatchServiceMatch,
+    MatchServiceMatch, MatchRegistration,
     MatchServiceSession,
     StartEventRecordingDto, StartEventRecordingResponse
 } from '../model/match-service.types';
@@ -23,6 +23,39 @@ export class MatchServiceApi {
     getAvailableMatches(): Observable<MatchServiceMatch[]> {
         return this.http.get<MatchServiceMatch[]>(
             `${this.apiUrl}/match-service/matches`,
+        );
+    }
+
+    getRegistrationMatches(): Observable<MatchServiceMatch[]> {
+        return this.http.get<MatchServiceMatch[]>(
+            `${this.apiUrl}/match-service/registration-matches`,
+        );
+    }
+
+    getMatchRegistration(matchId: number, teamId: number): Observable<MatchRegistration> {
+        return this.http.get<MatchRegistration>(
+            `${this.apiUrl}/match-service/registration-matches/${matchId}/teams/${teamId}/roster`,
+        );
+    }
+
+    saveMatchRegistration(
+        matchId: number,
+        teamId: number,
+        teamPlayerIds: number[],
+    ): Observable<MatchRegistration> {
+        return this.http.put<MatchRegistration>(
+            `${this.apiUrl}/match-service/registration-matches/${matchId}/teams/${teamId}/roster`,
+            { teamPlayerIds },
+        );
+    }
+
+    approveMatchRegistration(
+        matchId: number,
+        teamId: number,
+    ): Observable<MatchRegistration> {
+        return this.http.post<MatchRegistration>(
+            `${this.apiUrl}/match-service/registration-matches/${matchId}/teams/${teamId}/roster/approve`,
+            {},
         );
     }
 

@@ -25,6 +25,19 @@ export class MatchRosterEntity extends BaseEntity {
   @Column({ name: 'is_approved', default: false })
   isApproved: boolean;
 
+  @Column({ name: 'is_submitted', default: false })
+  isSubmitted: boolean;
+
+  @Column({ name: 'submitted_at', type: 'timestamp', nullable: true })
+  submittedAt?: Date;
+
+  @Column({ name: 'submitted_by_user_id', nullable: true })
+  submittedByUserId?: number;
+
+  @ManyToOne(() => UserEntity, { nullable: true })
+  @JoinColumn({ name: 'submitted_by_user_id' })
+  submittedByUser?: UserEntity;
+
   @Column({ name: 'approved_at', type: 'timestamp', nullable: true })
   approvedAt?: Date;
 

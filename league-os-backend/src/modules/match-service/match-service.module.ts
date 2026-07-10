@@ -11,6 +11,7 @@ import { MatchServiceSessionEntity } from './entities/match-service-session.enti
 import { MatchEventEntity } from '../match-events/entities/match-event.entity';
 import { PlayerTournamentStatsModule } from '../player-tournament-stats/player-tournament-stats.module';
 import { MatchRedBallActivationEntity } from './entities/match-red-ball-activation.entity';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { MatchRedBallActivationEntity } from './entities/match-red-ball-activati
       MatchRedBallActivationEntity,
     ]),
     PlayerTournamentStatsModule,
+    UsersModule,
   ],
   controllers: [MatchServiceController],
   providers: [MatchServiceService],
