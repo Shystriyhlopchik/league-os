@@ -1,0 +1,102 @@
+<div class="registration-page">
+    <app-page-header
+        title="Формирование заявки"
+        description="Выберите игроков команды для участия в матче"
+        (back)="goBack()"
+    />
+
+    @if (store.isLoading()) {
+        <p class="state-text">Загружаем состав команды...</p>
+    } @else {
+      @if (store.registration(); as registration) {
+        <section class="match-summary">
+            <div>
+                <span>Матч</span>
+                <strong>{{ registration.match.homeTeam.name }} — {{ registration.match.awayTeam.name }}</strong>
+            </div>
+            <div>
+                <span>Дата</span>
+                <strong>{{ registration.match.matchDatetime | date: 'd MMMM, HH:mm' }}</strong>
+            </div>
+            <div>
+                <span>Заявка команды</span>
+                <strong>{{ registration.team.name }}</strong>
+            </div>
+            <div>
+                <span>Выбрано</span>
+                <strong>{{ store.selectedCount() }} / минимум 5</strong>
+            </div>
+        </section>
+
+        @if (registration.isApproved) {
+            <div class="approved-message">
+                Заявка утверждена и передана судье. Редактирование недоступно.
+            </div>
+        }
+
+        <section class="players-list">
+            @for (player of registration.players; track player.teamPlayerId) {
+                <label
+                    class="player-card"
+                    [class.player-card--disabled]="player.eligibilityStatus === 'not_allowed'"
+                >
+                    <input
+                        type="checkbox"
+                        [checked]="store.selectedIds().has(player.teamPlayerId)"
+                        [disabled]="registration.isApproved || player.eligibilityStatus === 'not_allowed'"
+                        (change)="onPlayerToggle(player, $event)"
+                    />
+
+                    <span class="player-card__photo">
+                        @if (player.photoUrl) {
+                            <img [src]="getPhotoUrl(player.photoUrl)" [alt]="getPlayerName(player)" />
+                        } @else {
+                            {{ player.shirtNumber || '—' }}
+                        }
+                    </span>
+
+                    <span class="player-card__info">
+                        <strong>{{ getPlayerName(player) }}</strong>
+                        <span>
+                            № {{ player.shirtNumber || '—' }} · {{ player.position || 'Позиция не указана' }}
+                        </span>
+                        @if (getSuspensionText(player)) {
+                            <small [class.player-card__warning]="player.eligibilityStatus === 'check'">
+                                {{ getSuspensionText(player) }}
+                            </small>
+                        }
+                    </span>
+                </label>
+            }
+        </section>
+
+        @if (store.error()) {
+            <div class="form-message form-message--error">{{ store.error() }}</div>
+        }
+        @if (store.message()) {
+            <div class="form-message form-message--success">{{ store.message() }}</div>
+        }
+
+        <div class="form-actions">
+            <button
+                class="form-actions__save"
+                type="button"
+                [disabled]="registration.isApproved || store.isSaving() || store.isApproving()"
+                (click)="save()"
+            >
+                {{ store.isSaving() ? 'Сохраняем...' : 'Сохранить' }}
+            </button>
+            <button
+                class="form-actions__approve"
+                type="button"
+                [disabled]="registration.isApproved || store.selectedCount() < 5 || store.isSaving() || store.isApproving()"
+                (click)="approve()"
+            >
+                {{ store.isApproving() ? 'Утверждаем...' : 'Утвердить заявку' }}
+            </button>
+        </div>
+      } @else if (store.error()) {
+        <p class="state-text state-text--error">{{ store.error() }}</p>
+      }
+    }
+</div>

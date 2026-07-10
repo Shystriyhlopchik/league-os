@@ -93,3 +93,21 @@
         }
     }
 }
+
+.match-item__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+@media (max-width: 640px) {
+    .match-item {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .match-item__actions {
+        justify-content: flex-start;
+    }
+}
