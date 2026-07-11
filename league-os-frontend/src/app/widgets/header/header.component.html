@@ -14,6 +14,13 @@
         >
             <a
                 class="header__nav-link"
+                routerLink="/team"
+                (click)="closeMenu()"
+            >
+                Команды
+            </a>
+            <a
+                class="header__nav-link"
                 routerLink="/matches"
                 (click)="closeMenu()"
             >
@@ -27,10 +34,10 @@
                 Новости
             </a>
             <a class="header__nav-link" routerLink="/" (click)="closeMenu()">
-                О лиге
+                Регламент соревнований
             </a>
             <a class="header__nav-link" routerLink="/" (click)="closeMenu()">
-                Регламент соревнований
+                О лиге
             </a>
         </nav>
 
