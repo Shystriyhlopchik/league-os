@@ -37,6 +37,9 @@ services:
     ports:
       - '4000:3000'
 
+    volumes:
+      - ./league-os-backend/uploads:/app/uploads
+
     networks:
       - internal
 
@@ -52,6 +55,9 @@ services:
 
     ports:
       - '8081:80'
+
+    volumes:
+      - ./league-os-backend/uploads:/var/www/uploads:ro
 
     networks:
       - internal

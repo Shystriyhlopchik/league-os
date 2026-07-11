@@ -4,7 +4,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
 import { MatchRegistrationPlayer } from '../../../../entities/match-service/model/match-service.types';
-import { environment } from '../../../../../environments/environment';
 import { MatchRegistrationDetailStore } from '../../model/match-registration-detail.store';
 
 @Component({
@@ -64,7 +63,6 @@ export class MatchRegistrationDetailPageComponent implements OnInit {
     getPhotoUrl(photoUrl: string): string {
         if (/^https?:\/\//i.test(photoUrl)) return photoUrl;
 
-        const origin = new URL(environment.apiUrl, window.location.origin).origin;
-        return `${origin}${photoUrl.startsWith('/') ? '' : '/'}${photoUrl}`;
+        return photoUrl.startsWith('/') ? photoUrl : `/${photoUrl}`;
     }
 }
