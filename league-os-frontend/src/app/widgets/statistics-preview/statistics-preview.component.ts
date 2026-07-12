@@ -10,6 +10,7 @@ import { of, switchMap, tap } from 'rxjs';
 import {TournamentsApi} from '../../entities/tournaments/api/tournaments.api';
 import {Tournament} from '../../entities/tournaments/model/tournaments.model';
 import {SectionTitleComponent} from '../../shared/ui/section-title/section-title.component';
+import {SlantedLinkComponent} from '../../shared/ui/slanted-link/slanted-link.component';
 
 @Component({
     selector: 'app-statistics-preview',
@@ -19,6 +20,7 @@ import {SectionTitleComponent} from '../../shared/ui/section-title/section-title
         StandingsTableComponent,
         CompetitionTabsComponent,
         SectionTitleComponent,
+        SlantedLinkComponent,
     ],
     templateUrl: './statistics-preview.component.html',
     styleUrl: './statistics-preview.component.scss',

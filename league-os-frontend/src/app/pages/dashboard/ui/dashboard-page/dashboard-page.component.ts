@@ -33,6 +33,13 @@ export class DashboardPageComponent {
             variant: '#F04E55',
         },
         {
+            title: 'Ввод результата матча вручную',
+            description: 'Ручное внесение счёта и событий матча',
+            route: '/dashboard/match-results',
+            roles: [UserRole.Referee, UserRole.Admin, UserRole.SuperAdmin],
+            variant: '#F04E55',
+        },
+        {
             title: 'Моя команда',
             description: 'Регистрация, редактирование общей заявки',
             route: '/dashboard/team-players',

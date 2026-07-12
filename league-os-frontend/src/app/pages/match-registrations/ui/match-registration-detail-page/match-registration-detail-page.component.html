@@ -34,16 +34,17 @@
             </div>
         }
 
+        <h2 class="players-title">Доступные игроки</h2>
+        <p class="players-hint">Отметьте игроков, которых необходимо включить в заявку</p>
         <section class="players-list">
-            @for (player of registration.players; track player.teamPlayerId) {
+            @for (player of availablePlayers(); track player.teamPlayerId) {
                 <label
                     class="player-card"
-                    [class.player-card--disabled]="player.eligibilityStatus === 'not_allowed'"
                 >
                     <input
                         type="checkbox"
                         [checked]="store.selectedIds().has(player.teamPlayerId)"
-                        [disabled]="registration.isApproved || player.eligibilityStatus === 'not_allowed'"
+                        [disabled]="registration.isApproved"
                         (change)="onPlayerToggle(player, $event)"
                     />
 
@@ -69,6 +70,32 @@
                 </label>
             }
         </section>
+
+        @if (unavailablePlayers().length) {
+            <section class="unavailable-players">
+                <h2 class="players-title players-title--danger">Не допущены к игре</h2>
+                <p class="players-hint">Этих игроков нельзя добавить в заявку из-за дисквалификации</p>
+                <div class="players-list">
+                    @for (player of unavailablePlayers(); track player.teamPlayerId) {
+                        <article class="player-card player-card--disabled">
+                            <span class="player-card__blocked-mark" aria-hidden="true">×</span>
+                            <span class="player-card__photo">
+                                @if (player.photoUrl) {
+                                    <img [src]="getPhotoUrl(player.photoUrl)" [alt]="getPlayerName(player)" />
+                                } @else {
+                                    {{ player.shirtNumber || '—' }}
+                                }
+                            </span>
+                            <span class="player-card__info">
+                                <strong>{{ getPlayerName(player) }}</strong>
+                                <span>№ {{ player.shirtNumber || '—' }} · {{ player.position || 'Позиция не указана' }}</span>
+                                <small>{{ getSuspensionText(player) }}</small>
+                            </span>
+                        </article>
+                    }
+                </div>
+            </section>
+        }
 
         @if (store.error()) {
             <div class="form-message form-message--error">{{ store.error() }}</div>

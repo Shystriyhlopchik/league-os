@@ -1,10 +1,9 @@
 import { DatePipe } from '@angular/common';
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
 import { MatchRegistrationPlayer } from '../../../../entities/match-service/model/match-service.types';
-import { environment } from '../../../../../environments/environment';
 import { MatchRegistrationDetailStore } from '../../model/match-registration-detail.store';
 
 @Component({
@@ -21,12 +20,30 @@ export class MatchRegistrationDetailPageComponent implements OnInit {
     readonly store = inject(MatchRegistrationDetailStore);
     readonly matchId = Number(this.route.snapshot.paramMap.get('matchId'));
     readonly teamId = Number(this.route.snapshot.paramMap.get('teamId'));
+    readonly isRefereeFlow = this.router.url.startsWith('/dashboard/match-results/');
+
+    readonly availablePlayers = computed(() =>
+        (this.store.registration()?.players ?? []).filter(
+            (player) => player.eligibilityStatus !== 'not_allowed',
+        ),
+    );
+
+    readonly unavailablePlayers = computed(() =>
+        (this.store.registration()?.players ?? []).filter(
+            (player) => player.eligibilityStatus === 'not_allowed',
+        ),
+    );
 
     ngOnInit(): void {
         this.store.load(this.matchId, this.teamId);
     }
 
     goBack(): void {
+        if (this.isRefereeFlow) {
+            this.router.navigate(['/dashboard/match-results', this.matchId]);
+            return;
+        }
+
         this.router.navigate(['/dashboard/match-registrations']);
     }
 
@@ -64,7 +81,6 @@ export class MatchRegistrationDetailPageComponent implements OnInit {
     getPhotoUrl(photoUrl: string): string {
         if (/^https?:\/\//i.test(photoUrl)) return photoUrl;
 
-        const origin = new URL(environment.apiUrl, window.location.origin).origin;
-        return `${origin}${photoUrl.startsWith('/') ? '' : '/'}${photoUrl}`;
+        return photoUrl.startsWith('/') ? photoUrl : `/${photoUrl}`;
     }
 }

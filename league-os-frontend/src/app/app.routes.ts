@@ -20,6 +20,11 @@ export const routes: Routes = [
             ),
     },
     {
+        path: 'team',
+        loadComponent: () =>
+            import('./pages/team/team.component').then((m) => m.TeamComponent),
+    },
+    {
         path: 'news/:slug',
         loadComponent: () =>
             import('./pages/news-detail/news-detail.component').then(
@@ -98,6 +103,30 @@ export const routes: Routes = [
                 loadComponent: () =>
                     import('./pages/match-registrations/ui/match-registrations-page/match-registrations-page.component').then(
                         (m) => m.MatchRegistrationsPageComponent,
+                    ),
+            },
+            {
+                path: 'match-results',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin, UserRole.Referee])],
+                loadComponent: () =>
+                    import('./pages/match-results/match-results.component').then(
+                        (m) => m.MatchResultsComponent,
+                    ),
+            },
+            {
+                path: 'match-results/:matchId/teams/:teamId',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin, UserRole.Referee])],
+                loadComponent: () =>
+                    import('./pages/match-registrations/ui/match-registration-detail-page/match-registration-detail-page.component').then(
+                        (m) => m.MatchRegistrationDetailPageComponent,
+                    ),
+            },
+            {
+                path: 'match-results/:matchId',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin, UserRole.Referee])],
+                loadComponent: () =>
+                    import('./pages/match-results/match-result-teams.component').then(
+                        (m) => m.MatchResultTeamsComponent,
                     ),
             },
             {

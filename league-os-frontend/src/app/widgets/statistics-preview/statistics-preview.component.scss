@@ -21,21 +21,12 @@ app-section-title {
 }
 
 .statistics-preview__link {
-    margin-top: 14px;
+    all: unset;
+    margin-block-start: 32px;
 
-    font-size: 20px;
-    line-height: 1.2;
-    font-weight: 400;
-    color: #12d47a;
-    text-decoration: none;
-
-    span {
-        font-size: 28px;
-        line-height: 0.7;
-    }
 
     &:hover {
         color: #27ae60;
-        font-style: italic;
+        cursor: pointer;
     }
 }

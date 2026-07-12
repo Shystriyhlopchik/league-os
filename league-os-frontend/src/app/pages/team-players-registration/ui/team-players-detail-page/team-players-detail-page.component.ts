@@ -2,7 +2,6 @@ import {Component, computed, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, RouterLink} from '@angular/router';
 import { TeamPlayersDetailStore } from '../../model/team-players-detail.store';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
-import { environment } from '../../../../../environments/environment';
 import { TeamPlayer } from '../../../../entities/team-player/model/team-player.types';
 
 @Component({
@@ -171,9 +170,7 @@ export class TeamPlayersDetailPageComponent implements OnInit {
             return photoUrl;
         }
 
-        const apiOrigin = new URL(environment.apiUrl, window.location.origin).origin;
-
-        return `${apiOrigin}${photoUrl.startsWith('/') ? '' : '/'}${photoUrl}`;
+        return photoUrl.startsWith('/') ? photoUrl : `/${photoUrl}`;
     }
 
     formatBirthDate(birthDate?: string | null): string {

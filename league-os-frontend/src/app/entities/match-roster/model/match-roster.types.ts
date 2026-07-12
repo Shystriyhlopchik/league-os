@@ -14,6 +14,9 @@ export interface MatchRosterWarnings {
 
 export interface MatchRosterCheckMatch {
     id: number;
+    status: 'scheduled' | 'live' | 'finished' | 'cancelled';
+    homeScore: number;
+    awayScore: number;
     matchDatetime?: string;
     venueName?: string;
     homeTeam: MatchRosterTeam;
