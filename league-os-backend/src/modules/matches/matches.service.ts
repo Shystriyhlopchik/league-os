@@ -10,6 +10,7 @@ import { BaseCrudService } from '../../common/base/base-crud.service';
 import { formatLocalDateTime } from './helper/formatLocalDateTime';
 import { MatchRosterPlayerEntity } from '../match-rosters/entities/match-roster-player.entity';
 import { MatchRosterEntity } from '../match-rosters/entities/match-roster.entity';
+import { MatchStatus } from './enums/match-status.enum';
 
 const ERR_MESSAGE = 'Команды в матче не могут быть одинаковыми';
 
@@ -329,10 +330,13 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
 
   private async getProtocolRosters(match: MatchEntity) {
     const matchRosters = await this.matchRosterRepository.find({
-      where: {
-        matchId: match.id,
-        isApproved: true,
-      },
+      where:
+        match.status === MatchStatus.FINISHED
+          ? [
+              { matchId: match.id, isApproved: true },
+              { matchId: match.id, isSubmitted: true },
+            ]
+          : { matchId: match.id, isApproved: true },
       relations: {
         team: true,
       },

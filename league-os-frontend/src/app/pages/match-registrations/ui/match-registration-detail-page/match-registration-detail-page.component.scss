@@ -53,6 +53,28 @@
     gap: 12px;
 }
 
+.players-title {
+    margin: 22px 0 4px;
+    font-family: "Oswald", Arial, sans-serif;
+    font-size: 20px;
+
+    &--danger { color: #ff6670; }
+}
+
+.players-hint {
+    margin: 0 0 12px;
+    color: #8d9999;
+    font-size: 13px;
+}
+
+.unavailable-players {
+    margin-top: 28px;
+    padding: 1px 16px 16px;
+    border: 1px solid #6a2930;
+    border-radius: 16px;
+    background: #251719;
+}
+
 .player-card {
     display: grid;
     grid-template-columns: 22px 52px 1fr;
@@ -65,6 +87,13 @@
     cursor: pointer;
 
     input { width: 18px; height: 18px; accent-color: #28df7a; }
+
+    &__blocked-mark {
+        color: #ff6670;
+        font-size: 26px;
+        font-weight: 700;
+        text-align: center;
+    }
 
     &--disabled { opacity: 0.58; cursor: not-allowed; }
 

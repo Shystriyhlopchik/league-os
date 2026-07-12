@@ -9,6 +9,7 @@ import {StartEventRecordingDto} from "./dto/start-event-recording.dto";
 import {ActivateRedBallDto} from "./dto/match-red-ball-activation.dto";
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SaveMatchRegistrationDto } from './dto/save-match-registration.dto';
+import { CreateManualMatchEventDto } from './dto/create-manual-match-event.dto';
 
 @Controller('match-service')
 export class MatchServiceController {
@@ -17,6 +18,32 @@ export class MatchServiceController {
   @Get('matches')
   findAvailableMatches(): Promise<MatchServiceMatchDto[]> {
     return this.matchService.findAvailableMatches();
+  }
+
+  @Get('overdue-matches')
+  findOverdueMatches(): Promise<MatchServiceMatchDto[]> {
+    return this.matchService.findOverdueMatches();
+  }
+
+  @Get('matches/:matchId/manual-events')
+  @UseGuards(JwtAuthGuard)
+  findManualEvents(@Param('matchId', ParseIntPipe) matchId: number) {
+    return this.matchService.findManualEvents(matchId);
+  }
+
+  @Post('matches/:matchId/manual-events')
+  @UseGuards(JwtAuthGuard)
+  createManualEvent(
+    @Param('matchId', ParseIntPipe) matchId: number,
+    @Body() dto: CreateManualMatchEventDto,
+  ) {
+    return this.matchService.createManualEvent(matchId, dto);
+  }
+
+  @Post('matches/:matchId/manual-protocol/sign')
+  @UseGuards(JwtAuthGuard)
+  signManualProtocol(@Param('matchId', ParseIntPipe) matchId: number) {
+    return this.matchService.signManualProtocol(matchId);
   }
 
   @Get('registration-matches')

@@ -1,0 +1,42 @@
+<div class="match-service-page">
+    <app-page-header
+        title="Ввод результата матча"
+        description="Выберите несыгранный матч или вернитесь назад"
+        (back)="goBack()"
+    />
+
+    <app-info-card
+        title="Кабинет администратора"
+        label="Список игр"
+        description="Несыгранные матчи появятся здесь"
+    ></app-info-card>
+
+    @if (store.isLoading()) {
+        <p class="state-text">Загружаем матчи...</p>
+    } @else if (store.error()) {
+        <p class="state-text state-text--error">
+            {{ store.error() }}
+        </p>
+    } @else if (store.isEmpty()) {
+        <p class="state-text">Нет несыгранных матчей</p>
+    } @else {
+        <section class="matches-list">
+            @for (match of store.matches(); track match.id) {
+                <article class="match-item">
+                    <div>
+                        <p>{{ match.matchDatetime | date: 'd MMMM, HH:mm' }}</p>
+                        <strong>
+                            {{ match.homeTeam.name }} — {{ match.awayTeam.name }}
+                        </strong>
+
+                        <p>{{ match.venue?.name }}</p>
+                    </div>
+
+                    <button type="button" (click)="selectMatch(match.id)">
+                        Выбрать
+                    </button>
+                </article>
+            }
+        </section>
+    }
+</div>

@@ -26,6 +26,12 @@ export class MatchServiceApi {
         );
     }
 
+    getOverdueMatches(): Observable<MatchServiceMatch[]> {
+        return this.http.get<MatchServiceMatch[]>(
+            `${this.apiUrl}/match-service/overdue-matches`,
+        );
+    }
+
     getRegistrationMatches(): Observable<MatchServiceMatch[]> {
         return this.http.get<MatchServiceMatch[]>(
             `${this.apiUrl}/match-service/registration-matches`,

@@ -44,6 +44,7 @@ import {
 } from './entities/match-red-ball-activation.entity';
 import { UsersService } from '../users/users.service';
 import { RoleCode } from '../users/enums/role-code.enum';
+import { CreateManualMatchEventDto } from './dto/create-manual-match-event.dto';
 
 type SyncEventResult =
   | {
@@ -154,6 +155,186 @@ export class MatchServiceService {
     });
 
     return Array.from(matchesById.values()).map((match) => this.toDto(match));
+  }
+
+  async findOverdueMatches(): Promise<MatchServiceMatchDto[]> {
+    const matches = await this.matchRepository.find({
+      where: {
+        status: MatchStatus.SCHEDULED,
+        matchDatetime: LessThan(new Date()),
+      },
+      relations: {
+        homeTeam: true,
+        awayTeam: true,
+        venue: true,
+        tournament: true,
+      },
+      order: {
+        matchDatetime: 'DESC',
+        id: 'ASC',
+      },
+    });
+
+    return matches.map((match) => this.toDto(match));
+  }
+
+  async findManualEvents(matchId: number): Promise<MatchEventEntity[]> {
+    return this.matchEventRepository.find({
+      where: { matchId, isCancelled: false },
+      order: { minute: 'ASC', id: 'ASC' },
+    });
+  }
+
+  async createManualEvent(
+    matchId: number,
+    dto: CreateManualMatchEventDto,
+  ): Promise<MatchEventEntity> {
+    const allowedTypes = new Set<MatchEventType>([
+      MatchEventType.GOAL,
+      MatchEventType.YELLOW_CARD,
+      MatchEventType.RED_CARD,
+      MatchEventType.RED_BALL,
+    ]);
+
+    if (!allowedTypes.has(dto.eventType)) {
+      throw new BadRequestException('Недопустимый тип события');
+    }
+
+    const match = await this.matchRepository.findOne({
+      where: { id: matchId },
+    });
+
+    if (!match) {
+      throw new NotFoundException('Матч не найден');
+    }
+
+    if (match.status !== MatchStatus.SCHEDULED) {
+      throw new BadRequestException('Протокол уже подписан, редактирование невозможно');
+    }
+
+    if (match.homeTeamId !== dto.teamId && match.awayTeamId !== dto.teamId) {
+      throw new BadRequestException('Команда не участвует в этом матче');
+    }
+
+    if (dto.eventType !== MatchEventType.RED_BALL && !dto.playerId) {
+      throw new BadRequestException('Необходимо указать автора события');
+    }
+
+    if (dto.assistPlayerId && dto.eventType !== MatchEventType.GOAL) {
+      throw new BadRequestException('Ассистент может быть указан только для гола');
+    }
+
+    if (dto.playerId && dto.playerId === dto.assistPlayerId) {
+      throw new BadRequestException('Автор и ассистент не могут совпадать');
+    }
+
+    const participantIds = [dto.playerId, dto.assistPlayerId].filter(
+      (id): id is number => Boolean(id),
+    );
+
+    if (participantIds.length) {
+      const teamPlayersCount = await this.teamPlayerRepository
+        .createQueryBuilder('teamPlayer')
+        .where('teamPlayer.team_id = :teamId', { teamId: dto.teamId })
+        .andWhere('teamPlayer.player_id IN (:...participantIds)', {
+          participantIds,
+        })
+        .andWhere('teamPlayer.isActive = true')
+        .getCount();
+
+      if (teamPlayersCount !== participantIds.length) {
+        throw new BadRequestException('Игрок не входит в состав выбранной команды');
+      }
+    }
+
+    const event = this.matchEventRepository.create({
+      matchId,
+      teamId: dto.teamId,
+      eventType: dto.eventType,
+      minute: dto.minute,
+      half: dto.half,
+      playerId: dto.playerId,
+      assistPlayerId: dto.assistPlayerId,
+      isCancelled: false,
+    });
+
+    return this.matchEventRepository.save(event);
+  }
+
+  async signManualProtocol(matchId: number): Promise<{
+    matchId: number;
+    status: MatchStatus;
+    homeScore: number;
+    awayScore: number;
+  }> {
+    return this.dataSource.transaction(async (manager) => {
+      const matchRepository = manager.getRepository(MatchEntity);
+      const eventRepository = manager.getRepository(MatchEventEntity);
+      const match = await matchRepository.findOne({ where: { id: matchId } });
+
+      if (!match) {
+        throw new NotFoundException('Матч не найден');
+      }
+
+      if (match.status !== MatchStatus.SCHEDULED) {
+        throw new BadRequestException('Протокол уже подписан');
+      }
+
+      const rosterRepository = manager.getRepository(MatchRosterEntity);
+      const rosterPlayerRepository = manager.getRepository(
+        MatchRosterPlayerEntity,
+      );
+      const rosters = await rosterRepository.find({ where: { matchId } });
+      const rosterByTeamId = new Map(
+        rosters.map((roster) => [roster.teamId, roster]),
+      );
+
+      for (const teamId of [match.homeTeamId, match.awayTeamId]) {
+        const roster = rosterByTeamId.get(teamId);
+        if (!roster?.isSubmitted) {
+          throw new BadRequestException(
+            'Перед подписанием протокола сформируйте заявки обеих команд',
+          );
+        }
+
+        const playersCount = await rosterPlayerRepository.count({
+          where: { matchRosterId: roster.id },
+        });
+        if (playersCount < 5) {
+          throw new BadRequestException(
+            'В заявке каждой команды должно быть минимум 5 игроков',
+          );
+        }
+
+        roster.isApproved = true;
+        roster.approvedAt ??= new Date();
+        await rosterRepository.save(roster);
+      }
+
+      const goals = await eventRepository.find({
+        where: {
+          matchId,
+          eventType: MatchEventType.GOAL,
+          isCancelled: false,
+        },
+      });
+
+      match.homeScore = goals.filter(
+        (event) => event.teamId === match.homeTeamId,
+      ).length;
+      match.awayScore = goals.filter(
+        (event) => event.teamId === match.awayTeamId,
+      ).length;
+      match.status = MatchStatus.FINISHED;
+      await matchRepository.save(match);
+
+      return {
+        matchId: match.id,
+        status: match.status,
+        homeScore: match.homeScore,
+        awayScore: match.awayScore,
+      };
+    });
   }
 
   async findRegistrationMatches(
@@ -352,6 +533,20 @@ export class MatchServiceService {
       await this.matchRosterRepository.save(roster);
     }
 
+    const currentUser = await this.usersService.findById(currentUserId);
+    const currentUserRoles = currentUser?.roles?.map((role) => role.code) ?? [];
+    const canApproveRoster =
+      currentUserRoles.includes(RoleCode.Referee) ||
+      currentUserRoles.includes(RoleCode.Admin) ||
+      currentUserRoles.includes(RoleCode.SuperAdmin);
+
+    if (canApproveRoster && !roster.isApproved) {
+      roster.isApproved = true;
+      roster.approvedAt = new Date();
+      roster.approvedByUserId = currentUserId;
+      await this.matchRosterRepository.save(roster);
+    }
+
     return this.getMatchRegistration(matchId, teamId, currentUserId);
   }
 
@@ -387,7 +582,11 @@ export class MatchServiceService {
     const user = await this.usersService.findById(currentUserId);
     const roles = user?.roles?.map((role) => role.code) ?? [];
 
-    if (roles.includes(RoleCode.Admin) || roles.includes(RoleCode.SuperAdmin)) {
+    if (
+      roles.includes(RoleCode.Admin) ||
+      roles.includes(RoleCode.SuperAdmin) ||
+      roles.includes(RoleCode.Referee)
+    ) {
       return;
     }
 
@@ -557,6 +756,9 @@ export class MatchServiceService {
     return {
       match: {
         id: match.id,
+        status: match.status,
+        homeScore: match.homeScore,
+        awayScore: match.awayScore,
         matchDatetime: match.matchDatetime,
         venueName: match.venue?.name,
 
