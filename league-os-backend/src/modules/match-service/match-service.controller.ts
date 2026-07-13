@@ -1,4 +1,4 @@
-import {Body, Controller, Get, Param, ParseIntPipe, Post, Put, Req, UseGuards} from '@nestjs/common';
+import {Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Req, UseGuards} from '@nestjs/common';
 import { MatchServiceService } from './match-service.service';
 import { MatchServiceMatchDto } from './dto/match-service-match.dto';
 import { MatchRosterCheckDto } from './dto/match-roster-check.dto';
@@ -38,6 +38,15 @@ export class MatchServiceController {
     @Body() dto: CreateManualMatchEventDto,
   ) {
     return this.matchService.createManualEvent(matchId, dto);
+  }
+
+  @Delete('matches/:matchId/manual-events/:eventId')
+  @UseGuards(JwtAuthGuard)
+  cancelManualEvent(
+    @Param('matchId', ParseIntPipe) matchId: number,
+    @Param('eventId', ParseIntPipe) eventId: number,
+  ) {
+    return this.matchService.cancelManualEvent(matchId, eventId);
   }
 
   @Post('matches/:matchId/manual-protocol/sign')
