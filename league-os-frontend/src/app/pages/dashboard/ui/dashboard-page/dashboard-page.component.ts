@@ -19,6 +19,13 @@ export class DashboardPageComponent {
 
     readonly actions: DashboardAction[] = [
         {
+            title: 'Трансферы игроков',
+            description: 'Переход игрока из одной команды в другую',
+            route: '/dashboard/player-transfers',
+            roles: [UserRole.Admin, UserRole.SuperAdmin],
+            variant: '#2ECC71',
+        },
+        {
             title: 'Назначение судей',
             description: 'Выбор арбитров и подтверждение расписания',
             route: '/admin/referees',

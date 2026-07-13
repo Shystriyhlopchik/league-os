@@ -106,6 +106,14 @@ export const routes: Routes = [
                     ),
             },
             {
+                path: 'player-transfers',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
+                loadComponent: () =>
+                    import('./pages/player-transfers/player-transfers-page.component').then(
+                        (m) => m.PlayerTransfersPageComponent,
+                    ),
+            },
+            {
                 path: 'match-results',
                 canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin, UserRole.Referee])],
                 loadComponent: () =>

@@ -1,0 +1,80 @@
+<div class="transfers-page">
+    <app-page-header
+        title="Трансферы игроков"
+        description="Оформление перехода игрока из одной команды в другую"
+        (back)="goBack()"
+    />
+
+    @if (isLoading()) {
+        <p class="state">Загружаем данные...</p>
+    } @else {
+        <form class="transfer-form" (ngSubmit)="submit()">
+            <label>
+                <span>Текущая команда</span>
+                <select [(ngModel)]="fromTeamId" name="fromTeamId" required (ngModelChange)="onFromTeamChange()">
+                    <option [ngValue]="null" disabled>Выберите команду</option>
+                    @for (team of teams(); track team.id) {
+                        <option [ngValue]="team.id">{{ team.name }}</option>
+                    }
+                </select>
+            </label>
+
+            <label>
+                <span>Игрок</span>
+                <select [(ngModel)]="playerId" name="playerId" required [disabled]="!fromTeamId">
+                    <option [ngValue]="null" disabled>Выберите игрока</option>
+                    @for (player of players(); track player.id) {
+                        <option [ngValue]="player.playerId">{{ getPlayerName(player) }}</option>
+                    }
+                </select>
+            </label>
+
+            <label>
+                <span>Новая команда</span>
+                <select [(ngModel)]="toTeamId" name="toTeamId" required>
+                    <option [ngValue]="null" disabled>Выберите команду</option>
+                    @for (team of teams(); track team.id) {
+                        @if (team.id !== fromTeamId) {
+                            <option [ngValue]="team.id">{{ team.name }}</option>
+                        }
+                    }
+                </select>
+            </label>
+
+            <label>
+                <span>Новый игровой номер</span>
+                <input type="number" min="1" max="99" [(ngModel)]="shirtNumber" name="shirtNumber" />
+            </label>
+
+            <label class="captain-field">
+                <input type="checkbox" [(ngModel)]="isCaptain" name="isCaptain" />
+                <span>Назначить капитаном</span>
+            </label>
+
+            <label class="comment-field">
+                <span>Комментарий</span>
+                <textarea maxlength="1000" rows="3" [(ngModel)]="comment" name="comment"></textarea>
+            </label>
+
+            @if (error()) { <p class="message message--error">{{ error() }}</p> }
+            @if (message()) { <p class="message message--success">{{ message() }}</p> }
+
+            <button class="submit-button" type="submit" [disabled]="isSaving()">
+                {{ isSaving() ? 'Оформляем...' : 'Оформить трансфер' }}
+            </button>
+        </form>
+
+        <section class="history">
+            <h2>История трансферов</h2>
+            @for (transfer of transfers(); track transfer.id) {
+                <article>
+                    <strong>{{ getTransferPlayerName(transfer) }}</strong>
+                    <span>{{ transfer.fromTeam.name }} → {{ transfer.toTeam.name }}</span>
+                    <small>{{ transfer.transferDate }} @if (transfer.comment) { · {{ transfer.comment }} }</small>
+                </article>
+            } @empty {
+                <p class="state">Трансферов пока нет</p>
+            }
+        </section>
+    }
+</div>
