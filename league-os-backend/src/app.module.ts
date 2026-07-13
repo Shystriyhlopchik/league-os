@@ -22,6 +22,7 @@ import { RolesModule } from './modules/roles/roles.module';
 import { MatchServiceModule } from './modules/match-service/match-service.module';
 import { PlayerTournamentStatsModule } from './modules/player-tournament-stats/player-tournament-stats.module';
 import { MatchRostersModule } from './modules/match-rosters/match-rosters.module';
+import { PlayerTransfersModule } from './modules/player-transfers/player-transfers.module';
 
 
 @Module({
@@ -62,6 +63,7 @@ import { MatchRostersModule } from './modules/match-rosters/match-rosters.module
     MatchServiceModule,
     PlayerTournamentStatsModule,
     MatchRostersModule,
+    PlayerTransfersModule,
   ],
   controllers: [AppController],
   providers: [],
