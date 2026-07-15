@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { TypeOrmModule } from "@nestjs/typeorm";
-import { ConfigModule, ConfigService } from "@nestjs/config";
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CompetitionsModule } from './modules/competitions/competitions.module';
 import { SeasonsModule } from './modules/seasons/seasons.module';
 import { TournamentsModule } from './modules/tournaments/tournaments.module';
@@ -23,7 +23,11 @@ import { MatchServiceModule } from './modules/match-service/match-service.module
 import { PlayerTournamentStatsModule } from './modules/player-tournament-stats/player-tournament-stats.module';
 import { MatchRostersModule } from './modules/match-rosters/match-rosters.module';
 import { PlayerTransfersModule } from './modules/player-transfers/player-transfers.module';
-
+import { TournamentStagesModule } from './modules/tournament-stages/tournament-stages.module';
+import { TournamentGroupsModule } from './modules/tournament-groups/tournament-groups.module';
+import { TournamentRulesModule } from './modules/tournament-rules/tournament-rules.module';
+import { TournamentMembersModule } from './modules/tournament-members/tournament-members.module';
+import { TournamentStageParticipantsModule } from './modules/tournament-stage-participants/tournament-stage-participants.module';
 
 @Module({
   imports: [
@@ -42,7 +46,7 @@ import { PlayerTransfersModule } from './modules/player-transfers/player-transfe
         database: configService.get<string>('POSTGRES_DB'),
         autoLoadEntities: true,
         synchronize: false,
-      })
+      }),
     }),
     CompetitionsModule,
     SeasonsModule,
@@ -64,6 +68,11 @@ import { PlayerTransfersModule } from './modules/player-transfers/player-transfe
     PlayerTournamentStatsModule,
     MatchRostersModule,
     PlayerTransfersModule,
+    TournamentStagesModule,
+    TournamentGroupsModule,
+    TournamentRulesModule,
+    TournamentMembersModule,
+    TournamentStageParticipantsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

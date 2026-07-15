@@ -1,7 +1,10 @@
 import { Column, Entity, JoinTable, ManyToMany, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../../common/base/base.entity';
-import { RoleEntity } from "../../roles/entities/role.entity";
+import { RoleEntity } from '../../roles/entities/role.entity';
 import { UserAuthAccountEntity } from '../../auth/entities/user-auth-account.entity';
+import { TournamentEntity } from '../../tournaments/entities/tournaments.entity';
+import { TournamentMemberEntity } from '../../tournament-members/entities/tournament-member.entity';
+import { TournamentRuleVersionEntity } from '../../tournament-rules/entities/tournament-rule-version.entity';
 
 @Entity('users')
 export class UserEntity extends BaseEntity {
@@ -55,4 +58,22 @@ export class UserEntity extends BaseEntity {
 
   @OneToMany(() => UserAuthAccountEntity, (authAccount) => authAccount.user)
   authAccounts: UserAuthAccountEntity[];
+
+  @OneToMany(() => TournamentEntity, (tournament) => tournament.owner)
+  ownedTournaments: TournamentEntity[];
+
+  @OneToMany(() => TournamentMemberEntity, (member) => member.user)
+  tournamentMemberships: TournamentMemberEntity[];
+
+  @OneToMany(
+    () => TournamentRuleVersionEntity,
+    (ruleVersion) => ruleVersion.createdByUser,
+  )
+  createdTournamentRuleVersions: TournamentRuleVersionEntity[];
+
+  @OneToMany(
+    () => TournamentRuleVersionEntity,
+    (ruleVersion) => ruleVersion.publishedByUser,
+  )
+  publishedTournamentRuleVersions: TournamentRuleVersionEntity[];
 }

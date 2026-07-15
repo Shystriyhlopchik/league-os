@@ -1,0 +1,236 @@
+{
+  "profile": {
+    "id": "yard-league-2026-v1",
+    "name": "Фестиваль Дворовой лиги по футболу",
+    "status": "approved_for_architecture",
+    "assumptions": [
+      "При полном равенстве показателей используется сохранённый результат жеребьёвки.",
+      "Победители групп ранжируются по очкам, разнице и забитым мячам для предоставления преимущества в посеве.",
+      "Ограничение не встречаться с победителем своей группы обязательно, поскольку при трёх группах оно выполнимо."
+    ]
+  },
+  "tournament": {
+    "templateKey": "yard-league",
+    "name": "Дворовая лига",
+    "lifecycleStatus": "draft"
+  },
+  "structure": {
+    "stages": [
+      {
+        "key": "group-stage",
+        "name": "Групповой этап",
+        "type": "group_stage",
+        "order": 1
+      },
+      {
+        "key": "super-final",
+        "name": "Суперфинал",
+        "type": "knockout",
+        "order": 2
+      }
+    ],
+    "groups": [
+      {
+        "stageKey": "group-stage",
+        "key": "A",
+        "name": "Группа A",
+        "order": 1,
+        "capacity": 5
+      },
+      {
+        "stageKey": "group-stage",
+        "key": "B",
+        "name": "Группа B",
+        "order": 2,
+        "capacity": 5
+      },
+      {
+        "stageKey": "group-stage",
+        "key": "C",
+        "name": "Группа C",
+        "order": 3,
+        "capacity": 5
+      }
+    ]
+  },
+  "rules": {
+    "schemaVersion": 1,
+    "stages": [
+      {
+        "stageKey": "group-stage",
+        "type": "group_stage",
+        "groups": {
+          "count": 3,
+          "teamsPerGroup": 5
+        },
+        "schedule": {
+          "algorithm": "circle",
+          "legs": 1,
+          "balanceHomeAway": true
+        },
+        "scoring": {
+          "win": 3,
+          "draw": 1,
+          "loss": 0
+        },
+        "standings": {
+          "tieBreakers": [
+            {
+              "type": "technical_loss",
+              "order": "asc"
+            },
+            {
+              "type": "head_to_head",
+              "metrics": [
+                "points",
+                "wins",
+                "goal_difference",
+                "goals_for"
+              ],
+              "reapplyAfterReduction": true
+            },
+            {
+              "type": "wins",
+              "scope": "all_matches"
+            },
+            {
+              "type": "goal_difference",
+              "scope": "all_matches"
+            },
+            {
+              "type": "goals_for",
+              "scope": "all_matches"
+            },
+            {
+              "type": "draw_lots"
+            }
+          ]
+        },
+        "match": {
+          "periods": 2,
+          "periodDurationMinutes": 20,
+          "allowDraw": true,
+          "extraTime": {
+            "enabled": false
+          },
+          "penalties": {
+            "enabled": false
+          }
+        },
+        "discipline": {
+          "accumulatedYellows": {
+            "enabled": true,
+            "threshold": 3,
+            "suspensionMatches": 1,
+            "progression": "every_card_after_threshold"
+          },
+          "secondYellowInMatch": {
+            "enabled": true,
+            "minimumMatches": 1,
+            "allowManualExtension": true
+          },
+          "directRed": {
+            "enabled": true,
+            "minimumMatches": 1,
+            "allowManualExtension": true
+          },
+          "stageTransition": {
+            "carryYellowCards": false,
+            "carryPendingSuspensions": false
+          }
+        }
+      },
+      {
+        "stageKey": "super-final",
+        "type": "knockout",
+        "bracket": {
+          "size": 4,
+          "placementMatch": "third_place",
+          "seeding": {
+            "type": "best_eligible_opponent",
+            "protectedQualificationRuleId": "best-runner-up",
+            "candidateQualificationRuleId": "group-winners",
+            "candidateRanking": {
+              "criteria": [
+                "points",
+                "goal_difference",
+                "goals_for",
+                "draw_lots"
+              ]
+            },
+            "constraints": [
+              {
+                "type": "avoid_same_source_group",
+                "mode": "required"
+              }
+            ],
+            "remaining": "pair_in_ranking_order"
+          }
+        },
+        "match": {
+          "periods": 2,
+          "periodDurationMinutes": 20,
+          "allowDraw": false,
+          "extraTime": {
+            "enabled": false
+          },
+          "penalties": {
+            "enabled": true,
+            "initialKicksPerTeam": 5,
+            "suddenDeath": true
+          }
+        },
+        "discipline": {
+          "accumulatedYellows": {
+            "enabled": true,
+            "threshold": 3,
+            "suspensionMatches": 1,
+            "progression": "every_card_after_threshold"
+          },
+          "secondYellowInMatch": {
+            "enabled": true,
+            "minimumMatches": 1,
+            "allowManualExtension": true
+          },
+          "directRed": {
+            "enabled": true,
+            "minimumMatches": 1,
+            "allowManualExtension": true
+          },
+          "stageTransition": {
+            "carryYellowCards": false,
+            "carryPendingSuspensions": false
+          }
+        }
+      }
+    ],
+    "transitions": [
+      {
+        "fromStageKey": "group-stage",
+        "toStageKey": "super-final",
+        "confirmationRequired": true,
+        "qualification": [
+          {
+            "id": "group-winners",
+            "type": "group_winners"
+          },
+          {
+            "id": "best-runner-up",
+            "type": "best_placed_between_groups",
+            "sourcePosition": 2,
+            "count": 1,
+            "ranking": {
+              "criteria": [
+                "points",
+                "goal_difference",
+                "goals_for",
+                "draw_lots"
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
+

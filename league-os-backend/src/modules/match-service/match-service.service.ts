@@ -45,6 +45,7 @@ import {
 import { UsersService } from '../users/users.service';
 import { RoleCode } from '../users/enums/role-code.enum';
 import { CreateManualMatchEventDto } from './dto/create-manual-match-event.dto';
+import { TournamentLifecycleService } from '../tournaments/tournament-lifecycle.service';
 
 type SyncEventResult =
   | {
@@ -87,6 +88,7 @@ export class MatchServiceService {
 
     private readonly playerTournamentStatsService: PlayerTournamentStatsService,
     private readonly usersService: UsersService,
+    private readonly tournamentLifecycleService: TournamentLifecycleService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -295,7 +297,8 @@ export class MatchServiceService {
     homeScore: number;
     awayScore: number;
   }> {
-    return this.dataSource.transaction(async (manager) => {
+    let tournamentId: number | undefined;
+    const result = await this.dataSource.transaction(async (manager) => {
       const matchRepository = manager.getRepository(MatchEntity);
       const eventRepository = manager.getRepository(MatchEventEntity);
       const match = await matchRepository.findOne({ where: { id: matchId } });
@@ -355,6 +358,7 @@ export class MatchServiceService {
       ).length;
       match.status = MatchStatus.FINISHED;
       await matchRepository.save(match);
+      tournamentId = match.tournamentId;
 
       return {
         matchId: match.id,
@@ -363,6 +367,10 @@ export class MatchServiceService {
         awayScore: match.awayScore,
       };
     });
+    if (tournamentId) {
+      await this.tournamentLifecycleService.markInProgress(tournamentId);
+    }
+    return result;
   }
 
   async findRegistrationMatches(
@@ -1529,6 +1537,7 @@ export class MatchServiceService {
       match.awayScore = session.awayScore;
 
       await this.matchRepository.save(match);
+      await this.tournamentLifecycleService.markInProgress(match.tournamentId);
       await this.playerTournamentStatsService.serveSuspensionsForMatch(match.id);
     }
 
@@ -1645,6 +1654,7 @@ export class MatchServiceService {
 
     const savedSession = await this.matchServiceSessionRepository.save(session);
     await this.matchRepository.save(match);
+    await this.tournamentLifecycleService.markInProgress(match.tournamentId);
     await this.playerTournamentStatsService.serveSuspensionsForMatch(match.id);
 
     await this.createSystemEvent({
