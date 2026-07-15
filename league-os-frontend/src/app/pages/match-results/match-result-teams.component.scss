@@ -18,9 +18,11 @@
 .event-form button:disabled { opacity: .5; cursor: not-allowed; }
 .event-error { color: #ff6670; }
 .event-list { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
-.event-list article { display: grid; grid-template-columns: 52px 1fr auto; gap: 12px; padding: 13px 15px; border-radius: 12px; background: #202829; }
+.event-list article { display: grid; grid-template-columns: 52px minmax(100px, 1fr) minmax(160px, auto) auto; align-items: center; gap: 12px; padding: 13px 15px; border-radius: 12px; background: #202829; }
 .event-list strong { color: #28df7a; }
 .event-list small { color: #9ba7a7; }
+.event-delete-button { min-height: 34px; padding: 0 12px; border: 1px solid #ff6670; border-radius: 9px; background: transparent; color: #ff8a92; font-weight: 700; cursor: pointer; }
+.event-delete-button:disabled { opacity: .5; cursor: not-allowed; }
 @media (max-width: 760px) { .event-form { grid-template-columns: 1fr; } }
 .scoreboard { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; margin: 16px 0; padding: 18px; border-radius: 16px; background: #202829; text-align: center; }
 .scoreboard strong { color: #28df7a; font: 700 32px "Oswald", Arial, sans-serif; }
@@ -28,3 +30,4 @@
 .sign-protocol-button { width: 100%; min-height: 52px; margin-top: 22px; border: 0; border-radius: 14px; background: #28df7a; color: #071010; font-size: 16px; font-weight: 800; cursor: pointer; }
 .sign-protocol-button:disabled { opacity: .5; cursor: not-allowed; }
 @media (max-width: 520px) { .scoreboard { grid-template-columns: 1fr; gap: 8px; } }
+@media (max-width: 700px) { .event-list article { grid-template-columns: 44px 1fr; } .event-list small, .event-delete-button { grid-column: 2; } }

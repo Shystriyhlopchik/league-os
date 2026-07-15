@@ -181,7 +181,7 @@ export class MatchServiceService {
   async findManualEvents(matchId: number): Promise<MatchEventEntity[]> {
     return this.matchEventRepository.find({
       where: { matchId, isCancelled: false },
-      order: { minute: 'ASC', id: 'ASC' },
+      order: { half: 'ASC', minute: 'ASC', id: 'ASC' },
     });
   }
 
@@ -259,6 +259,34 @@ export class MatchServiceService {
     });
 
     return this.matchEventRepository.save(event);
+  }
+
+  async cancelManualEvent(
+    matchId: number,
+    eventId: number,
+  ): Promise<{ id: number; isCancelled: true }> {
+    const match = await this.matchRepository.findOne({
+      where: { id: matchId },
+    });
+    if (!match) {
+      throw new NotFoundException('Матч не найден');
+    }
+    if (match.status !== MatchStatus.SCHEDULED) {
+      throw new BadRequestException(
+        'Протокол уже подписан, редактирование невозможно',
+      );
+    }
+
+    const event = await this.matchEventRepository.findOne({
+      where: { id: eventId, matchId, isCancelled: false },
+    });
+    if (!event) {
+      throw new NotFoundException('Событие матча не найдено');
+    }
+
+    event.isCancelled = true;
+    await this.matchEventRepository.save(event);
+    return { id: event.id, isCancelled: true };
   }
 
   async signManualProtocol(matchId: number): Promise<{

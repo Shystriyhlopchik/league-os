@@ -27,12 +27,13 @@ export class MatchResultTeamsComponent {
 
     events: ManualMatchEvent[] = [];
     selectedTeamId: number | null = null;
-    selectedEventType: ManualMatchEventType = 'goal';
-    eventMinute = 1;
-    selectedHalf: 1 | 2 = 1;
+    selectedEventType: ManualMatchEventType | null = null;
+    eventMinute: number | null = null;
+    selectedHalf: 1 | 2 | null = null;
     selectedPlayerId: number | null = null;
     selectedAssistPlayerId: number | null = null;
     isSavingEvent = false;
+    deletingEventId: number | null = null;
     isSigningProtocol = false;
     eventError = '';
 
@@ -64,7 +65,10 @@ export class MatchResultTeamsComponent {
     addEvent(): void {
         if (
             !this.selectedTeamId ||
+            this.eventMinute === null ||
             this.eventMinute < 0 ||
+            !this.selectedHalf ||
+            !this.selectedEventType ||
             this.isSavingEvent ||
             (this.selectedEventType !== 'red_ball' && !this.selectedPlayerId)
         ) {
@@ -92,6 +96,7 @@ export class MatchResultTeamsComponent {
                         (a, b) => a.half - b.half || a.minute - b.minute,
                     );
                     this.isSavingEvent = false;
+                    this.resetEventForm();
                 },
                 error: (error) => {
                     this.eventError =
@@ -99,6 +104,30 @@ export class MatchResultTeamsComponent {
                     this.isSavingEvent = false;
                 },
             });
+    }
+
+    deleteEvent(event: ManualMatchEvent): void {
+        if (
+            this.isProtocolSigned ||
+            this.deletingEventId !== null ||
+            !confirm(`Удалить событие на ${event.minute}-й минуте?`)
+        ) {
+            return;
+        }
+
+        this.deletingEventId = event.id;
+        this.eventError = '';
+        this.rosterApi.cancelManualEvent(this.matchId, event.id).subscribe({
+            next: () => {
+                this.events = this.events.filter((item) => item.id !== event.id);
+                this.deletingEventId = null;
+            },
+            error: (error) => {
+                this.eventError =
+                    error?.error?.message || 'Не удалось удалить событие';
+                this.deletingEventId = null;
+            },
+        });
     }
 
     getTeamName(teamId: number): string {
@@ -184,6 +213,15 @@ export class MatchResultTeamsComponent {
         if (this.selectedEventType === 'red_ball') {
             this.selectedPlayerId = null;
         }
+    }
+
+    private resetEventForm(): void {
+        this.eventMinute = null;
+        this.selectedHalf = null;
+        this.selectedEventType = null;
+        this.selectedTeamId = null;
+        this.selectedPlayerId = null;
+        this.selectedAssistPlayerId = null;
     }
 
     private loadEvents(): void {

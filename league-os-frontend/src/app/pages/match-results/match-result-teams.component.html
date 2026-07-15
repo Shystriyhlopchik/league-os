@@ -49,6 +49,7 @@
                     <label>
                         <span>Тайм</span>
                         <select [(ngModel)]="selectedHalf" name="half" required>
+                            <option [ngValue]="null" disabled>Выберите тайм</option>
                             <option [ngValue]="1">Первый тайм</option>
                             <option [ngValue]="2">Второй тайм</option>
                         </select>
@@ -56,6 +57,7 @@
                     <label>
                         <span>Событие</span>
                         <select [(ngModel)]="selectedEventType" name="eventType" (ngModelChange)="onEventTypeChange()">
+                            <option [ngValue]="null" disabled>Выберите событие</option>
                             <option value="goal">Гол</option>
                             <option value="yellow_card">Жёлтая карточка</option>
                             <option value="red_card">Красная карточка</option>
@@ -120,6 +122,16 @@
                                     · ассист {{ getPlayerNameById(event.assistPlayerId) }}
                                 }
                             </small>
+                            @if (!isProtocolSigned) {
+                                <button
+                                    class="event-delete-button"
+                                    type="button"
+                                    [disabled]="deletingEventId !== null"
+                                    (click)="deleteEvent(event)"
+                                >
+                                    {{ deletingEventId === event.id ? 'Удаляем...' : 'Удалить' }}
+                                </button>
+                            }
                         </article>
                     } @empty {
                         <p class="state-text">События ещё не добавлены</p>

@@ -74,6 +74,15 @@ export class MatchRosterApi {
         );
     }
 
+    cancelManualEvent(
+        matchId: number,
+        eventId: number,
+    ): Observable<{ id: number; isCancelled: true }> {
+        return this.http.delete<{ id: number; isCancelled: true }>(
+            `${this.apiUrl}/match-service/matches/${matchId}/manual-events/${eventId}`,
+        );
+    }
+
     signManualProtocol(matchId: number): Observable<SignedManualProtocol> {
         return this.http.post<SignedManualProtocol>(
             `${this.apiUrl}/match-service/matches/${matchId}/manual-protocol/sign`,
