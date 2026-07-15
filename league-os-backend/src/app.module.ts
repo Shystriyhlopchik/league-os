@@ -66,6 +66,6 @@ import { PlayerTransfersModule } from './modules/player-transfers/player-transfe
     PlayerTransfersModule,
   ],
   controllers: [AppController],
-  providers: [],
+  providers: [AppService],
 })
 export class AppModule {}

@@ -24,6 +24,7 @@ services:
   backend:
     build:
       context: ./league-os-backend
+      dockerfile: Dockerfile.dev
 
     container_name: league-os-backend
     restart: always
@@ -38,7 +39,8 @@ services:
       - '4000:3000'
 
     volumes:
-      - ./league-os-backend/uploads:/app/uploads
+      - ../../league-os-backend:/app
+      - /app/node_modules
 
     networks:
       - internal
