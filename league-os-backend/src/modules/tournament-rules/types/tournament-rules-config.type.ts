@@ -56,9 +56,15 @@ export interface ScoringRuleV1 {
 
 export interface StandingsRuleV1 {
   tieBreakers: TieBreakerRuleV1[];
+  disciplinaryScore?: {
+    yellowCard: number;
+    secondYellowCard: number;
+    redCard: number;
+  };
 }
 
 export type TieBreakerRuleV1 =
+  | { type: 'points'; scope: 'all_matches' }
   | {
       type: 'head_to_head';
       metrics: HeadToHeadMetricV1[];
@@ -71,6 +77,7 @@ export type TieBreakerRuleV1 =
   | { type: 'disciplinary_score'; order: 'asc' }
   | { type: 'technical_loss'; order: 'asc' }
   | { type: 'manual_decision' }
+  | { type: 'draw' }
   | { type: 'draw_lots' };
 
 export type HeadToHeadMetricV1 =

@@ -34,9 +34,15 @@ export const createYardLeagueRules = (): TournamentRulesConfig => ({
       scoring: { win: 3, draw: 1, loss: 0 },
       standings: {
         tieBreakers: [
+          {
+            type: 'head_to_head',
+            metrics: ['points', 'wins', 'goal_difference', 'goals_for'],
+            reapplyAfterReduction: true,
+          },
+          { type: 'wins', scope: 'all_matches' },
           { type: 'goal_difference', scope: 'all_matches' },
           { type: 'goals_for', scope: 'all_matches' },
-          { type: 'manual_decision' },
+          { type: 'draw' },
         ],
       },
       match: {

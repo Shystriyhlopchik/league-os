@@ -80,9 +80,15 @@ interface RoundRobinScheduleRuleV1 {
 ```ts
 interface StandingsRuleV1 {
   tieBreakers: TieBreakerRuleV1[];
+  disciplinaryScore?: {
+    yellowCard: number;
+    secondYellowCard: number;
+    redCard: number;
+  };
 }
 
 type TieBreakerRuleV1 =
+  | { type: 'points'; scope: 'all_matches' }
   | { type: 'head_to_head'; metrics: HeadToHeadMetricV1[]; reapplyAfterReduction: boolean }
   | { type: 'wins'; scope: 'all_matches' }
   | { type: 'goal_difference'; scope: 'all_matches' }
@@ -91,6 +97,7 @@ type TieBreakerRuleV1 =
   | { type: 'disciplinary_score'; order: 'asc' }
   | { type: 'technical_loss'; order: 'asc' }
   | { type: 'manual_decision' }
+  | { type: 'draw' }
   | { type: 'draw_lots' };
 
 type HeadToHeadMetricV1 =
@@ -255,4 +262,3 @@ interface DisciplineTransitionRuleV1 {
 3. Сценарная: число квалифицировавшихся соответствует сетке, ограничения выполнимы, knockout определяет победителя.
 
 Хранение произвольных `condition`, `expression`, `script`, SQL или JavaScript-полей запрещено контрактом.
-

@@ -76,10 +76,6 @@
         "standings": {
           "tieBreakers": [
             {
-              "type": "technical_loss",
-              "order": "asc"
-            },
-            {
               "type": "head_to_head",
               "metrics": [
                 "points",
@@ -102,7 +98,7 @@
               "scope": "all_matches"
             },
             {
-              "type": "draw_lots"
+              "type": "draw"
             }
           ]
         },
@@ -233,4 +229,3 @@
     ]
   }
 }
-

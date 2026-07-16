@@ -9,7 +9,7 @@ import type {
 type JsonObject = Record<string, unknown>;
 
 const SAFE_KEY_PATTERN = /^[a-z][a-z0-9_-]{0,99}$/;
-const FINAL_TIE_BREAKERS = new Set(['manual_decision', 'draw_lots']);
+const FINAL_TIE_BREAKERS = new Set(['manual_decision', 'draw', 'draw_lots']);
 const CROSS_GROUP_CRITERIA = new Set([
   'points',
   'wins',
@@ -252,7 +252,35 @@ export class TournamentRulesConfigValidator {
   ): void {
     const standings = this.object(value, path, errors);
     if (!standings) return;
-    this.exactKeys(standings, ['tieBreakers'], path, errors);
+    this.exactKeys(
+      standings,
+      ['tieBreakers', 'disciplinaryScore'],
+      path,
+      errors,
+    );
+    if (standings.disciplinaryScore !== undefined) {
+      const score = this.object(
+        standings.disciplinaryScore,
+        `${path}.disciplinaryScore`,
+        errors,
+      );
+      if (score) {
+        this.exactKeys(
+          score,
+          ['yellowCard', 'secondYellowCard', 'redCard'],
+          `${path}.disciplinaryScore`,
+          errors,
+        );
+        ['yellowCard', 'secondYellowCard', 'redCard'].forEach((key) =>
+          this.integerAtLeast(
+            score[key],
+            0,
+            `${path}.disciplinaryScore.${key}`,
+            errors,
+          ),
+        );
+      }
+    }
     const tieBreakers = this.array(
       standings.tieBreakers,
       `${path}.tieBreakers`,
@@ -281,11 +309,14 @@ export class TournamentRulesConfigValidator {
             ? ['type', 'scope', 'order']
             : type === 'disciplinary_score' || type === 'technical_loss'
               ? ['type', 'order']
-              : type === 'wins' ||
+              : type === 'points' ||
+                  type === 'wins' ||
                   type === 'goal_difference' ||
                   type === 'goals_for'
                 ? ['type', 'scope']
-                : type === 'manual_decision' || type === 'draw_lots'
+                : type === 'manual_decision' ||
+                    type === 'draw' ||
+                    type === 'draw_lots'
                   ? ['type']
                   : undefined;
       if (!allowed) {
@@ -340,9 +371,13 @@ export class TournamentRulesConfigValidator {
         );
       }
       if (
-        ['wins', 'goal_difference', 'goals_for', 'goals_against'].includes(
-          type as string,
-        ) &&
+        [
+          'points',
+          'wins',
+          'goal_difference',
+          'goals_for',
+          'goals_against',
+        ].includes(type as string) &&
         item.scope !== 'all_matches'
       ) {
         this.error(
@@ -372,7 +407,7 @@ export class TournamentRulesConfigValidator {
         errors,
         'INCOMPLETE_TIE_BREAKERS',
         `${path}.tieBreakers`,
-        'The final tie-breaker must be manual_decision or draw_lots',
+        'The final tie-breaker must be manual_decision, draw or draw_lots',
       );
     }
   }
