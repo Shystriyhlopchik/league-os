@@ -98,6 +98,14 @@ export type QualificationRuleV1 =
   | { id: string; type: 'group_winners' }
   | {
       id: string;
+      type: 'best_placed_teams_between_groups';
+      sourcePosition: number;
+      count: number;
+      ranking: CrossGroupRankingRuleV1;
+    }
+  | {
+      /** @deprecated Use best_placed_teams_between_groups. */
+      id: string;
       type: 'best_placed_between_groups';
       sourcePosition: number;
       count: number;
@@ -131,9 +139,13 @@ export interface BracketRuleV1 {
 }
 
 export type SeedingRuleV1 =
-  | { type: 'standard'; ranking: CrossGroupRankingRuleV1 }
-  | { type: 'random_draw' }
-  | { type: 'manual' }
+  | {
+      type: 'standard';
+      ranking: CrossGroupRankingRuleV1;
+      constraints?: PairingConstraintV1[];
+    }
+  | { type: 'random_draw'; constraints?: PairingConstraintV1[] }
+  | { type: 'manual'; constraints?: PairingConstraintV1[] }
   | {
       type: 'best_eligible_opponent';
       protectedQualificationRuleId: string;
@@ -147,6 +159,26 @@ export type PairingConstraintV1 = {
   type: 'avoid_same_source_group';
   mode: 'required' | 'best_effort';
 };
+
+export type KnockoutParticipantSourceV1 =
+  | {
+      type: 'team';
+      tournamentTeamId: number;
+      teamId: number;
+    }
+  | {
+      type: 'qualification_position';
+      qualificationSnapshotId: number;
+      qualificationEntryId: number;
+      selectionOrder: number;
+      tournamentTeamId: number;
+      teamId: number;
+    }
+  | {
+      type: 'match_outcome';
+      bracketPosition: string;
+      outcome: 'winner' | 'loser';
+    };
 
 export interface MatchRulesV1 {
   periods: number;

@@ -269,6 +269,36 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
           logoUrl: match.awayTeam.logoUrl,
           score: match.awayScore,
         },
+
+        result: {
+          regularTime: {
+            home: match.regularTimeHomeScore ?? match.homeScore,
+            away: match.regularTimeAwayScore ?? match.awayScore,
+          },
+          extraTime:
+            match.extraTimeHomeScore != null && match.extraTimeAwayScore != null
+              ? {
+                  home: match.extraTimeHomeScore,
+                  away: match.extraTimeAwayScore,
+                }
+              : null,
+          penalties:
+            match.penaltyHomeScore != null &&
+            match.penaltyAwayScore != null &&
+            match.penaltyHomeKicksTaken != null &&
+            match.penaltyAwayKicksTaken != null
+              ? {
+                  home: match.penaltyHomeScore,
+                  away: match.penaltyAwayScore,
+                  homeKicksTaken: match.penaltyHomeKicksTaken,
+                  awayKicksTaken: match.penaltyAwayKicksTaken,
+                }
+              : null,
+          resolutionType: match.resolutionType ?? null,
+          winnerTeamId: match.winnerTeamId ?? null,
+          loserTeamId: match.loserTeamId ?? null,
+          officialAt: match.resultOfficialAt ?? null,
+        },
       },
 
       officials: match.officials.map((official) => ({

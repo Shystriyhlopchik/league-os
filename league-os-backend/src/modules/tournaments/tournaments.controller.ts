@@ -36,6 +36,16 @@ import { AssignStageGroupsDto } from './dto/assign-stage-groups.dto';
 import { PreviewGroupStageScheduleDto } from './dto/preview-group-stage-schedule.dto';
 import { GenerateGroupStageScheduleDto } from './dto/generate-group-stage-schedule.dto';
 import { TournamentGroupSchedulingService } from './scheduling/tournament-group-scheduling.service';
+import { QualificationService } from '../tournament-qualifications/qualification.service';
+import { PreviewQualificationDto } from './dto/preview-qualification.dto';
+import { ConfirmQualificationDto } from './dto/confirm-qualification.dto';
+import { RecalculateQualificationDto } from './dto/recalculate-qualification.dto';
+import { KnockoutBracketService } from '../tournament-knockout-brackets/knockout-bracket.service';
+import { PreviewKnockoutBracketDto } from './dto/preview-knockout-bracket.dto';
+import { ConfirmKnockoutBracketDto } from './dto/confirm-knockout-bracket.dto';
+import { AdvanceKnockoutMatchDto } from './dto/advance-knockout-match.dto';
+import { PlayerSuspensionsService } from '../player-suspensions/player-suspensions.service';
+import { ExtendPlayerSuspensionDto } from '../player-suspensions/dto/extend-player-suspension.dto';
 
 @Controller('tournaments')
 export class TournamentsController {
@@ -43,7 +53,27 @@ export class TournamentsController {
     private readonly tournamentsService: TournamentsService,
     private readonly lifecycleService: TournamentLifecycleService,
     private readonly groupSchedulingService: TournamentGroupSchedulingService,
+    private readonly qualificationService: QualificationService,
+    private readonly knockoutBracketService: KnockoutBracketService,
+    private readonly playerSuspensionsService: PlayerSuspensionsService,
   ) {}
+
+  @Post(':tournamentId/discipline/suspensions/:suspensionId/extend')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  extendPlayerSuspension(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Param('suspensionId', ParseIntPipe) suspensionId: number,
+    @Body() dto: ExtendPlayerSuspensionDto,
+  ) {
+    return this.playerSuspensionsService.extend(
+      tournamentId,
+      suspensionId,
+      dto.extraMatches,
+      dto.manualDecisionId,
+    );
+  }
 
   @Post()
   @UseGuards(JwtAuthGuard)
@@ -52,6 +82,143 @@ export class TournamentsController {
     @Req() request: AuthenticatedTournamentRequest,
   ) {
     return this.lifecycleService.create(dto, request.user.id);
+  }
+
+  @Post(':tournamentId/stages/:stageId/knockout-bracket/preview')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  previewKnockoutBracket(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Param('stageId', ParseIntPipe) stageId: number,
+    @Body() dto: PreviewKnockoutBracketDto,
+    @Req() request: AuthenticatedTournamentRequest,
+  ) {
+    return this.knockoutBracketService.preview(
+      tournamentId,
+      stageId,
+      dto,
+      request.user.id,
+    );
+  }
+
+  @Post(':tournamentId/knockout-bracket-snapshots/:snapshotId/confirm')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  confirmKnockoutBracket(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Param('snapshotId', ParseIntPipe) snapshotId: number,
+    @Body() dto: ConfirmKnockoutBracketDto,
+    @Req() request: AuthenticatedTournamentRequest,
+  ) {
+    return this.knockoutBracketService.confirm(
+      tournamentId,
+      snapshotId,
+      dto,
+      request.user.id,
+    );
+  }
+
+  @Get(':tournamentId/stages/:stageId/knockout-bracket/current')
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.READ)
+  getCurrentKnockoutBracket(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Param('stageId', ParseIntPipe) stageId: number,
+  ) {
+    return this.knockoutBracketService.getCurrent(tournamentId, stageId);
+  }
+
+  @Post(':tournamentId/knockout/matches/:matchId/advance')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  advanceKnockoutMatch(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Param('matchId', ParseIntPipe) matchId: number,
+    @Body() dto: AdvanceKnockoutMatchDto,
+  ) {
+    return this.knockoutBracketService.advance(
+      tournamentId,
+      matchId,
+      dto.winnerTeamId,
+    );
+  }
+
+  @Post(
+    ':tournamentId/transitions/:fromStageId/:toStageId/qualification/preview',
+  )
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  previewQualification(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Param('fromStageId', ParseIntPipe) fromStageId: number,
+    @Param('toStageId', ParseIntPipe) toStageId: number,
+    @Body() dto: PreviewQualificationDto,
+    @Req() request: AuthenticatedTournamentRequest,
+  ) {
+    return this.qualificationService.preview(
+      tournamentId,
+      fromStageId,
+      toStageId,
+      dto,
+      request.user.id,
+    );
+  }
+
+  @Post(':tournamentId/qualification-snapshots/:snapshotId/confirm')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  confirmQualification(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Param('snapshotId', ParseIntPipe) snapshotId: number,
+    @Body() dto: ConfirmQualificationDto,
+    @Req() request: AuthenticatedTournamentRequest,
+  ) {
+    return this.qualificationService.confirm(
+      tournamentId,
+      snapshotId,
+      dto,
+      request.user.id,
+    );
+  }
+
+  @Post(':tournamentId/qualification-snapshots/:snapshotId/recalculate')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  recalculateQualification(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Param('snapshotId', ParseIntPipe) snapshotId: number,
+    @Body() dto: RecalculateQualificationDto,
+    @Req() request: AuthenticatedTournamentRequest,
+  ) {
+    return this.qualificationService.recalculate(
+      tournamentId,
+      snapshotId,
+      dto,
+      request.user.id,
+    );
+  }
+
+  @Get(
+    ':tournamentId/transitions/:fromStageId/:toStageId/qualification/current',
+  )
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.READ)
+  getCurrentQualification(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Param('fromStageId', ParseIntPipe) fromStageId: number,
+    @Param('toStageId', ParseIntPipe) toStageId: number,
+  ) {
+    return this.qualificationService.getCurrent(
+      tournamentId,
+      fromStageId,
+      toStageId,
+    );
   }
 
   @Patch(':tournamentId')

@@ -13,6 +13,8 @@ import { PlayerTournamentStatsModule } from '../player-tournament-stats/player-t
 import { MatchRedBallActivationEntity } from './entities/match-red-ball-activation.entity';
 import { UsersModule } from '../users/users.module';
 import { TournamentsModule } from '../tournaments/tournaments.module';
+import { MatchResultResolver } from '../matches/match-result.resolver';
+import { PlayerSuspensionsModule } from '../player-suspensions/player-suspensions.module';
 
 @Module({
   imports: [
@@ -27,10 +29,11 @@ import { TournamentsModule } from '../tournaments/tournaments.module';
       MatchRedBallActivationEntity,
     ]),
     PlayerTournamentStatsModule,
+    PlayerSuspensionsModule,
     UsersModule,
     TournamentsModule,
   ],
   controllers: [MatchServiceController],
-  providers: [MatchServiceService],
+  providers: [MatchServiceService, MatchResultResolver],
 })
 export class MatchServiceModule {}

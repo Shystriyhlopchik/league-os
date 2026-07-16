@@ -131,7 +131,7 @@ type QualificationRuleV1 =
     }
   | {
       id: string;
-      type: 'best_placed_between_groups';
+      type: 'best_placed_teams_between_groups';
       sourcePosition: number;
       count: number;
       ranking: CrossGroupRankingRuleV1;

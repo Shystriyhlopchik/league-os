@@ -21,10 +21,21 @@ import { TournamentRulesConfigValidator } from './validation/tournament-rules-co
 import { GroupAssignmentStrategyService } from './scheduling/group-assignment-strategy.service';
 import { RoundRobinGenerator } from './scheduling/round-robin-generator';
 import { TournamentGroupSchedulingService } from './scheduling/tournament-group-scheduling.service';
+import { StandingEntity } from '../standings/entities/standing.entity';
+import { QualificationSnapshotEntity } from '../tournament-qualifications/entities/qualification-snapshot.entity';
+import { QualificationSnapshotEntryEntity } from '../tournament-qualifications/entities/qualification-snapshot-entry.entity';
+import { QualificationEngine } from '../tournament-qualifications/qualification.engine';
+import { QualificationService } from '../tournament-qualifications/qualification.service';
+import { KnockoutBracketSnapshotEntity } from '../tournament-knockout-brackets/entities/knockout-bracket-snapshot.entity';
+import { KnockoutBracketPlanEntity } from '../tournament-knockout-brackets/entities/knockout-bracket-plan.entity';
+import { KnockoutBracketEngine } from '../tournament-knockout-brackets/knockout-bracket.engine';
+import { KnockoutBracketService } from '../tournament-knockout-brackets/knockout-bracket.service';
+import { PlayerSuspensionsModule } from '../player-suspensions/player-suspensions.module';
 
 @Module({
   imports: [
     AuthModule,
+    PlayerSuspensionsModule,
     TypeOrmModule.forFeature([
       TournamentEntity,
       MatchEntity,
@@ -36,6 +47,11 @@ import { TournamentGroupSchedulingService } from './scheduling/tournament-group-
       TournamentStageParticipantEntity,
       TournamentTeamEntity,
       UserEntity,
+      StandingEntity,
+      QualificationSnapshotEntity,
+      QualificationSnapshotEntryEntity,
+      KnockoutBracketSnapshotEntity,
+      KnockoutBracketPlanEntity,
     ]),
   ],
   controllers: [TournamentsController],
@@ -49,7 +65,11 @@ import { TournamentGroupSchedulingService } from './scheduling/tournament-group-
     GroupAssignmentStrategyService,
     RoundRobinGenerator,
     TournamentGroupSchedulingService,
+    QualificationEngine,
+    QualificationService,
+    KnockoutBracketEngine,
+    KnockoutBracketService,
   ],
-  exports: [TournamentLifecycleService],
+  exports: [TournamentLifecycleService, KnockoutBracketService],
 })
 export class TournamentsModule {}

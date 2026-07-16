@@ -40,6 +40,8 @@ export type PlayerEligibilityReason =
   | 'none'
   | 'three_yellows'
   | 'four_yellows_suspension'
+  | 'yellow_card_threshold_warning'
+  | 'accumulated_yellows_suspension'
   | 'red_card_suspension'
   | 'second_yellow_suspension';
 

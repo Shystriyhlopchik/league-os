@@ -212,7 +212,7 @@
           },
           {
             "id": "best-runner-up",
-            "type": "best_placed_between_groups",
+            "type": "best_placed_teams_between_groups",
             "sourcePosition": 2,
             "count": 1,
             "ranking": {

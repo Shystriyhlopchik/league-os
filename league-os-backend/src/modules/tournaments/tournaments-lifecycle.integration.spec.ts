@@ -21,6 +21,9 @@ import { TournamentLifecycleService } from './tournament-lifecycle.service';
 import { TournamentsController } from './tournaments.controller';
 import { TournamentsService } from './tournaments.service';
 import { TournamentGroupSchedulingService } from './scheduling/tournament-group-scheduling.service';
+import { QualificationService } from '../tournament-qualifications/qualification.service';
+import { KnockoutBracketService } from '../tournament-knockout-brackets/knockout-bracket.service';
+import { PlayerSuspensionsService } from '../player-suspensions/player-suspensions.service';
 
 describe('Tournament lifecycle HTTP integration', () => {
   let app: INestApplication;
@@ -64,6 +67,24 @@ describe('Tournament lifecycle HTTP integration', () => {
     previewSchedule: jest.fn(async () => ({ totalMatches: 30 })),
     generateSchedule: jest.fn(),
   };
+  const qualification = {
+    preview: jest.fn(async () => ({ id: 90, status: 'preview' })),
+    confirm: jest.fn(async () => ({ id: 90, status: 'confirmed' })),
+    recalculate: jest.fn(),
+    getCurrent: jest.fn(),
+  };
+  const knockoutBracket = {
+    preview: jest.fn(async () => ({ id: 100, status: 'preview' })),
+    confirm: jest.fn(async () => ({ id: 100, status: 'confirmed' })),
+    getCurrent: jest.fn(),
+    advance: jest.fn(),
+  };
+  const playerSuspensions = {
+    extend: jest.fn(async (_tournamentId, suspensionId, extraMatches) => ({
+      id: suspensionId,
+      matchesRequired: 1 + extraMatches,
+    })),
+  };
   const authenticationGuard: CanActivate = {
     canActivate(context: ExecutionContext): boolean {
       const request = context.switchToHttp().getRequest();
@@ -86,6 +107,9 @@ describe('Tournament lifecycle HTTP integration', () => {
           provide: TournamentGroupSchedulingService,
           useValue: groupScheduling,
         },
+        { provide: QualificationService, useValue: qualification },
+        { provide: KnockoutBracketService, useValue: knockoutBracket },
+        { provide: PlayerSuspensionsService, useValue: playerSuspensions },
         {
           provide: getRepositoryToken(TournamentEntity),
           useValue: tournaments,
@@ -167,6 +191,55 @@ describe('Tournament lifecycle HTTP integration', () => {
     expect(groupScheduling.previewSchedule).toHaveBeenCalledWith(10, 20, {
       legs: 1,
     });
+  });
+
+  it('lets an organizer create a qualification preview', async () => {
+    await request(app.getHttpServer())
+      .post('/tournaments/10/transitions/20/30/qualification/preview')
+      .set('x-test-user-id', '2')
+      .send({})
+      .expect(200)
+      .expect({ id: 90, status: 'preview' });
+
+    expect(qualification.preview).toHaveBeenCalledWith(10, 20, 30, {}, 2);
+  });
+
+  it('lets an organizer confirm a qualification snapshot', async () => {
+    await request(app.getHttpServer())
+      .post('/tournaments/10/qualification-snapshots/90/confirm')
+      .set('x-test-user-id', '2')
+      .send({})
+      .expect(200)
+      .expect({ id: 90, status: 'confirmed' });
+
+    expect(qualification.confirm).toHaveBeenCalledWith(10, 90, {}, 2);
+  });
+
+  it('lets an organizer preview and confirm a knockout bracket', async () => {
+    await request(app.getHttpServer())
+      .post('/tournaments/10/stages/30/knockout-bracket/preview')
+      .set('x-test-user-id', '2')
+      .send({})
+      .expect(200)
+      .expect({ id: 100, status: 'preview' });
+
+    await request(app.getHttpServer())
+      .post('/tournaments/10/knockout-bracket-snapshots/100/confirm')
+      .set('x-test-user-id', '2')
+      .send({})
+      .expect(200)
+      .expect({ id: 100, status: 'confirmed' });
+  });
+
+  it('lets an organizer manually extend a suspension', async () => {
+    await request(app.getHttpServer())
+      .post('/tournaments/10/discipline/suspensions/40/extend')
+      .set('x-test-user-id', '2')
+      .send({ extraMatches: 2, manualDecisionId: 900 })
+      .expect(200)
+      .expect({ id: 40, matchesRequired: 3 });
+
+    expect(playerSuspensions.extend).toHaveBeenCalledWith(10, 40, 2, 900);
   });
 
   it('reserves publication for the owner', async () => {

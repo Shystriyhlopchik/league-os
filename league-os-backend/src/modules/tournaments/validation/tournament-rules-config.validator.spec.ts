@@ -5,11 +5,44 @@ describe('TournamentRulesConfigValidator', () => {
   const validator = new TournamentRulesConfigValidator();
 
   it('accepts the typed Yard League configuration', () => {
-    expect(validator.validate(createYardLeagueRules())).toEqual({
+    const config = createYardLeagueRules();
+    expect(validator.validate(config)).toEqual({
       valid: true,
       errors: [],
       warnings: [],
     });
+    expect(config.stages[0].match.periodDurationMinutes).toBe(20);
+    expect(config.stages[1].match).toEqual(
+      expect.objectContaining({
+        periodDurationMinutes: 20,
+        allowDraw: false,
+        extraTime: { enabled: false },
+        penalties: {
+          enabled: true,
+          initialKicksPerTeam: 5,
+          suddenDeath: true,
+        },
+      }),
+    );
+    expect(config.stages[0].discipline).toEqual(
+      expect.objectContaining({
+        accumulatedYellows: {
+          enabled: true,
+          threshold: 3,
+          suspensionMatches: 1,
+          progression: 'every_card_after_threshold',
+        },
+        secondYellowInMatch: {
+          enabled: true,
+          minimumMatches: 1,
+          allowManualExtension: true,
+        },
+        stageTransition: {
+          carryYellowCards: false,
+          carryPendingSuspensions: false,
+        },
+      }),
+    );
   });
 
   it('rejects executable-expression fields', () => {

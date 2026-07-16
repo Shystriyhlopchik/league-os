@@ -19,12 +19,23 @@ import { TournamentStageEntity } from '../../tournament-stages/entities/tourname
 import { TournamentGroupEntity } from '../../tournament-groups/entities/tournament-group.entity';
 import { TournamentRuleVersionEntity } from '../../tournament-rules/entities/tournament-rule-version.entity';
 import { MatchRoundType } from '../enums/match-round-type.enum';
+import { MatchResolutionType } from '../enums/match-resolution-type.enum';
+import { KnockoutBracketSnapshotEntity } from '../../tournament-knockout-brackets/entities/knockout-bracket-snapshot.entity';
+import type { KnockoutParticipantSourceV1 } from '../../tournament-rules/types/tournament-rules-config.type';
 
 @Entity('matches')
 @Index('IDX_matches_stage', ['stageId'])
 @Index('IDX_matches_group', ['groupId'])
 @Index('IDX_matches_effective_rule_version', ['effectiveRuleVersionId'])
 @Index('IDX_matches_stage_round', ['stageId', 'roundType', 'roundNumber'])
+@Index(
+  'UQ_matches_knockout_snapshot_position',
+  ['bracketSnapshotId', 'bracketPosition'],
+  {
+    unique: true,
+    where: '"bracket_snapshot_id" IS NOT NULL',
+  },
+)
 @Check(
   'CHK_matches_round_number',
   '"round_number" IS NULL OR "round_number" > 0',
@@ -33,10 +44,10 @@ export class MatchEntity extends BaseEntity {
   @Column({ name: 'tournament_id' })
   tournamentId: number;
 
-  @Column({ name: 'home_team_id' })
+  @Column({ name: 'home_team_id', nullable: true })
   homeTeamId: number;
 
-  @Column({ name: 'away_team_id' })
+  @Column({ name: 'away_team_id', nullable: true })
   awayTeamId: number;
 
   @Column({ name: 'venue_id', nullable: true })
@@ -89,6 +100,75 @@ export class MatchEntity extends BaseEntity {
   @Column({ name: 'bracket_position', length: 100, nullable: true })
   bracketPosition?: string;
 
+  @Column({ name: 'bracket_snapshot_id', nullable: true })
+  bracketSnapshotId?: number;
+
+  @ManyToOne(() => KnockoutBracketSnapshotEntity, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({
+    name: 'bracket_snapshot_id',
+    foreignKeyConstraintName: 'FK_matches_bracket_snapshot',
+  })
+  bracketSnapshot?: KnockoutBracketSnapshotEntity;
+
+  @Column({ name: 'home_participant_source', type: 'jsonb', nullable: true })
+  homeParticipantSource?: KnockoutParticipantSourceV1;
+
+  @Column({ name: 'away_participant_source', type: 'jsonb', nullable: true })
+  awayParticipantSource?: KnockoutParticipantSourceV1;
+
+  @Column({ name: 'winner_team_id', nullable: true })
+  winnerTeamId?: number;
+
+  @ManyToOne(() => TeamEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'winner_team_id' })
+  winnerTeam?: TeamEntity;
+
+  @Column({ name: 'loser_team_id', nullable: true })
+  loserTeamId?: number;
+
+  @ManyToOne(() => TeamEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'loser_team_id' })
+  loserTeam?: TeamEntity;
+
+  @Column({ name: 'regular_time_home_score', type: 'int', nullable: true })
+  regularTimeHomeScore?: number;
+
+  @Column({ name: 'regular_time_away_score', type: 'int', nullable: true })
+  regularTimeAwayScore?: number;
+
+  @Column({ name: 'extra_time_home_score', type: 'int', nullable: true })
+  extraTimeHomeScore?: number;
+
+  @Column({ name: 'extra_time_away_score', type: 'int', nullable: true })
+  extraTimeAwayScore?: number;
+
+  @Column({ name: 'penalty_home_score', type: 'int', nullable: true })
+  penaltyHomeScore?: number;
+
+  @Column({ name: 'penalty_away_score', type: 'int', nullable: true })
+  penaltyAwayScore?: number;
+
+  @Column({ name: 'penalty_home_kicks_taken', type: 'int', nullable: true })
+  penaltyHomeKicksTaken?: number;
+
+  @Column({ name: 'penalty_away_kicks_taken', type: 'int', nullable: true })
+  penaltyAwayKicksTaken?: number;
+
+  @Column({
+    name: 'resolution_type',
+    type: 'enum',
+    enum: MatchResolutionType,
+    enumName: 'match_resolution_type_enum',
+    nullable: true,
+  })
+  resolutionType?: MatchResolutionType;
+
+  @Column({ name: 'result_official_at', type: 'timestamp', nullable: true })
+  resultOfficialAt?: Date;
+
   @Column({ name: 'effective_rule_version_id', nullable: true })
   effectiveRuleVersionId?: number;
 
@@ -122,11 +202,11 @@ export class MatchEntity extends BaseEntity {
   @JoinColumn({ name: 'venue_id' })
   venue?: VenueEntity;
 
-  @ManyToOne(() => TeamEntity, { nullable: false })
+  @ManyToOne(() => TeamEntity, { nullable: true })
   @JoinColumn({ name: 'away_team_id' })
   awayTeam: TeamEntity;
 
-  @ManyToOne(() => TeamEntity, { nullable: false })
+  @ManyToOne(() => TeamEntity, { nullable: true })
   @JoinColumn({ name: 'home_team_id' })
   homeTeam: TeamEntity;
 

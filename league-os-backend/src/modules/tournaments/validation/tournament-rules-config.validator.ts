@@ -713,12 +713,22 @@ export class TournamentRulesConfigValidator {
     const seeding = this.object(value, path, errors);
     if (!seeding) return;
     if (seeding.type === 'random_draw' || seeding.type === 'manual') {
-      this.exactKeys(seeding, ['type'], path, errors);
+      this.exactKeys(seeding, ['type', 'constraints'], path, errors);
+      this.validatePairingConstraints(
+        seeding.constraints,
+        `${path}.constraints`,
+        errors,
+      );
     } else if (seeding.type === 'standard') {
-      this.exactKeys(seeding, ['type', 'ranking'], path, errors);
+      this.exactKeys(seeding, ['type', 'ranking', 'constraints'], path, errors);
       this.validateCrossGroupRanking(
         seeding.ranking,
         `${path}.ranking`,
+        errors,
+      );
+      this.validatePairingConstraints(
+        seeding.constraints,
+        `${path}.constraints`,
         errors,
       );
     } else if (seeding.type === 'best_eligible_opponent') {
@@ -750,28 +760,12 @@ export class TournamentRulesConfigValidator {
         `${path}.candidateRanking`,
         errors,
       );
-      const constraints = this.array(
+      this.validatePairingConstraints(
         seeding.constraints,
         `${path}.constraints`,
         errors,
+        true,
       );
-      constraints?.forEach((value, index) => {
-        const constraintPath = `${path}.constraints[${index}]`;
-        const constraint = this.object(value, constraintPath, errors);
-        if (!constraint) return;
-        this.exactKeys(constraint, ['type', 'mode'], constraintPath, errors);
-        if (
-          constraint.type !== 'avoid_same_source_group' ||
-          !['required', 'best_effort'].includes(constraint.mode as string)
-        ) {
-          this.error(
-            errors,
-            'INVALID_PAIRING_CONSTRAINT',
-            constraintPath,
-            'Unsupported pairing constraint',
-          );
-        }
-      });
       if (seeding.remaining !== 'pair_in_ranking_order') {
         this.error(
           errors,
@@ -788,6 +782,33 @@ export class TournamentRulesConfigValidator {
         'Unsupported seeding type',
       );
     }
+  }
+
+  private validatePairingConstraints(
+    value: unknown,
+    path: string,
+    errors: TournamentValidationIssue[],
+    required = false,
+  ): void {
+    if (value === undefined && !required) return;
+    const constraints = this.array(value, path, errors);
+    constraints?.forEach((item, index) => {
+      const constraintPath = `${path}[${index}]`;
+      const constraint = this.object(item, constraintPath, errors);
+      if (!constraint) return;
+      this.exactKeys(constraint, ['type', 'mode'], constraintPath, errors);
+      if (
+        constraint.type !== 'avoid_same_source_group' ||
+        !['required', 'best_effort'].includes(constraint.mode as string)
+      ) {
+        this.error(
+          errors,
+          'INVALID_PAIRING_CONSTRAINT',
+          constraintPath,
+          'Unsupported pairing constraint',
+        );
+      }
+    });
   }
 
   private validateTransition(
@@ -910,7 +931,8 @@ export class TournamentRulesConfigValidator {
         ? ['id', 'type', 'positions']
         : type === 'group_winners'
           ? ['id', 'type']
-          : type === 'best_placed_between_groups'
+          : type === 'best_placed_teams_between_groups' ||
+              type === 'best_placed_between_groups'
             ? ['id', 'type', 'sourcePosition', 'count', 'ranking']
             : type === 'overall_ranking'
               ? ['id', 'type', 'count', 'ranking']
@@ -932,6 +954,7 @@ export class TournamentRulesConfigValidator {
       [
         'top_n_per_group',
         'group_winners',
+        'best_placed_teams_between_groups',
         'best_placed_between_groups',
       ].includes(type as string) &&
       from?.type !== 'group_stage'
@@ -973,7 +996,10 @@ export class TournamentRulesConfigValidator {
         );
       }
     }
-    if (type === 'best_placed_between_groups') {
+    if (
+      type === 'best_placed_teams_between_groups' ||
+      type === 'best_placed_between_groups'
+    ) {
       this.positiveInteger(
         rule.sourcePosition,
         `${path}.sourcePosition`,

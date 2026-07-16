@@ -3,9 +3,9 @@ import type { TournamentRulesConfig } from '../../tournament-rules/types/tournam
 const discipline = {
   accumulatedYellows: {
     enabled: true as const,
-    threshold: 2,
+    threshold: 3,
     suspensionMatches: 1,
-    progression: 'reset_after_suspension' as const,
+    progression: 'every_card_after_threshold' as const,
   },
   secondYellowInMatch: {
     enabled: true as const,
@@ -18,8 +18,8 @@ const discipline = {
     allowManualExtension: true,
   },
   stageTransition: {
-    carryYellowCards: true,
-    carryPendingSuspensions: true,
+    carryYellowCards: false,
+    carryPendingSuspensions: false,
   },
 };
 
@@ -47,7 +47,7 @@ export const createYardLeagueRules = (): TournamentRulesConfig => ({
       },
       match: {
         periods: 2,
-        periodDurationMinutes: 25,
+        periodDurationMinutes: 20,
         allowDraw: true,
         extraTime: { enabled: false },
         penalties: { enabled: false },
@@ -65,7 +65,7 @@ export const createYardLeagueRules = (): TournamentRulesConfig => ({
           protectedQualificationRuleId: 'best-second',
           candidateQualificationRuleId: 'group-winners',
           candidateRanking: {
-            criteria: ['points', 'goal_difference', 'goals_for'],
+            criteria: ['points', 'goal_difference', 'goals_for', 'draw_lots'],
           },
           constraints: [
             { type: 'avoid_same_source_group', mode: 'best_effort' },
@@ -75,7 +75,7 @@ export const createYardLeagueRules = (): TournamentRulesConfig => ({
       },
       match: {
         periods: 2,
-        periodDurationMinutes: 25,
+        periodDurationMinutes: 20,
         allowDraw: false,
         extraTime: { enabled: false },
         penalties: {
@@ -95,11 +95,11 @@ export const createYardLeagueRules = (): TournamentRulesConfig => ({
         { id: 'group-winners', type: 'group_winners' },
         {
           id: 'best-second',
-          type: 'best_placed_between_groups',
+          type: 'best_placed_teams_between_groups',
           sourcePosition: 2,
           count: 1,
           ranking: {
-            criteria: ['points', 'goal_difference', 'goals_for'],
+            criteria: ['points', 'goal_difference', 'goals_for', 'draw_lots'],
           },
         },
       ],

@@ -1,15 +1,27 @@
-import {Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Req, UseGuards} from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Put,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { MatchServiceService } from './match-service.service';
 import { MatchServiceMatchDto } from './dto/match-service-match.dto';
 import { MatchRosterCheckDto } from './dto/match-roster-check.dto';
 import { MatchServiceSessionDto } from './dto/match-service-session.dto';
-import {CreateMatchServiceEventDto} from "./dto/create-match-service-event.dto";
-import {SyncMatchServiceEventsDto} from "./dto/sync-match-service-events.dto";
-import {StartEventRecordingDto} from "./dto/start-event-recording.dto";
-import {ActivateRedBallDto} from "./dto/match-red-ball-activation.dto";
+import { CreateMatchServiceEventDto } from './dto/create-match-service-event.dto';
+import { SyncMatchServiceEventsDto } from './dto/sync-match-service-events.dto';
+import { StartEventRecordingDto } from './dto/start-event-recording.dto';
+import { ActivateRedBallDto } from './dto/match-red-ball-activation.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SaveMatchRegistrationDto } from './dto/save-match-registration.dto';
 import { CreateManualMatchEventDto } from './dto/create-manual-match-event.dto';
+import { FinalizeMatchResultDto } from './dto/finalize-match-result.dto';
 
 @Controller('match-service')
 export class MatchServiceController {
@@ -51,8 +63,11 @@ export class MatchServiceController {
 
   @Post('matches/:matchId/manual-protocol/sign')
   @UseGuards(JwtAuthGuard)
-  signManualProtocol(@Param('matchId', ParseIntPipe) matchId: number) {
-    return this.matchService.signManualProtocol(matchId);
+  signManualProtocol(
+    @Param('matchId', ParseIntPipe) matchId: number,
+    @Body() dto: FinalizeMatchResultDto,
+  ) {
+    return this.matchService.signManualProtocol(matchId, dto);
   }
 
   @Get('registration-matches')
@@ -68,11 +83,7 @@ export class MatchServiceController {
     @Param('teamId', ParseIntPipe) teamId: number,
     @Req() req: any,
   ) {
-    return this.matchService.getMatchRegistration(
-      matchId,
-      teamId,
-      req.user.id,
-    );
+    return this.matchService.getMatchRegistration(matchId, teamId, req.user.id);
   }
 
   @Put('registration-matches/:matchId/teams/:teamId/roster')
@@ -144,8 +155,11 @@ export class MatchServiceController {
   }
 
   @Post('matches/:matchId/finish-half')
-  finishHalf(@Param('matchId', ParseIntPipe) matchId: number) {
-    return this.matchService.finishHalf(matchId);
+  finishHalf(
+    @Param('matchId', ParseIntPipe) matchId: number,
+    @Body() dto: FinalizeMatchResultDto,
+  ) {
+    return this.matchService.finishHalf(matchId, dto);
   }
 
   @Post('matches/:matchId/start-second-half')
@@ -154,61 +168,60 @@ export class MatchServiceController {
   }
 
   @Post('matches/:matchId/finish')
-  finishMatch(@Param('matchId', ParseIntPipe) matchId: number) {
-    return this.matchService.finishMatch(matchId);
+  finishMatch(
+    @Param('matchId', ParseIntPipe) matchId: number,
+    @Body() dto: FinalizeMatchResultDto,
+  ) {
+    return this.matchService.finishMatch(matchId, dto);
   }
 
   @Post('matches/:matchId/events')
   createEvent(
-      @Param('matchId', ParseIntPipe) matchId: number,
-      @Body() dto: CreateMatchServiceEventDto,
+    @Param('matchId', ParseIntPipe) matchId: number,
+    @Body() dto: CreateMatchServiceEventDto,
   ) {
     return this.matchService.createEvent(matchId, dto);
   }
 
   @Post('matches/:matchId/events/sync')
   syncEvents(
-      @Param('matchId', ParseIntPipe) matchId: number,
-      @Body() dto: SyncMatchServiceEventsDto,
+    @Param('matchId', ParseIntPipe) matchId: number,
+    @Body() dto: SyncMatchServiceEventsDto,
   ) {
     return this.matchService.syncEvents(matchId, dto);
   }
 
   @Post('matches/:matchId/events/start-recording')
   startEventRecording(
-      @Param('matchId', ParseIntPipe) matchId: number,
-      @Body() dto: StartEventRecordingDto,
+    @Param('matchId', ParseIntPipe) matchId: number,
+    @Body() dto: StartEventRecordingDto,
   ) {
     return this.matchService.startEventRecording(matchId, dto);
   }
 
   @Post('matches/:matchId/events/cancel-recording')
-  cancelEventRecording(
-      @Param('matchId', ParseIntPipe) matchId: number,
-  ) {
+  cancelEventRecording(@Param('matchId', ParseIntPipe) matchId: number) {
     return this.matchService.cancelEventRecording(matchId);
   }
 
   @Post('matches/:matchId/events/:eventId/cancel')
   cancelEvent(
-      @Param('matchId', ParseIntPipe) matchId: number,
-      @Param('eventId', ParseIntPipe) eventId: number,
+    @Param('matchId', ParseIntPipe) matchId: number,
+    @Param('eventId', ParseIntPipe) eventId: number,
   ) {
     return this.matchService.cancelEvent(matchId, eventId);
   }
 
   @Post('matches/:matchId/red-ball/activate')
   activateRedBall(
-      @Param('matchId', ParseIntPipe) matchId: number,
-      @Body() dto: ActivateRedBallDto,
+    @Param('matchId', ParseIntPipe) matchId: number,
+    @Body() dto: ActivateRedBallDto,
   ) {
     return this.matchService.activateRedBall(matchId, dto);
   }
 
   @Post('matches/:matchId/sign-protocol')
-  signProtocol(
-      @Param('matchId', ParseIntPipe) matchId: number,
-  ) {
+  signProtocol(@Param('matchId', ParseIntPipe) matchId: number) {
     return this.matchService.signProtocol(matchId);
   }
 }

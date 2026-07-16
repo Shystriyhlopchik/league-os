@@ -1,155 +1,102 @@
 import { Injectable } from '@nestjs/common';
-import {InjectRepository} from "@nestjs/typeorm";
-import {PlayerTournamentStatEntity} from "./entities/player-tournament-stat.entity";
-import {Repository} from "typeorm";
-import {MatchEntity} from "../matches/entities/match.entity";
-import {MatchEventType} from "../match-events/enums/match-event-type.enum";
-import {SuspensionReason} from "./enums/suspension-reason.enum";
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+
+import { MatchEventType } from '../match-events/enums/match-event-type.enum';
+import { MatchEntity } from '../matches/entities/match.entity';
+import { PlayerSuspensionsService } from '../player-suspensions/player-suspensions.service';
+import { PlayerTournamentStatEntity } from './entities/player-tournament-stat.entity';
 
 @Injectable()
 export class PlayerTournamentStatsService {
-    constructor(
-        @InjectRepository(PlayerTournamentStatEntity)
-        private readonly statRepository: Repository<PlayerTournamentStatEntity>,
+  constructor(
+    @InjectRepository(PlayerTournamentStatEntity)
+    private readonly statRepository: Repository<PlayerTournamentStatEntity>,
+    private readonly playerSuspensionsService: PlayerSuspensionsService,
+  ) {}
 
-        @InjectRepository(MatchEntity)
-        private readonly matchRepository: Repository<MatchEntity>,
-    ) {}
+  async applyCardEvent(params: {
+    match: MatchEntity;
+    teamId: number;
+    playerId: number;
+    eventType: MatchEventType;
+  }): Promise<void> {
+    const { match, teamId, playerId, eventType } = params;
 
-    async applyCardEvent(params: {
-        match: MatchEntity;
-        teamId: number;
-        playerId: number;
-        eventType: MatchEventType;
-    }): Promise<void> {
-        const { match, teamId, playerId, eventType } = params;
+    if (!this.isCardEvent(eventType)) return;
 
-        if (!this.isCardEvent(eventType)) {
-            return;
-        }
-
-        const stat = await this.getOrCreateStat({
-            tournamentId: match.tournamentId,
-            teamId,
-            playerId,
-        });
-
-        if (eventType === MatchEventType.YELLOW_CARD) {
-            stat.yellowCards += 1;
-
-            if (stat.yellowCards >= 4) {
-                stat.isSuspended = true;
-                stat.suspensionReason = SuspensionReason.FOUR_YELLOW_CARDS;
-                stat.suspendedUntilMatchId = await this.findNextTeamMatchId(match, teamId);
-            }
-        }
-
-        if (eventType === MatchEventType.RED_CARD) {
-            stat.redCards += 1;
-            stat.isSuspended = true;
-            stat.suspensionReason = SuspensionReason.RED_CARD;
-            stat.suspendedUntilMatchId = await this.findNextTeamMatchId(match, teamId);
-        }
-
-        if (eventType === MatchEventType.SECOND_YELLOW_CARD) {
-            stat.secondYellowCards += 1;
-            stat.isSuspended = true;
-            stat.suspensionReason = SuspensionReason.SECOND_YELLOW_CARD;
-            stat.suspendedUntilMatchId = await this.findNextTeamMatchId(match, teamId);
-        }
-
-        await this.statRepository.save(stat);
+    const stat = await this.getOrCreateStat({
+      tournamentId: match.tournamentId,
+      teamId,
+      playerId,
+    });
+    if (eventType === MatchEventType.YELLOW_CARD) stat.yellowCards += 1;
+    if (eventType === MatchEventType.RED_CARD) stat.redCards += 1;
+    if (eventType === MatchEventType.SECOND_YELLOW_CARD) {
+      stat.secondYellowCards += 1;
     }
+    // Transitional legacy columns remain readable, but no longer determine
+    // eligibility or point to a particular future match.
+    stat.isSuspended = false;
+    stat.suspendedUntilMatchId = undefined;
+    stat.suspensionReason = undefined;
+    await this.statRepository.save(stat);
+    await this.playerSuspensionsService.applyCardEvent(params);
+  }
 
-    private async getOrCreateStat(params: {
-        tournamentId: number;
-        teamId: number;
-        playerId: number;
-    }): Promise<PlayerTournamentStatEntity> {
-        const { tournamentId, teamId, playerId } = params;
+  private async getOrCreateStat(params: {
+    tournamentId: number;
+    teamId: number;
+    playerId: number;
+  }): Promise<PlayerTournamentStatEntity> {
+    const existing = await this.statRepository.findOne({ where: params });
+    if (existing) return existing;
+    return this.statRepository.create({
+      ...params,
+      yellowCards: 0,
+      redCards: 0,
+      secondYellowCards: 0,
+      suspensionsServed: 0,
+      isSuspended: false,
+    });
+  }
 
-        const existing = await this.statRepository.findOne({
-            where: {
-                tournamentId,
-                teamId,
-                playerId,
-            },
-        });
+  private isCardEvent(eventType: MatchEventType): boolean {
+    return [
+      MatchEventType.YELLOW_CARD,
+      MatchEventType.RED_CARD,
+      MatchEventType.SECOND_YELLOW_CARD,
+    ].includes(eventType);
+  }
 
-        if (existing) {
-            return existing;
-        }
+  async serveSuspensionsForMatch(matchId: number): Promise<void> {
+    await this.playerSuspensionsService.serveSuspensionsForMatch(matchId);
+  }
 
-        return this.statRepository.create({
-            tournamentId,
-            teamId,
-            playerId,
-            yellowCards: 0,
-            redCards: 0,
-            secondYellowCards: 0,
-            suspensionsServed: 0,
-            isSuspended: false,
-        });
+  async revertCardEvent(params: {
+    match: MatchEntity;
+    teamId: number;
+    playerId: number;
+    eventType: MatchEventType;
+  }): Promise<void> {
+    if (!this.isCardEvent(params.eventType)) return;
+    const stat = await this.statRepository.findOne({
+      where: {
+        tournamentId: params.match.tournamentId,
+        teamId: params.teamId,
+        playerId: params.playerId,
+      },
+    });
+    if (stat) {
+      if (params.eventType === MatchEventType.YELLOW_CARD) {
+        stat.yellowCards = Math.max(0, stat.yellowCards - 1);
+      } else if (params.eventType === MatchEventType.RED_CARD) {
+        stat.redCards = Math.max(0, stat.redCards - 1);
+      } else {
+        stat.secondYellowCards = Math.max(0, stat.secondYellowCards - 1);
+      }
+      await this.statRepository.save(stat);
     }
-
-    private async findNextTeamMatchId(
-        currentMatch: MatchEntity,
-        teamId: number,
-    ): Promise<number | undefined> {
-        if (!currentMatch.matchDatetime) {
-            return undefined;
-        }
-
-        const nextMatch = await this.matchRepository
-            .createQueryBuilder('match')
-            .where('match.tournament_id = :tournamentId', {
-                tournamentId: currentMatch.tournamentId,
-            })
-            .andWhere('match.match_datetime > :currentDate', {
-                currentDate: currentMatch.matchDatetime,
-            })
-            .andWhere(
-                '(match.home_team_id = :teamId OR match.away_team_id = :teamId)',
-                { teamId },
-            )
-            .orderBy('match.match_datetime', 'ASC')
-            .addOrderBy('match.id', 'ASC')
-            .getOne();
-
-        return nextMatch?.id;
-    }
-
-    private isCardEvent(eventType: MatchEventType): boolean {
-        return [
-            MatchEventType.YELLOW_CARD,
-            MatchEventType.RED_CARD,
-            MatchEventType.SECOND_YELLOW_CARD,
-        ].includes(eventType);
-    }
-
-    async serveSuspensionsForMatch(matchId: number): Promise<void> {
-        const suspendedStats = await this.statRepository.find({
-            where: {
-                suspendedUntilMatchId: matchId,
-                isSuspended: true,
-            },
-        });
-
-        if (!suspendedStats.length) {
-            return;
-        }
-
-        suspendedStats.forEach((stat) => {
-            stat.isSuspended = false;
-            stat.suspendedUntilMatchId = undefined;
-            stat.suspensionReason = undefined;
-            stat.suspensionsServed += 1;
-
-            if (stat.yellowCards >= 4) {
-                stat.yellowCards = 0;
-            }
-        });
-
-        await this.statRepository.save(suspendedStats);
-    }
+    await this.playerSuspensionsService.revertCardEvent(params);
+  }
 }
