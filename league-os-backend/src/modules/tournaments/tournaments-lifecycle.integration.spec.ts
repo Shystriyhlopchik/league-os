@@ -20,6 +20,7 @@ import { TournamentLifecycleStatus } from './enums/tournament-lifecycle-status.e
 import { TournamentLifecycleService } from './tournament-lifecycle.service';
 import { TournamentsController } from './tournaments.controller';
 import { TournamentsService } from './tournaments.service';
+import { TournamentGroupSchedulingService } from './scheduling/tournament-group-scheduling.service';
 
 describe('Tournament lifecycle HTTP integration', () => {
   let app: INestApplication;
@@ -57,6 +58,12 @@ describe('Tournament lifecycle HTTP integration', () => {
       activeRuleVersionId: 2,
     })),
   };
+  const groupScheduling = {
+    previewGroupAssignments: jest.fn(),
+    assignGroups: jest.fn(),
+    previewSchedule: jest.fn(async () => ({ totalMatches: 30 })),
+    generateSchedule: jest.fn(),
+  };
   const authenticationGuard: CanActivate = {
     canActivate(context: ExecutionContext): boolean {
       const request = context.switchToHttp().getRequest();
@@ -75,6 +82,10 @@ describe('Tournament lifecycle HTTP integration', () => {
         TournamentAccessGuard,
         { provide: TournamentsService, useValue: {} },
         { provide: TournamentLifecycleService, useValue: lifecycle },
+        {
+          provide: TournamentGroupSchedulingService,
+          useValue: groupScheduling,
+        },
         {
           provide: getRepositoryToken(TournamentEntity),
           useValue: tournaments,
@@ -143,6 +154,19 @@ describe('Tournament lifecycle HTTP integration', () => {
       .send({ schemaVersion: 1, config: { schemaVersion: 1 } })
       .expect(201)
       .expect({ version: 2, status: 'draft' });
+  });
+
+  it('lets an organizer preview the group-stage schedule', async () => {
+    await request(app.getHttpServer())
+      .post('/tournaments/10/stages/20/schedule/preview')
+      .set('x-test-user-id', '2')
+      .send({ legs: 1 })
+      .expect(200)
+      .expect({ totalMatches: 30 });
+
+    expect(groupScheduling.previewSchedule).toHaveBeenCalledWith(10, 20, {
+      legs: 1,
+    });
   });
 
   it('reserves publication for the owner', async () => {

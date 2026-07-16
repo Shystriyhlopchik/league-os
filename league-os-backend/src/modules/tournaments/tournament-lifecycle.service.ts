@@ -153,6 +153,7 @@ export class TournamentLifecycleService {
     dto: UpdateStageRequestDto,
   ): Promise<TournamentStageEntity> {
     await this.assertDraft(tournamentId);
+    await this.assertStageScheduleEmpty(stageId);
     const stage = await this.getStage(tournamentId, stageId);
     if (dto.configuration) {
       this.assertStageConfiguration(dto.type ?? stage.type, dto.configuration);
@@ -162,6 +163,7 @@ export class TournamentLifecycleService {
 
   async removeStage(tournamentId: number, stageId: number): Promise<void> {
     await this.assertDraft(tournamentId);
+    await this.assertStageScheduleEmpty(stageId);
     await this.getStage(tournamentId, stageId);
     await this.stageRepository.delete(stageId);
   }
@@ -172,6 +174,7 @@ export class TournamentLifecycleService {
     dto: CreateGroupRequestDto,
   ): Promise<TournamentGroupEntity> {
     await this.assertDraft(tournamentId);
+    await this.assertStageScheduleEmpty(stageId);
     await this.getStage(tournamentId, stageId);
     return this.groupRepository.save(
       this.groupRepository.create({ ...dto, stageId }),
@@ -185,6 +188,7 @@ export class TournamentLifecycleService {
     dto: UpdateGroupRequestDto,
   ): Promise<TournamentGroupEntity> {
     await this.assertDraft(tournamentId);
+    await this.assertStageScheduleEmpty(stageId);
     await this.getStage(tournamentId, stageId);
     const group = await this.getGroup(stageId, groupId);
     return this.groupRepository.save(this.groupRepository.merge(group, dto));
@@ -196,6 +200,7 @@ export class TournamentLifecycleService {
     groupId: number,
   ): Promise<void> {
     await this.assertDraft(tournamentId);
+    await this.assertStageScheduleEmpty(stageId);
     await this.getStage(tournamentId, stageId);
     await this.getGroup(stageId, groupId);
     await this.groupRepository.delete(groupId);
@@ -207,6 +212,7 @@ export class TournamentLifecycleService {
     dto: CreateStageParticipantRequestDto,
   ): Promise<TournamentStageParticipantEntity> {
     await this.assertDraft(tournamentId);
+    await this.assertStageScheduleEmpty(stageId);
     await this.assertParticipantReferences(tournamentId, stageId, dto);
     return this.participantRepository.save(
       this.participantRepository.create({ ...dto, stageId }),
@@ -220,6 +226,7 @@ export class TournamentLifecycleService {
     dto: UpdateStageParticipantRequestDto,
   ): Promise<TournamentStageParticipantEntity> {
     await this.assertDraft(tournamentId);
+    await this.assertStageScheduleEmpty(stageId);
     const participant = await this.participantRepository.findOne({
       where: { id: participantId, stageId },
     });
@@ -236,6 +243,7 @@ export class TournamentLifecycleService {
     participantId: number,
   ): Promise<void> {
     await this.assertDraft(tournamentId);
+    await this.assertStageScheduleEmpty(stageId);
     await this.getStage(tournamentId, stageId);
     const result = await this.participantRepository.delete({
       id: participantId,
@@ -610,6 +618,17 @@ export class TournamentLifecycleService {
       );
     }
     if (dto.groupId) await this.getGroup(stageId, dto.groupId);
+  }
+
+  private async assertStageScheduleEmpty(stageId: number): Promise<void> {
+    const matches = await this.matchRepository.count({
+      where: { stageId, status: Not(MatchStatus.CANCELLED) },
+    });
+    if (matches > 0) {
+      throw new ConflictException(
+        'Reset the stage schedule before changing its structure or participants',
+      );
+    }
   }
 
   private assertStageConfiguration(

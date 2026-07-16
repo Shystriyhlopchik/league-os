@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Put,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -31,12 +32,17 @@ import { UpdateStageRequestDto } from './dto/update-stage-request.dto';
 import { UpdateUserTournamentDto } from './dto/update-user-tournament.dto';
 import { TournamentLifecycleService } from './tournament-lifecycle.service';
 import type { AuthenticatedTournamentRequest } from './types/authenticated-tournament-request.type';
+import { AssignStageGroupsDto } from './dto/assign-stage-groups.dto';
+import { PreviewGroupStageScheduleDto } from './dto/preview-group-stage-schedule.dto';
+import { GenerateGroupStageScheduleDto } from './dto/generate-group-stage-schedule.dto';
+import { TournamentGroupSchedulingService } from './scheduling/tournament-group-scheduling.service';
 
 @Controller('tournaments')
 export class TournamentsController {
   constructor(
     private readonly tournamentsService: TournamentsService,
     private readonly lifecycleService: TournamentLifecycleService,
+    private readonly groupSchedulingService: TournamentGroupSchedulingService,
   ) {}
 
   @Post()
@@ -196,6 +202,64 @@ export class TournamentsController {
       tournamentId,
       stageId,
       participantId,
+    );
+  }
+
+  @Post(':tournamentId/stages/:stageId/group-assignments/preview')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  previewGroupAssignments(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Param('stageId', ParseIntPipe) stageId: number,
+    @Body() dto: AssignStageGroupsDto,
+  ) {
+    return this.groupSchedulingService.previewGroupAssignments(
+      tournamentId,
+      stageId,
+      dto,
+    );
+  }
+
+  @Put(':tournamentId/stages/:stageId/group-assignments')
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  assignGroups(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Param('stageId', ParseIntPipe) stageId: number,
+    @Body() dto: AssignStageGroupsDto,
+  ) {
+    return this.groupSchedulingService.assignGroups(tournamentId, stageId, dto);
+  }
+
+  @Post(':tournamentId/stages/:stageId/schedule/preview')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  previewGroupStageSchedule(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Param('stageId', ParseIntPipe) stageId: number,
+    @Body() dto: PreviewGroupStageScheduleDto,
+  ) {
+    return this.groupSchedulingService.previewSchedule(
+      tournamentId,
+      stageId,
+      dto,
+    );
+  }
+
+  @Post(':tournamentId/stages/:stageId/schedule/generate')
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  generateGroupStageSchedule(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Param('stageId', ParseIntPipe) stageId: number,
+    @Body() dto: GenerateGroupStageScheduleDto,
+  ) {
+    return this.groupSchedulingService.generateSchedule(
+      tournamentId,
+      stageId,
+      dto,
     );
   }
 

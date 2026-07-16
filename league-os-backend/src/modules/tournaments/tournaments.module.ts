@@ -18,6 +18,9 @@ import { TournamentAccessService } from './access/tournament-access.service';
 import { TournamentLifecycleService } from './tournament-lifecycle.service';
 import { TournamentConfigurationValidationService } from './validation/tournament-configuration-validation.service';
 import { TournamentRulesConfigValidator } from './validation/tournament-rules-config.validator';
+import { GroupAssignmentStrategyService } from './scheduling/group-assignment-strategy.service';
+import { RoundRobinGenerator } from './scheduling/round-robin-generator';
+import { TournamentGroupSchedulingService } from './scheduling/tournament-group-scheduling.service';
 
 @Module({
   imports: [
@@ -43,6 +46,9 @@ import { TournamentRulesConfigValidator } from './validation/tournament-rules-co
     TournamentAccessGuard,
     TournamentRulesConfigValidator,
     TournamentConfigurationValidationService,
+    GroupAssignmentStrategyService,
+    RoundRobinGenerator,
+    TournamentGroupSchedulingService,
   ],
   exports: [TournamentLifecycleService],
 })
