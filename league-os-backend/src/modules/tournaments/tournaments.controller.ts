@@ -50,6 +50,9 @@ import { AddTournamentTeamDto } from './dto/add-tournament-team.dto';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleCode } from '../users/enums/role-code.enum';
+import { FeatureFlag } from '../../common/feature-flags/feature-flag.enum';
+import { FeatureFlagGuard } from '../../common/feature-flags/feature-flag.guard';
+import { RequireFeature } from '../../common/feature-flags/require-feature.decorator';
 
 @Controller('tournaments')
 export class TournamentsController {
@@ -94,7 +97,8 @@ export class TournamentsController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   create(
     @Body() dto: CreateUserTournamentDto,
     @Req() request: AuthenticatedTournamentRequest,
@@ -103,7 +107,8 @@ export class TournamentsController {
   }
 
   @Get(':tournamentId/builder')
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.READ)
   getBuilderDraft(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -112,7 +117,8 @@ export class TournamentsController {
   }
 
   @Post(':tournamentId/teams')
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   addTournamentTeam(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -123,7 +129,8 @@ export class TournamentsController {
 
   @Post(':tournamentId/stages/:stageId/knockout-bracket/preview')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   previewKnockoutBracket(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -141,7 +148,8 @@ export class TournamentsController {
 
   @Post(':tournamentId/knockout-bracket-snapshots/:snapshotId/confirm')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   confirmKnockoutBracket(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -158,7 +166,8 @@ export class TournamentsController {
   }
 
   @Get(':tournamentId/stages/:stageId/knockout-bracket/current')
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.READ)
   getCurrentKnockoutBracket(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -169,7 +178,8 @@ export class TournamentsController {
 
   @Post(':tournamentId/knockout/matches/:matchId/advance')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   advanceKnockoutMatch(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -187,7 +197,8 @@ export class TournamentsController {
     ':tournamentId/transitions/:fromStageId/:toStageId/qualification/preview',
   )
   @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   previewQualification(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -207,7 +218,8 @@ export class TournamentsController {
 
   @Post(':tournamentId/qualification-snapshots/:snapshotId/confirm')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   confirmQualification(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -225,7 +237,8 @@ export class TournamentsController {
 
   @Post(':tournamentId/qualification-snapshots/:snapshotId/recalculate')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   recalculateQualification(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -244,7 +257,8 @@ export class TournamentsController {
   @Get(
     ':tournamentId/transitions/:fromStageId/:toStageId/qualification/current',
   )
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.READ)
   getCurrentQualification(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -259,7 +273,8 @@ export class TournamentsController {
   }
 
   @Patch(':tournamentId')
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   update(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -269,7 +284,8 @@ export class TournamentsController {
   }
 
   @Post(':tournamentId/members')
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.MANAGE_MEMBERS)
   setMember(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -280,7 +296,8 @@ export class TournamentsController {
 
   @Delete(':tournamentId/members/:userId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.MANAGE_MEMBERS)
   removeMember(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -290,7 +307,8 @@ export class TournamentsController {
   }
 
   @Post(':tournamentId/stages')
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   createStage(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -300,7 +318,8 @@ export class TournamentsController {
   }
 
   @Patch(':tournamentId/stages/:stageId')
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   updateStage(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -312,7 +331,8 @@ export class TournamentsController {
 
   @Delete(':tournamentId/stages/:stageId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   removeStage(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -322,7 +342,8 @@ export class TournamentsController {
   }
 
   @Post(':tournamentId/stages/:stageId/groups')
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   createGroup(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -333,7 +354,8 @@ export class TournamentsController {
   }
 
   @Patch(':tournamentId/stages/:stageId/groups/:groupId')
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   updateGroup(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -351,7 +373,8 @@ export class TournamentsController {
 
   @Delete(':tournamentId/stages/:stageId/groups/:groupId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   removeGroup(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -362,7 +385,8 @@ export class TournamentsController {
   }
 
   @Post(':tournamentId/stages/:stageId/participants')
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   addStageParticipant(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -377,7 +401,8 @@ export class TournamentsController {
   }
 
   @Patch(':tournamentId/stages/:stageId/participants/:participantId')
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   updateStageParticipant(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -395,7 +420,8 @@ export class TournamentsController {
 
   @Delete(':tournamentId/stages/:stageId/participants/:participantId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   removeStageParticipant(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -411,7 +437,8 @@ export class TournamentsController {
 
   @Post(':tournamentId/stages/:stageId/group-assignments/preview')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   previewGroupAssignments(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -426,7 +453,8 @@ export class TournamentsController {
   }
 
   @Put(':tournamentId/stages/:stageId/group-assignments')
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   assignGroups(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -438,7 +466,8 @@ export class TournamentsController {
 
   @Post(':tournamentId/stages/:stageId/schedule/preview')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   previewGroupStageSchedule(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -453,7 +482,8 @@ export class TournamentsController {
   }
 
   @Post(':tournamentId/stages/:stageId/schedule/generate')
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   generateGroupStageSchedule(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -468,7 +498,8 @@ export class TournamentsController {
   }
 
   @Post(':tournamentId/rule-versions')
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   createRuleVersion(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -483,14 +514,16 @@ export class TournamentsController {
   }
 
   @Get(':tournamentId/rule-versions')
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.READ)
   getRuleVersions(@Param('tournamentId', ParseIntPipe) tournamentId: number) {
     return this.lifecycleService.getRuleVersions(tournamentId);
   }
 
   @Patch(':tournamentId/rule-versions/:ruleVersionId')
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   updateDraftRuleVersion(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -506,7 +539,8 @@ export class TournamentsController {
 
   @Post(':tournamentId/validate')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
   preview(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -517,7 +551,8 @@ export class TournamentsController {
 
   @Post(':tournamentId/publish')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.PUBLISH)
   publish(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
@@ -533,7 +568,8 @@ export class TournamentsController {
 
   @Post(':tournamentId/complete')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.PUBLISH)
   complete(@Param('tournamentId', ParseIntPipe) tournamentId: number) {
     return this.lifecycleService.complete(tournamentId);

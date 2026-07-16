@@ -3,6 +3,7 @@ import { of, Subject, throwError } from 'rxjs';
 import { StandingsApi } from '../../entities/standings/api/standings.api';
 import { PublicTournamentView } from '../../entities/standings/model/public-tournament-view.model';
 import { SessionStore } from '../../entities/user/model/session.store';
+import { FeatureFlagsApi } from '../../shared/api/feature-flags.api';
 import { TournamentPublicViewComponent } from './tournament-public-view.component';
 
 describe('TournamentPublicViewComponent', () => {
@@ -21,6 +22,16 @@ describe('TournamentPublicViewComponent', () => {
                 {
                     provide: SessionStore,
                     useValue: { hasAnyRole: () => false },
+                },
+                {
+                    provide: FeatureFlagsApi,
+                    useValue: {
+                        get: () =>
+                            of({
+                                tournamentBuilder: true,
+                                multiStagePublicView: true,
+                            }),
+                    },
                 },
             ],
         }).compileComponents();

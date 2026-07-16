@@ -5,8 +5,12 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 
+import { FeatureFlag } from '../../common/feature-flags/feature-flag.enum';
+import { FeatureFlagGuard } from '../../common/feature-flags/feature-flag.guard';
+import { RequireFeature } from '../../common/feature-flags/require-feature.decorator';
 import { RecalculateStageStandingsDto } from './dto/recalculate-stage-standings.dto';
 import { StandingsService } from './standings.service';
 
@@ -15,6 +19,8 @@ export class StandingsController {
   constructor(private readonly standingsService: StandingsService) {}
 
   @Get('tournaments/:tournamentId/public-view')
+  @UseGuards(FeatureFlagGuard)
+  @RequireFeature(FeatureFlag.MultiStagePublicView)
   getPublicTournamentView(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
   ) {

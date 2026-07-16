@@ -5,6 +5,7 @@ import {roleGuard} from './guards/role.guard';
 import {UserRole} from './entities/user/model/user-role.type';
 import {guestGuard} from './guards/guest.guard';
 import {matchProtocolLeaveGuard} from './pages/match-protocol/model/match-protocol-leave.guard';
+import { tournamentBuilderFeatureGuard } from './guards/tournament-builder-feature.guard';
 
 export const routes: Routes = [
     {
@@ -146,7 +147,10 @@ export const routes: Routes = [
             },
             {
                 path: 'tournaments/new',
-                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
+                canActivate: [
+                    tournamentBuilderFeatureGuard,
+                    roleGuard([UserRole.SuperAdmin, UserRole.Admin]),
+                ],
                 loadComponent: () =>
                     import('./pages/tournament-builder/ui/tournament-builder-page.component').then(
                         (m) => m.TournamentBuilderPageComponent,
@@ -154,7 +158,10 @@ export const routes: Routes = [
             },
             {
                 path: 'tournaments/:tournamentId/edit',
-                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
+                canActivate: [
+                    tournamentBuilderFeatureGuard,
+                    roleGuard([UserRole.SuperAdmin, UserRole.Admin]),
+                ],
                 loadComponent: () =>
                     import('./pages/tournament-builder/ui/tournament-builder-page.component').then(
                         (m) => m.TournamentBuilderPageComponent,

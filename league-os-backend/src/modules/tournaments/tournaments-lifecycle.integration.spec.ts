@@ -24,6 +24,8 @@ import { TournamentGroupSchedulingService } from './scheduling/tournament-group-
 import { QualificationService } from '../tournament-qualifications/qualification.service';
 import { KnockoutBracketService } from '../tournament-knockout-brackets/knockout-bracket.service';
 import { PlayerSuspensionsService } from '../player-suspensions/player-suspensions.service';
+import { FeatureFlagGuard } from '../../common/feature-flags/feature-flag.guard';
+import { FeatureFlagsService } from '../../common/feature-flags/feature-flags.service';
 
 describe('Tournament lifecycle HTTP integration', () => {
   let app: INestApplication;
@@ -101,6 +103,11 @@ describe('Tournament lifecycle HTTP integration', () => {
       providers: [
         TournamentAccessService,
         TournamentAccessGuard,
+        FeatureFlagGuard,
+        {
+          provide: FeatureFlagsService,
+          useValue: { isEnabled: () => true },
+        },
         { provide: TournamentsService, useValue: {} },
         { provide: TournamentLifecycleService, useValue: lifecycle },
         {

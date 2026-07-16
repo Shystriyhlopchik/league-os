@@ -28,12 +28,14 @@ import { TournamentGroupsModule } from './modules/tournament-groups/tournament-g
 import { TournamentRulesModule } from './modules/tournament-rules/tournament-rules.module';
 import { TournamentMembersModule } from './modules/tournament-members/tournament-members.module';
 import { TournamentStageParticipantsModule } from './modules/tournament-stage-participants/tournament-stage-participants.module';
+import { FeatureFlagsModule } from './common/feature-flags/feature-flags.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    FeatureFlagsModule,
     TypeOrmModule.forRootAsync({
       imports: undefined,
       inject: [ConfigService],

@@ -23,6 +23,7 @@
     "migration:run": "npm run typeorm -- migration:run -d src/database/data-source.ts",
     "migration:revert": "npm run typeorm -- migration:revert -d src/database/data-source.ts",
     "migration:show": "npm run typeorm -- migration:show -d src/database/data-source.ts",
+    "migration:verify-legacy": "node -r ts-node/register -r tsconfig-paths/register src/database/verify-legacy-tournament-migration.ts",
     "seed": "node -r ts-node/register -r tsconfig-paths/register src/database/seed.ts"
   },
   "dependencies": {

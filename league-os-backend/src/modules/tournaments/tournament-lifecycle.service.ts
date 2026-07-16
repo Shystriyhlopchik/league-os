@@ -121,14 +121,14 @@ export class TournamentLifecycleService {
               where: { stageId: In(stageIds) },
               order: { order: 'ASC' },
             })
-          : [],
+          : ([] as TournamentGroupEntity[]),
         stageIds.length
           ? this.participantRepository.find({
               where: { stageId: In(stageIds) },
               relations: { tournamentTeam: { team: true } },
               order: { id: 'ASC' },
             })
-          : [],
+          : ([] as TournamentStageParticipantEntity[]),
         this.ruleVersionRepository.find({
           where: { tournamentId },
           order: { version: 'DESC' },

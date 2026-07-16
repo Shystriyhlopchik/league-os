@@ -698,7 +698,7 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
   async getLegacyTournamentStandings(
     tournamentId: number,
   ): Promise<StandingView[]> {
-    const standings = await this.standingsRepository.find({
+    let standings = await this.standingsRepository.find({
       where: { tournamentId, stageId: IsNull() },
       relations: { team: true },
       order: {
@@ -708,6 +708,29 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
         teamId: 'ASC',
       },
     });
+    if (!standings.length) {
+      const legacyStage = await this.stageRepository.findOne({
+        where: {
+          tournamentId,
+          key: 'legacy-main',
+        },
+      });
+      if (legacyStage) {
+        standings = await this.standingsRepository.find({
+          where: {
+            tournamentId,
+            stageId: legacyStage.id,
+          },
+          relations: { team: true },
+          order: {
+            points: 'DESC',
+            goalDifference: 'DESC',
+            goalsFor: 'DESC',
+            teamId: 'ASC',
+          },
+        });
+      }
+    }
     return standings.map((standing, index) =>
       this.toView({ ...standing, position: index + 1 }),
     );

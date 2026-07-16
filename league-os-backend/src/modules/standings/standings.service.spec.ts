@@ -16,6 +16,8 @@ import { createYardLeagueRules } from '../tournaments/validation/yard-league-rul
 import { StandingEntity } from './entities/standing.entity';
 import { RuleDrivenStandingsEngine } from './rule-driven-standings.engine';
 import { StandingsService } from './standings.service';
+import { QualificationSnapshotEntity } from '../tournament-qualifications/entities/qualification-snapshot.entity';
+import { KnockoutBracketSnapshotEntity } from '../tournament-knockout-brackets/entities/knockout-bracket-snapshot.entity';
 
 describe('StandingsService rule-driven scope', () => {
   const teams = [1, 2, 3].map(
@@ -128,6 +130,12 @@ describe('StandingsService rule-driven scope', () => {
   const ruleVersionRepository = {
     findOne: jest.fn(async () => ruleVersion),
   } as unknown as Repository<TournamentRuleVersionEntity>;
+  const qualificationSnapshotRepository = {
+    find: jest.fn(async () => []),
+  } as unknown as Repository<QualificationSnapshotEntity>;
+  const bracketSnapshotRepository = {
+    find: jest.fn(async () => []),
+  } as unknown as Repository<KnockoutBracketSnapshotEntity>;
   const eventRepository = {
     find: jest.fn(async () => []),
   } as unknown as Repository<MatchEventEntity>;
@@ -154,6 +162,10 @@ describe('StandingsService rule-driven scope', () => {
     groupRepository,
     participantRepository,
     tournamentTeamRepository,
+    tournamentRepository,
+    ruleVersionRepository,
+    qualificationSnapshotRepository,
+    bracketSnapshotRepository,
     dataSource,
     new RuleDrivenStandingsEngine(),
   );

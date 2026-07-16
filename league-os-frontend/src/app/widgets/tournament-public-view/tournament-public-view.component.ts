@@ -16,6 +16,8 @@ import { StandingsTableComponent } from '../../entities/standings/ui/standings-t
 import { KnockoutBracketComponent } from '../../entities/standings/ui/knockout-bracket/knockout-bracket.component';
 import { SessionStore } from '../../entities/user/model/session.store';
 import { UserRole } from '../../entities/user/model/user-role.type';
+import { FeatureFlagsApi } from '../../shared/api/feature-flags.api';
+import { switchMap } from 'rxjs';
 
 @Component({
     selector: 'app-tournament-public-view',
@@ -26,6 +28,7 @@ import { UserRole } from '../../entities/user/model/user-role.type';
 export class TournamentPublicViewComponent {
     private readonly api = inject(StandingsApi);
     private readonly session = inject(SessionStore);
+    private readonly featureFlags = inject(FeatureFlagsApi);
     private readonly reloadToken = signal(0);
 
     readonly tournamentId = input.required<number | string>();
@@ -70,8 +73,17 @@ export class TournamentPublicViewComponent {
             this.reloadToken();
             this.loading.set(true);
             this.error.set(null);
-            const subscription = this.api
-                .getPublicTournamentView(tournamentId)
+            const subscription = this.featureFlags
+                .get()
+                .pipe(
+                    switchMap((flags) =>
+                        flags.multiStagePublicView
+                            ? this.api.getPublicTournamentView(tournamentId)
+                            : this.api.getLegacyPublicTournamentView(
+                                  tournamentId,
+                              ),
+                    ),
+                )
                 .subscribe({
                     next: (view) => {
                         this.view.set(view);
