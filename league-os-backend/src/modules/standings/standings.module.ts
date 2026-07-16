@@ -13,6 +13,10 @@ import { TournamentEntity } from '../tournaments/entities/tournaments.entity';
 import { TournamentRuleVersionEntity } from '../tournament-rules/entities/tournament-rule-version.entity';
 import { MatchEventEntity } from '../match-events/entities/match-event.entity';
 import { RuleDrivenStandingsEngine } from './rule-driven-standings.engine';
+import { QualificationSnapshotEntity } from '../tournament-qualifications/entities/qualification-snapshot.entity';
+import { QualificationSnapshotEntryEntity } from '../tournament-qualifications/entities/qualification-snapshot-entry.entity';
+import { KnockoutBracketSnapshotEntity } from '../tournament-knockout-brackets/entities/knockout-bracket-snapshot.entity';
+import { KnockoutBracketPlanEntity } from '../tournament-knockout-brackets/entities/knockout-bracket-plan.entity';
 
 @Module({
   imports: [
@@ -26,6 +30,10 @@ import { RuleDrivenStandingsEngine } from './rule-driven-standings.engine';
       TournamentTeamEntity,
       TournamentEntity,
       TournamentRuleVersionEntity,
+      QualificationSnapshotEntity,
+      QualificationSnapshotEntryEntity,
+      KnockoutBracketSnapshotEntity,
+      KnockoutBracketPlanEntity,
     ]),
   ],
   controllers: [StandingsController],

@@ -14,6 +14,13 @@ import { StandingsService } from './standings.service';
 export class StandingsController {
   constructor(private readonly standingsService: StandingsService) {}
 
+  @Get('tournaments/:tournamentId/public-view')
+  getPublicTournamentView(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+  ) {
+    return this.standingsService.getPublicTournamentView(tournamentId);
+  }
+
   @Get('tournaments/:tournamentId/stages/:stageId/groups/:groupId')
   getGroupStandings(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,

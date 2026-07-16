@@ -107,6 +107,67 @@ export class TournamentLifecycleService {
     );
   }
 
+  async getBuilderDraft(tournamentId: number) {
+    const tournament = await this.getTournament(tournamentId);
+    const stages = await this.stageRepository.find({
+      where: { tournamentId },
+      order: { order: 'ASC' },
+    });
+    const stageIds = stages.map((stage) => stage.id);
+    const [groups, participants, ruleVersions, tournamentTeams] =
+      await Promise.all([
+        stageIds.length
+          ? this.groupRepository.find({
+              where: { stageId: In(stageIds) },
+              order: { order: 'ASC' },
+            })
+          : [],
+        stageIds.length
+          ? this.participantRepository.find({
+              where: { stageId: In(stageIds) },
+              relations: { tournamentTeam: { team: true } },
+              order: { id: 'ASC' },
+            })
+          : [],
+        this.ruleVersionRepository.find({
+          where: { tournamentId },
+          order: { version: 'DESC' },
+        }),
+        this.tournamentTeamRepository.find({
+          where: { tournamentId },
+          relations: { team: true },
+          order: { id: 'ASC' },
+        }),
+      ]);
+
+    return {
+      tournament,
+      stages: stages.map((stage) => ({
+        ...stage,
+        groups: groups.filter((group) => group.stageId === stage.id),
+        participants: participants.filter(
+          (participant) => participant.stageId === stage.id,
+        ),
+      })),
+      tournamentTeams,
+      ruleVersions,
+    };
+  }
+
+  async addTournamentTeam(
+    tournamentId: number,
+    teamId: number,
+  ): Promise<TournamentTeamEntity> {
+    await this.assertDraft(tournamentId);
+    const existing = await this.tournamentTeamRepository.findOne({
+      where: { tournamentId, teamId },
+    });
+    if (existing) return existing;
+    return this.tournamentTeamRepository.save(
+      this.tournamentTeamRepository.create({ tournamentId, teamId }),
+    );
+  }
+
   async setMember(
     tournamentId: number,
     dto: ManageTournamentMemberDto,

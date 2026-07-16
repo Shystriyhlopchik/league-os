@@ -1,0 +1,982 @@
+<div class="builder">
+    <header class="builder__header">
+        <div>
+            <a class="back-link" routerLink="/dashboard">← В кабинет</a>
+            <p class="eyebrow">Конструктор турниров</p>
+            <h1>{{ draft().details.name || 'Новый турнир' }}</h1>
+            <p class="subtitle">
+                Настройте структуру и правила. Прогресс сохраняется локально
+                после каждого изменения.
+            </p>
+        </div>
+
+        <div class="header-status">
+            <span
+                class="status"
+                [class.status--draft]="draft().lifecycleStatus === 'draft'"
+            >
+                {{ draft().lifecycleStatus }}
+            </span>
+            <small>
+                @if (store.dirty()) {
+                    Есть несохранённые на сервере изменения
+                } @else {
+                    Черновик синхронизирован
+                }
+            </small>
+        </div>
+    </header>
+
+    @if (store.structureLocked()) {
+        <div class="lock-banner">
+            <strong>Структура турнира опубликована.</strong>
+            Этапы, участники, группы и базовые правила доступны только для
+            просмотра. Для изменения правил создайте новую версию.
+        </div>
+    }
+
+    @if (store.notice()) {
+        <div class="notice" role="status">
+            {{ store.notice() }}
+            <button type="button" (click)="store.notice.set(null)">×</button>
+        </div>
+    }
+
+    <div class="builder__layout">
+        <aside class="builder__sidebar">
+            <app-tournament-wizard-stepper
+                [steps]="steps"
+                [current]="activeStep()"
+                [errorSteps]="errorSteps()"
+                (selected)="goToStep($event)"
+            />
+        </aside>
+
+        <main class="builder__main">
+            <section class="step-card">
+                <header class="step-card__header">
+                    <div>
+                        <span>Шаг {{ activeStep() + 1 }} из {{ steps.length }}</span>
+                        <h2>{{ steps[activeStep()].title }}</h2>
+                    </div>
+                    @if (stepIssueCount(activeStep())) {
+                        <span class="error-badge">
+                            Ошибок: {{ stepIssueCount(activeStep()) }}
+                        </span>
+                    }
+                </header>
+
+                @switch (activeStep()) {
+                    @case (0) {
+                        <div class="section-block">
+                            <h3>Быстрый старт</h3>
+                            <p class="hint">
+                                Шаблон заполняет этапы и правила. Любые параметры
+                                можно уточнить до публикации.
+                            </p>
+                            <div class="template-grid">
+                                @for (template of templates; track template.id) {
+                                    <button
+                                        type="button"
+                                        class="template-card"
+                                        [class.template-card--active]="draft().templateId === template.id"
+                                        [disabled]="store.structureLocked()"
+                                        (click)="applyTemplate(template.id)"
+                                    >
+                                        <strong>{{ template.title }}</strong>
+                                        <span>{{ template.description }}</span>
+                                    </button>
+                                }
+                            </div>
+
+                            @if (draft().templateId === 'clone') {
+                                <div class="clone-panel">
+                                    <label>
+                                        Ранее сохранённый локальный draft
+                                        <select
+                                            [ngModel]="selectedCloneKey()"
+                                            (ngModelChange)="selectedCloneKey.set($event)"
+                                        >
+                                            <option value="">Выберите турнир</option>
+                                            @for (item of savedDrafts(); track item.storageKey) {
+                                                <option [value]="item.storageKey">
+                                                    {{ item.name }}
+                                                    @if (item.tournamentId) {
+                                                        (ID {{ item.tournamentId }})
+                                                    }
+                                                </option>
+                                            }
+                                        </select>
+                                    </label>
+                                    <button
+                                        class="button button--secondary"
+                                        type="button"
+                                        [disabled]="!selectedCloneKey()"
+                                        (click)="cloneSelected()"
+                                    >
+                                        Создать копию
+                                    </button>
+                                </div>
+                                <div class="clone-panel">
+                                    <label>
+                                        ID существующего турнира на сервере
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            placeholder="Например, 24"
+                                            [ngModel]="cloneTournamentId()"
+                                            (ngModelChange)="cloneTournamentId.set(+$event || null)"
+                                        />
+                                    </label>
+                                    <button
+                                        class="button button--secondary"
+                                        type="button"
+                                        [disabled]="!cloneTournamentId() || operation() !== null"
+                                        (click)="cloneFromServer()"
+                                    >
+                                        Загрузить и копировать
+                                    </button>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="form-grid">
+                            <label class="field field--wide">
+                                Название *
+                                <input
+                                    type="text"
+                                    [ngModel]="draft().details.name"
+                                    (ngModelChange)="updateDetails('name', $event)"
+                                    maxlength="255"
+                                />
+                                @if (fieldError('$.name')) {
+                                    <small class="field-error">{{ fieldError('$.name') }}</small>
+                                }
+                            </label>
+
+                            <label class="field">
+                                Системный адрес (slug) *
+                                <input
+                                    type="text"
+                                    [ngModel]="draft().details.slug"
+                                    (ngModelChange)="updateDetails('slug', $event)"
+                                    [disabled]="store.structureLocked()"
+                                />
+                                @if (fieldError('$.slug')) {
+                                    <small class="field-error">{{ fieldError('$.slug') }}</small>
+                                }
+                            </label>
+
+                            <label class="field">
+                                ID сезона *
+                                <input
+                                    type="number"
+                                    min="1"
+                                    [ngModel]="draft().details.seasonId"
+                                    (ngModelChange)="updateDetails('seasonId', +$event)"
+                                    [disabled]="store.structureLocked()"
+                                />
+                            </label>
+
+                            <label class="field">
+                                Тип
+                                <select
+                                    [ngModel]="draft().details.type"
+                                    (ngModelChange)="updateDetails('type', $event)"
+                                    [disabled]="store.structureLocked()"
+                                >
+                                    <option value="league">Лига</option>
+                                    <option value="cup">Кубок</option>
+                                    <option value="friendly">Товарищеский</option>
+                                    <option value="superCup">Суперкубок</option>
+                                </select>
+                            </label>
+
+                            <label class="field">
+                                Формат
+                                <select
+                                    [ngModel]="draft().details.format"
+                                    (ngModelChange)="updateDetails('format', $event)"
+                                    [disabled]="store.structureLocked()"
+                                >
+                                    <option value="round_robin">Круговой</option>
+                                    <option value="knockout">Кубковый</option>
+                                    <option value="mixed">Смешанный</option>
+                                    <option value="final">Финальный</option>
+                                </select>
+                            </label>
+
+                            <label class="field">
+                                Дата начала
+                                <input
+                                    type="date"
+                                    [ngModel]="draft().details.startDate"
+                                    (ngModelChange)="updateDetails('startDate', $event)"
+                                    [disabled]="store.structureLocked()"
+                                />
+                            </label>
+
+                            <label class="field">
+                                Дата окончания
+                                <input
+                                    type="date"
+                                    [ngModel]="draft().details.endDate"
+                                    (ngModelChange)="updateDetails('endDate', $event)"
+                                    [disabled]="store.structureLocked()"
+                                />
+                            </label>
+
+                            <label class="field field--wide">
+                                Описание
+                                <textarea
+                                    rows="4"
+                                    [ngModel]="draft().details.description"
+                                    (ngModelChange)="updateDetails('description', $event)"
+                                ></textarea>
+                            </label>
+                        </div>
+                    }
+
+                    @case (1) {
+                        <div class="stage-list">
+                            @for (stage of draft().stages; track stage.clientKey) {
+                                <article class="entity-card">
+                                    <div class="entity-card__title">
+                                        <span class="entity-index">{{ stage.order }}</span>
+                                        <div>
+                                            <strong>{{ stage.name }}</strong>
+                                            <small>{{ stage.key }}</small>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            class="icon-button"
+                                            title="Удалить этап"
+                                            [disabled]="store.structureLocked()"
+                                            (click)="removeStage(stage.clientKey)"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                    <div class="form-grid">
+                                        <label class="field">
+                                            Название этапа
+                                            <input
+                                                [ngModel]="stage.name"
+                                                (ngModelChange)="updateStage(stage.clientKey, 'name', $event)"
+                                                [disabled]="store.structureLocked()"
+                                            />
+                                        </label>
+                                        <label class="field">
+                                            Ключ этапа
+                                            <input
+                                                [ngModel]="stage.key"
+                                                (ngModelChange)="updateStage(stage.clientKey, 'key', $event)"
+                                                [disabled]="store.structureLocked()"
+                                            />
+                                        </label>
+                                        <label class="field">
+                                            Тип
+                                            <select
+                                                [ngModel]="stage.type"
+                                                (ngModelChange)="updateStage(stage.clientKey, 'type', $event)"
+                                                [disabled]="store.structureLocked()"
+                                            >
+                                                <option value="round_robin">Круговой</option>
+                                                <option value="group_stage">Групповой</option>
+                                                <option value="knockout">Плей-офф</option>
+                                            </select>
+                                        </label>
+                                        @if (stage.type !== 'knockout') {
+                                            <label class="field">
+                                                Количество кругов
+                                                <select
+                                                    [ngModel]="stage.legs"
+                                                    (ngModelChange)="updateStage(stage.clientKey, 'legs', +$event)"
+                                                    [disabled]="store.structureLocked()"
+                                                >
+                                                    <option [value]="1">1</option>
+                                                    <option [value]="2">2</option>
+                                                    <option [value]="3">3</option>
+                                                    <option [value]="4">4</option>
+                                                </select>
+                                            </label>
+                                        }
+                                        @if (stage.type === 'group_stage') {
+                                            <label class="field">
+                                                Количество групп
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max="16"
+                                                    [ngModel]="stage.groups.length"
+                                                    (ngModelChange)="setGroupCount(stage.clientKey, +$event)"
+                                                    [disabled]="store.structureLocked()"
+                                                />
+                                            </label>
+                                            <label class="field">
+                                                Команд в группе
+                                                <input
+                                                    type="number"
+                                                    min="2"
+                                                    [ngModel]="groupCapacity(stage)"
+                                                    (ngModelChange)="setTeamsPerGroup(stage.clientKey, +$event)"
+                                                    [disabled]="store.structureLocked()"
+                                                />
+                                            </label>
+                                        }
+                                        @if (stage.type === 'knockout') {
+                                            <label class="field">
+                                                Размер сетки
+                                                <select
+                                                    [ngModel]="stage.bracketSize"
+                                                    (ngModelChange)="updateStage(stage.clientKey, 'bracketSize', +$event)"
+                                                    [disabled]="store.structureLocked()"
+                                                >
+                                                    @for (size of [2, 4, 8, 16, 32]; track size) {
+                                                        <option [value]="size">{{ size }}</option>
+                                                    }
+                                                </select>
+                                            </label>
+                                            <label class="check-field">
+                                                <input
+                                                    type="checkbox"
+                                                    [ngModel]="stage.thirdPlaceMatch"
+                                                    (ngModelChange)="updateStage(stage.clientKey, 'thirdPlaceMatch', $event)"
+                                                    [disabled]="store.structureLocked()"
+                                                />
+                                                Матч за третье место
+                                            </label>
+                                        }
+                                    </div>
+                                </article>
+                            }
+                        </div>
+                        <button
+                            class="button button--secondary"
+                            type="button"
+                            [disabled]="store.structureLocked()"
+                            (click)="addStage()"
+                        >
+                            + Добавить этап
+                        </button>
+                        @if (fieldError('stages')) {
+                            <p class="field-error">{{ fieldError('stages') }}</p>
+                        }
+                    }
+
+                    @case (2) {
+                        <div class="summary-strip">
+                            <div>
+                                <strong>{{ draft().participants.length }}</strong>
+                                <span>выбрано</span>
+                            </div>
+                            <div>
+                                <strong>{{ expectedTeamCount() || '—' }}</strong>
+                                <span>ожидается форматом</span>
+                            </div>
+                            <div>
+                                <strong>
+                                    {{ draft().participants.length === expectedTeamCount() ? 'Готово' : 'Проверьте' }}
+                                </strong>
+                                <span>комплектность</span>
+                            </div>
+                        </div>
+                        <p class="hint">
+                            Команды выбираются из общего каталога. При сохранении
+                            мастер сам создаёт их участие в турнире и связывает с этапом.
+                        </p>
+                        @if (teamsLoading()) {
+                            <p class="empty-state">Загрузка команд…</p>
+                        } @else {
+                            <div class="team-grid">
+                                @for (team of teams(); track team.id) {
+                                    <article
+                                        class="team-card"
+                                        [class.team-card--selected]="selectedTeamIds().has(team.id)"
+                                    >
+                                        <label>
+                                            <input
+                                                type="checkbox"
+                                                [checked]="selectedTeamIds().has(team.id)"
+                                                [disabled]="store.structureLocked()"
+                                                (change)="toggleTeam(team)"
+                                            />
+                                            <span class="team-avatar">
+                                                @if (team.logoUrl) {
+                                                    <img [src]="team.logoUrl" [alt]="team.name" />
+                                                } @else {
+                                                    {{ team.name.slice(0, 1) }}
+                                                }
+                                            </span>
+                                            <span>
+                                                <strong>{{ team.name }}</strong>
+                                                <small>{{ team.city || team.village || 'Без города' }}</small>
+                                            </span>
+                                        </label>
+                                    </article>
+                                }
+                            </div>
+                        }
+                    }
+
+                    @case (3) {
+                        @if (!groupStage()) {
+                            <div class="empty-state">
+                                В формате нет группового этапа. Добавьте его на
+                                шаге «Формат и этапы».
+                            </div>
+                        } @else {
+                            <div class="toolbar">
+                                <div>
+                                    <strong>Стратегия распределения</strong>
+                                    <small>Результат можно поправить вручную.</small>
+                                </div>
+                                <button
+                                    class="button button--secondary"
+                                    type="button"
+                                    [disabled]="store.structureLocked()"
+                                    (click)="distributeGroups('manual')"
+                                >Вручную</button>
+                                <button
+                                    class="button button--secondary"
+                                    type="button"
+                                    [disabled]="store.structureLocked()"
+                                    (click)="distributeGroups('pots')"
+                                >По корзинам</button>
+                                <button
+                                    class="button button--secondary"
+                                    type="button"
+                                    [disabled]="store.structureLocked()"
+                                    (click)="distributeGroups('random')"
+                                >Случайно</button>
+                            </div>
+                            <div class="group-grid">
+                                @for (group of groupStage()!.groups; track group.clientKey) {
+                                    <article class="group-card">
+                                        <header>
+                                            <strong>{{ group.name }}</strong>
+                                            <span>
+                                                {{ participantsForGroup(group.key).length }}
+                                                / {{ group.capacity || '∞' }}
+                                            </span>
+                                        </header>
+                                        @for (participant of participantsForGroup(group.key); track participant.teamId) {
+                                            <div class="group-team">
+                                                <span>{{ participant.name }}</span>
+                                                <select
+                                                    [ngModel]="participant.groupKey"
+                                                    (ngModelChange)="setParticipantGroup(participant.teamId, $event)"
+                                                    [disabled]="store.structureLocked()"
+                                                >
+                                                    @for (target of groupStage()!.groups; track target.key) {
+                                                        <option [value]="target.key">{{ target.name }}</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        }
+                                        @if (!participantsForGroup(group.key).length) {
+                                            <p class="empty-state empty-state--small">Нет команд</p>
+                                        }
+                                    </article>
+                                }
+                            </div>
+                            @if (fieldError('groups')) {
+                                <p class="field-error">{{ fieldError('groups') }}</p>
+                            }
+                            <div class="preview-block">
+                                <header>
+                                    <div>
+                                        <h3>Preview календаря</h3>
+                                        <p>
+                                            {{ store.previews().schedule.length }} матчей.
+                                            Для Дворовой лиги должно быть 30.
+                                        </p>
+                                    </div>
+                                    <button
+                                        class="button button--secondary"
+                                        type="button"
+                                        (click)="requestSchedulePreview()"
+                                    >
+                                        Обновить preview
+                                    </button>
+                                </header>
+                                <div class="schedule-list">
+                                    @for (match of store.previews().schedule.slice(0, 18); track $index) {
+                                        <div>
+                                            <span>Группа {{ match.groupKey }} · тур {{ match.round }}</span>
+                                            <strong>{{ match.home }} — {{ match.away }}</strong>
+                                        </div>
+                                    }
+                                </div>
+                                @if (store.previews().schedule.length > 18) {
+                                    <p class="hint">
+                                        Показаны первые 18 из {{ store.previews().schedule.length }} матчей.
+                                    </p>
+                                }
+                            </div>
+                        }
+                    }
+
+                    @case (4) {
+                        <div class="two-column">
+                            <div class="section-block">
+                                <h3>Начисление очков</h3>
+                                <div class="form-grid form-grid--compact">
+                                    <label class="field">
+                                        Победа
+                                        <input type="number" [ngModel]="draft().scoring.win"
+                                            (ngModelChange)="updateScoring('win', +$event)"
+                                            [disabled]="store.structureLocked()" />
+                                    </label>
+                                    <label class="field">
+                                        Ничья
+                                        <input type="number" [ngModel]="draft().scoring.draw"
+                                            (ngModelChange)="updateScoring('draw', +$event)"
+                                            [disabled]="store.structureLocked()" />
+                                    </label>
+                                    <label class="field">
+                                        Поражение
+                                        <input type="number" [ngModel]="draft().scoring.loss"
+                                            (ngModelChange)="updateScoring('loss', +$event)"
+                                            [disabled]="store.structureLocked()" />
+                                    </label>
+                                    <label class="field">
+                                        Техническая победа
+                                        <input type="number" [ngModel]="draft().scoring.technicalWin"
+                                            (ngModelChange)="updateScoring('technicalWin', +$event)"
+                                            [disabled]="store.structureLocked()" />
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="section-block">
+                                <h3>Порядок тай-брейков</h3>
+                                <p class="hint">Перетащите критерии в нужном порядке.</p>
+                                <div
+                                    class="sortable-list"
+                                    cdkDropList
+                                    [cdkDropListData]="draft().tieBreakers"
+                                    (cdkDropListDropped)="dropTieBreaker($event)"
+                                >
+                                    @for (item of draft().tieBreakers; track item) {
+                                        <div class="sortable-item" cdkDrag [cdkDragDisabled]="store.structureLocked()">
+                                            <span class="drag-handle">⋮⋮</span>
+                                            <strong>{{ tieBreakerLabel(item) }}</strong>
+                                            <button type="button" [disabled]="store.structureLocked()"
+                                                (click)="removeTieBreaker(item)">×</button>
+                                        </div>
+                                    }
+                                </div>
+                                <div class="inline-add">
+                                    <select [ngModel]="newTieBreaker()"
+                                        (ngModelChange)="newTieBreaker.set($event)"
+                                        [disabled]="store.structureLocked()">
+                                        @for (option of tieBreakerOptions; track option.value) {
+                                            <option [value]="option.value">{{ option.label }}</option>
+                                        }
+                                    </select>
+                                    <button class="button button--secondary" type="button"
+                                        [disabled]="store.structureLocked()" (click)="addTieBreaker()">
+                                        Добавить
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        @if (fieldError('standings', 'tieBreakers')) {
+                            <p class="field-error">{{ fieldError('standings', 'tieBreakers') }}</p>
+                        }
+                    }
+
+                    @case (5) {
+                        <label class="switch-field">
+                            <input type="checkbox" [ngModel]="draft().qualification.enabled"
+                                (ngModelChange)="updateQualification('enabled', $event)"
+                                [disabled]="store.structureLocked()" />
+                            <span>
+                                <strong>Использовать квалификацию между этапами</strong>
+                                <small>Состав следующего этапа подтверждается отдельным snapshot.</small>
+                            </span>
+                        </label>
+                        @if (draft().qualification.enabled) {
+                            <div class="form-grid">
+                                <label class="field">
+                                    Проходит из каждой группы
+                                    <input type="number" min="1"
+                                        [ngModel]="draft().qualification.winnersPerGroup"
+                                        (ngModelChange)="updateQualification('winnersPerGroup', +$event)"
+                                        [disabled]="store.structureLocked()" />
+                                </label>
+                                <label class="field">
+                                    Сравниваем место
+                                    <input type="number" min="1"
+                                        [ngModel]="draft().qualification.bestPlacedSourcePosition"
+                                        (ngModelChange)="updateQualification('bestPlacedSourcePosition', +$event)"
+                                        [disabled]="store.structureLocked()" />
+                                </label>
+                                <label class="field">
+                                    Лучших между группами
+                                    <input type="number" min="0"
+                                        [ngModel]="draft().qualification.bestPlacedCount"
+                                        (ngModelChange)="updateQualification('bestPlacedCount', +$event)"
+                                        [disabled]="store.structureLocked()" />
+                                </label>
+                            </div>
+                            <div class="criteria-line">
+                                <strong>Сравнение между группами:</strong>
+                                <span>{{ draft().qualification.crossGroupCriteria.join(' → ') }}</span>
+                                <small>Личные встречи намеренно не применяются.</small>
+                            </div>
+                            <div class="preview-block">
+                                <h3>Preview квалификации</h3>
+                                @for (line of store.previews().qualification; track line) {
+                                    <div class="preview-row">✓ {{ line }}</div>
+                                }
+                                <p class="hint">
+                                    При полном равенстве потребуется сохранённый результат жеребьёвки.
+                                </p>
+                            </div>
+                        }
+                        @if (fieldError('qualification')) {
+                            <p class="field-error">{{ fieldError('qualification') }}</p>
+                        }
+                    }
+
+                    @case (6) {
+                        <label class="switch-field">
+                            <input type="checkbox" [ngModel]="draft().playoff.enabled"
+                                (ngModelChange)="updatePlayoff('enabled', $event)"
+                                [disabled]="store.structureLocked()" />
+                            <span>
+                                <strong>Добавить плей-офф</strong>
+                                <small>Сетка создаётся только после подтверждения квалификации.</small>
+                            </span>
+                        </label>
+                        @if (draft().playoff.enabled) {
+                            <div class="form-grid">
+                                <label class="field">
+                                    Размер сетки
+                                    <select [ngModel]="draft().playoff.bracketSize"
+                                        (ngModelChange)="updatePlayoff('bracketSize', +$event)"
+                                        [disabled]="store.structureLocked()">
+                                        @for (size of [2, 4, 8, 16, 32]; track size) {
+                                            <option [value]="size">{{ size }}</option>
+                                        }
+                                    </select>
+                                </label>
+                                <label class="field">
+                                    Посев
+                                    <select [ngModel]="draft().playoff.seeding"
+                                        (ngModelChange)="updatePlayoff('seeding', $event)"
+                                        [disabled]="store.structureLocked()">
+                                        <option value="standard">Стандартный</option>
+                                        <option value="random_draw">Случайная жеребьёвка</option>
+                                        <option value="manual">Ручные пары</option>
+                                        <option value="best_eligible_opponent">Лучший допустимый соперник</option>
+                                    </select>
+                                </label>
+                                <label class="check-field">
+                                    <input type="checkbox" [ngModel]="draft().playoff.thirdPlaceMatch"
+                                        (ngModelChange)="updatePlayoff('thirdPlaceMatch', $event)"
+                                        [disabled]="store.structureLocked()" />
+                                    Матч за третье место
+                                </label>
+                                <label class="check-field">
+                                    <input type="checkbox" [ngModel]="draft().playoff.avoidSameSourceGroup"
+                                        (ngModelChange)="updatePlayoff('avoidSameSourceGroup', $event)"
+                                        [disabled]="store.structureLocked()" />
+                                    Избегать команд из одной группы
+                                </label>
+                                @if (draft().playoff.avoidSameSourceGroup) {
+                                    <label class="field">
+                                        Жёсткость ограничения
+                                        <select [ngModel]="draft().playoff.constraintMode"
+                                            (ngModelChange)="updatePlayoff('constraintMode', $event)"
+                                            [disabled]="store.structureLocked()">
+                                            <option value="required">Обязательно</option>
+                                            <option value="best_effort">По возможности</option>
+                                        </select>
+                                    </label>
+                                }
+                            </div>
+                            <div class="preview-block bracket-preview">
+                                <h3>Preview сетки</h3>
+                                @for (match of store.previews().bracket; track match.position) {
+                                    <div class="bracket-match">
+                                        <span>{{ match.position }}</span>
+                                        <strong>{{ match.home }}</strong>
+                                        <i>vs</i>
+                                        <strong>{{ match.away }}</strong>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        @if (fieldError('bracket', 'seeding')) {
+                            <p class="field-error">{{ fieldError('bracket', 'seeding') }}</p>
+                        }
+                    }
+
+                    @case (7) {
+                        <div class="two-column">
+                            <div class="section-block">
+                                <h3>Групповой этап</h3>
+                                <div class="form-grid form-grid--compact">
+                                    <label class="field">
+                                        Таймов
+                                        <input type="number" min="1"
+                                            [ngModel]="draft().groupMatchRules.periods"
+                                            (ngModelChange)="updateMatchRules('groupMatchRules', 'periods', +$event)"
+                                            [disabled]="store.structureLocked()" />
+                                    </label>
+                                    <label class="field">
+                                        Минут в тайме
+                                        <input type="number" min="1"
+                                            [ngModel]="draft().groupMatchRules.periodDurationMinutes"
+                                            (ngModelChange)="updateMatchRules('groupMatchRules', 'periodDurationMinutes', +$event)"
+                                            [disabled]="store.structureLocked()" />
+                                    </label>
+                                </div>
+                                <label class="check-field">
+                                    <input type="checkbox" [ngModel]="draft().groupMatchRules.allowDraw"
+                                        (ngModelChange)="updateMatchRules('groupMatchRules', 'allowDraw', $event)"
+                                        [disabled]="store.structureLocked()" />
+                                    Ничья допустима
+                                </label>
+                            </div>
+                            <div class="section-block">
+                                <h3>Плей-офф</h3>
+                                <div class="form-grid form-grid--compact">
+                                    <label class="field">
+                                        Таймов
+                                        <input type="number" min="1"
+                                            [ngModel]="draft().playoffMatchRules.periods"
+                                            (ngModelChange)="updateMatchRules('playoffMatchRules', 'periods', +$event)"
+                                            [disabled]="store.structureLocked()" />
+                                    </label>
+                                    <label class="field">
+                                        Минут в тайме
+                                        <input type="number" min="1"
+                                            [ngModel]="draft().playoffMatchRules.periodDurationMinutes"
+                                            (ngModelChange)="updateMatchRules('playoffMatchRules', 'periodDurationMinutes', +$event)"
+                                            [disabled]="store.structureLocked()" />
+                                    </label>
+                                </div>
+                                <label class="check-field">
+                                    <input type="checkbox" [ngModel]="draft().playoffMatchRules.extraTimeEnabled"
+                                        (ngModelChange)="updateMatchRules('playoffMatchRules', 'extraTimeEnabled', $event)"
+                                        [disabled]="store.structureLocked()" />
+                                    Дополнительное время
+                                </label>
+                                <label class="check-field">
+                                    <input type="checkbox" [ngModel]="draft().playoffMatchRules.penaltiesEnabled"
+                                        (ngModelChange)="updateMatchRules('playoffMatchRules', 'penaltiesEnabled', $event)"
+                                        [disabled]="store.structureLocked()" />
+                                    Серия пенальти
+                                </label>
+                                @if (draft().playoffMatchRules.penaltiesEnabled) {
+                                    <label class="field">
+                                        Первоначальных ударов
+                                        <input type="number" min="1"
+                                            [ngModel]="draft().playoffMatchRules.initialKicksPerTeam"
+                                            (ngModelChange)="updateMatchRules('playoffMatchRules', 'initialKicksPerTeam', +$event)"
+                                            [disabled]="store.structureLocked()" />
+                                    </label>
+                                }
+                            </div>
+                        </div>
+                        @if (fieldError('match')) {
+                            <p class="field-error">{{ fieldError('match') }}</p>
+                        }
+                    }
+
+                    @case (8) {
+                        <div class="section-block">
+                            <label class="switch-field">
+                                <input type="checkbox" [ngModel]="draft().discipline.accumulatedYellowsEnabled"
+                                    (ngModelChange)="updateDiscipline('accumulatedYellowsEnabled', $event)"
+                                    [disabled]="store.structureLocked()" />
+                                <span>
+                                    <strong>Накопительные жёлтые карточки</strong>
+                                    <small>Система создаёт дисквалификацию на ближайшие фактически сыгранные матчи.</small>
+                                </span>
+                            </label>
+                            @if (draft().discipline.accumulatedYellowsEnabled) {
+                                <div class="form-grid">
+                                    <label class="field">
+                                        Порог карточек
+                                        <input type="number" min="1"
+                                            [ngModel]="draft().discipline.yellowThreshold"
+                                            (ngModelChange)="updateDiscipline('yellowThreshold', +$event)"
+                                            [disabled]="store.structureLocked()" />
+                                    </label>
+                                    <label class="field">
+                                        Матчей дисквалификации
+                                        <input type="number" min="1"
+                                            [ngModel]="draft().discipline.suspensionMatches"
+                                            (ngModelChange)="updateDiscipline('suspensionMatches', +$event)"
+                                            [disabled]="store.structureLocked()" />
+                                    </label>
+                                    <label class="field">
+                                        После достижения порога
+                                        <select [ngModel]="draft().discipline.yellowProgression"
+                                            (ngModelChange)="updateDiscipline('yellowProgression', $event)"
+                                            [disabled]="store.structureLocked()">
+                                            <option value="reset_after_suspension">Сбросить счётчик</option>
+                                            <option value="every_card_after_threshold">Каждая следующая карточка</option>
+                                            <option value="repeat_every_threshold">Каждый новый порог</option>
+                                        </select>
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                        <div class="two-column">
+                            <label class="switch-field">
+                                <input type="checkbox" [ngModel]="draft().discipline.secondYellowEnabled"
+                                    (ngModelChange)="updateDiscipline('secondYellowEnabled', $event)"
+                                    [disabled]="store.structureLocked()" />
+                                <span>
+                                    <strong>Две жёлтые в матче</strong>
+                                    <small>Минимум {{ draft().discipline.secondYellowMinimumMatches }} матч.</small>
+                                </span>
+                            </label>
+                            <label class="switch-field">
+                                <input type="checkbox" [ngModel]="draft().discipline.directRedEnabled"
+                                    (ngModelChange)="updateDiscipline('directRedEnabled', $event)"
+                                    [disabled]="store.structureLocked()" />
+                                <span>
+                                    <strong>Прямая красная</strong>
+                                    <small>Минимум {{ draft().discipline.directRedMinimumMatches }} матч.</small>
+                                </span>
+                            </label>
+                        </div>
+                        <div class="section-block">
+                            <h3>Переход между этапами</h3>
+                            <label class="check-field">
+                                <input type="checkbox" [ngModel]="draft().discipline.carryYellowCards"
+                                    (ngModelChange)="updateDiscipline('carryYellowCards', $event)"
+                                    [disabled]="store.structureLocked()" />
+                                Переносить накопленные карточки
+                            </label>
+                            <label class="check-field">
+                                <input type="checkbox" [ngModel]="draft().discipline.carryPendingSuspensions"
+                                    (ngModelChange)="updateDiscipline('carryPendingSuspensions', $event)"
+                                    [disabled]="store.structureLocked()" />
+                                Переносить незавершённые дисквалификации
+                            </label>
+                        </div>
+                        @if (fieldError('discipline')) {
+                            <p class="field-error">{{ fieldError('discipline') }}</p>
+                        }
+                    }
+
+                    @case (9) {
+                        <div class="summary-strip">
+                            <div>
+                                <strong>{{ draft().stages.length }}</strong>
+                                <span>этапов</span>
+                            </div>
+                            <div>
+                                <strong>{{ draft().participants.length }}</strong>
+                                <span>команд</span>
+                            </div>
+                            <div>
+                                <strong>{{ store.validationIssues().length }}</strong>
+                                <span>ошибок проверки</span>
+                            </div>
+                        </div>
+
+                        <div class="review-grid">
+                            <article class="review-card">
+                                <h3>Турнир</h3>
+                                <dl>
+                                    <dt>Название</dt><dd>{{ draft().details.name || '—' }}</dd>
+                                    <dt>Формат</dt><dd>{{ draft().details.format }}</dd>
+                                    <dt>Статус</dt><dd>{{ draft().lifecycleStatus }}</dd>
+                                </dl>
+                            </article>
+                            <article class="review-card">
+                                <h3>Структура</h3>
+                                @for (stage of draft().stages; track stage.clientKey) {
+                                    <div class="preview-row">
+                                        {{ stage.order }}. {{ stage.name }}
+                                        <span>{{ stage.type }}</span>
+                                    </div>
+                                }
+                            </article>
+                            <article class="review-card">
+                                <h3>Правила</h3>
+                                <p>{{ draft().scoring.win }}/{{ draft().scoring.draw }}/{{ draft().scoring.loss }} очков</p>
+                                <p>{{ draft().tieBreakers.length }} тай-брейков</p>
+                                <p>Матч: {{ draft().groupMatchRules.periods }} × {{ draft().groupMatchRules.periodDurationMinutes }} мин.</p>
+                            </article>
+                        </div>
+
+                        @if (draft().lifecycleStatus !== 'draft') {
+                            <label class="field">
+                                Причина новой версии правил
+                                <textarea rows="3" [ngModel]="draft().changeSummary"
+                                    (ngModelChange)="store.patch({ changeSummary: $event })"></textarea>
+                            </label>
+                        }
+
+                        @if (store.validationIssues().length) {
+                            <div class="validation-list">
+                                <h3>Что нужно исправить</h3>
+                                @for (issue of store.validationIssues(); track $index) {
+                                    <button type="button" (click)="goToStep(firstErrorStep())">
+                                        <strong>{{ issue.message }}</strong>
+                                        <small>{{ issue.path }}</small>
+                                    </button>
+                                }
+                            </div>
+                        } @else {
+                            <div class="success-panel">
+                                Настройки готовы к предварительной проверке.
+                            </div>
+                        }
+
+                        <details class="json-preview">
+                            <summary>Типизированная конфигурация правил</summary>
+                            <pre>{{ rulesJson() }}</pre>
+                        </details>
+
+                        <div class="publish-actions">
+                            <button class="button button--secondary" type="button"
+                                [disabled]="operation() !== null"
+                                (click)="validateTournament()">
+                                {{ operation() === 'validate' ? 'Проверяем…' : 'Предварительная проверка' }}
+                            </button>
+                            <button class="button button--primary" type="button"
+                                [disabled]="operation() !== null || draft().lifecycleStatus !== 'draft'"
+                                (click)="publishTournament()">
+                                {{ operation() === 'publish' ? 'Публикуем…' : 'Опубликовать турнир' }}
+                            </button>
+                        </div>
+                    }
+                }
+            </section>
+
+            <footer class="wizard-actions">
+                <button
+                    class="button button--ghost"
+                    type="button"
+                    [disabled]="activeStep() === 0"
+                    (click)="previous()"
+                >
+                    ← Назад
+                </button>
+                <button
+                    class="button button--secondary"
+                    type="button"
+                    [disabled]="operation() !== null"
+                    (click)="saveDraft()"
+                >
+                    {{ operation() === 'save' ? 'Сохраняем…' : 'Сохранить черновик' }}
+                </button>
+                @if (activeStep() < steps.length - 1) {
+                    <button class="button button--primary" type="button" (click)="next()">
+                        Далее →
+                    </button>
+                }
+            </footer>
+        </main>
+    </div>
+</div>

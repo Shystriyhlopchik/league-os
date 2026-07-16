@@ -32,6 +32,13 @@ export const routes: Routes = [
             ),
     },
     {
+        path: 'tournaments/:tournamentId',
+        loadComponent: () =>
+            import(
+                './pages/tournament-public/tournament-public-page.component'
+            ).then((m) => m.TournamentPublicPageComponent),
+    },
+    {
         path: 'login',
         canActivate: [guestGuard],
         loadComponent: () =>
@@ -135,6 +142,22 @@ export const routes: Routes = [
                 loadComponent: () =>
                     import('./pages/match-results/match-result-teams.component').then(
                         (m) => m.MatchResultTeamsComponent,
+                    ),
+            },
+            {
+                path: 'tournaments/new',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
+                loadComponent: () =>
+                    import('./pages/tournament-builder/ui/tournament-builder-page.component').then(
+                        (m) => m.TournamentBuilderPageComponent,
+                    ),
+            },
+            {
+                path: 'tournaments/:tournamentId/edit',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
+                loadComponent: () =>
+                    import('./pages/tournament-builder/ui/tournament-builder-page.component').then(
+                        (m) => m.TournamentBuilderPageComponent,
                     ),
             },
             {

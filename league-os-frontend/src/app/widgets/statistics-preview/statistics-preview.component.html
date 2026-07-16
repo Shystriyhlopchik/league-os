@@ -1,15 +1,23 @@
 <section class="statistics-preview">
-<!--    <app-competition-tabs-->
-<!--        [tournaments]="tournaments()"-->
-<!--        [selectedId]="selectedTournamentId()"-->
-<!--        (selected)="selectCompetition($event)"-->
-<!--    />-->
+    @if (tournaments().length > 1) {
+        <app-competition-tabs
+            [tournaments]="tournaments()"
+            [selectedId]="selectedTournamentId()"
+            (selected)="selectCompetition($event)"
+        />
+    }
 
-    <app-section-title>Таблица</app-section-title>
+    <app-section-title>Турнир</app-section-title>
 
-    <app-standings-table [rows]="rows()" />
+    <app-tournament-public-view
+        [tournamentId]="selectedTournamentId()"
+        [compact]="true"
+    />
 
-    <a class="statistics-preview__link" routerLink="/statistics">
-        <app-slanted-link>Вся таблица</app-slanted-link>
+    <a
+        class="statistics-preview__link"
+        [routerLink]="['/tournaments', selectedTournamentId()]"
+    >
+        <app-slanted-link>Открыть турнир</app-slanted-link>
     </a>
 </section>

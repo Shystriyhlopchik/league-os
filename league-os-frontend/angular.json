@@ -33,7 +33,8 @@
             "styles": [
               "node_modules/swiper/swiper-bundle.min.css",
               "src/custom-theme.scss",
-              "src/styles.scss"
+              "src/styles.scss",
+              "src/app/pages/tournament-builder/ui/tournament-builder.global.scss"
             ],
             "scripts": []
           },
@@ -100,7 +101,8 @@
               }
             ],
             "styles": [
-              "src/styles.scss"
+              "src/styles.scss",
+              "src/app/pages/tournament-builder/ui/tournament-builder.global.scss"
             ],
             "scripts": []
           }

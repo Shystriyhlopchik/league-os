@@ -1,0 +1,167 @@
+<section class="tournament-view" [class.tournament-view--compact]="compact()">
+    @if (loading()) {
+        <div class="state state--loading" aria-live="polite">
+            <span class="spinner"></span>
+            Загружаем турнир…
+        </div>
+    } @else if (error()) {
+        <div class="state state--error" role="alert">
+            <p>{{ error() }}</p>
+            <button type="button" (click)="retry()">Повторить</button>
+        </div>
+    } @else {
+      @if (view(); as tournamentView) {
+        @if (!compact()) {
+            <header class="tournament-header">
+                @if (tournamentView.tournament.logoUrl) {
+                    <img
+                        [src]="tournamentView.tournament.logoUrl"
+                        [alt]="tournamentView.tournament.name"
+                    />
+                }
+                <div>
+                    <h1>{{ tournamentView.tournament.name }}</h1>
+                    @if (tournamentView.tournament.description) {
+                        <p>{{ tournamentView.tournament.description }}</p>
+                    }
+                </div>
+            </header>
+        }
+
+        @if (tournamentView.stages.length > 1) {
+            <nav class="stage-tabs" aria-label="Этапы турнира">
+                @for (stage of tournamentView.stages; track stage.id ?? stage.key) {
+                    <button
+                        type="button"
+                        [class.stage-tabs__button--active]="stage.id === currentStage()?.id"
+                        (click)="selectStage(stage)"
+                    >
+                        {{ stage.name }}
+                    </button>
+                }
+            </nav>
+        }
+
+        @if (currentStage(); as stage) {
+            <div class="stage-heading">
+                <div>
+                    <span>Этап</span>
+                    <h2>{{ stage.name }}</h2>
+                </div>
+                @if (stage.status === 'active') {
+                    <small>Идёт сейчас</small>
+                }
+            </div>
+
+            @if (stage.empty) {
+                <div class="state">
+                    Этап создан, но участники и матчи пока не опубликованы.
+                </div>
+            } @else {
+                @if (stage.groups.length) {
+                    <div class="groups">
+                        @for (group of stage.groups; track group.id) {
+                            <section class="panel">
+                                <h3>{{ group.name }}</h3>
+                                @if (group.standings.length) {
+                                    <app-standings-table [rows]="group.standings" />
+                                } @else {
+                                    <p class="panel__empty">В группе пока нет команд.</p>
+                                }
+                            </section>
+                        }
+                    </div>
+                } @else if (stage.standings.length) {
+                    <section class="panel">
+                        <h3>Турнирная таблица</h3>
+                        <app-standings-table [rows]="stage.standings" />
+                    </section>
+                }
+
+                @for (ranking of stage.crossGroupRankings; track ranking.id) {
+                    <section class="panel cross-ranking">
+                        <div class="panel__title">
+                            <h3>{{ ranking.title }}</h3>
+                            <p>
+                                Критерии:
+                                @for (criterion of ranking.criteria; track criterion; let last = $last) {
+                                    {{ criterionLabel(criterion) }}{{ last ? '' : ' → ' }}
+                                }
+                            </p>
+                        </div>
+                        <div class="cross-ranking__scroll">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>№</th>
+                                        <th>Команда</th>
+                                        <th>Группа</th>
+                                        <th>И</th>
+                                        <th>В</th>
+                                        <th>Мячи</th>
+                                        <th>РМ</th>
+                                        <th>О</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for (row of ranking.rows; track row.team.id) {
+                                        <tr [class.best-placed]="row.qualificationStatus === 'best_placed'">
+                                            <td>{{ row.crossGroupPosition }}</td>
+                                            <td>{{ row.team.name }}</td>
+                                            <td>{{ row.sourceGroup.name }}</td>
+                                            <td>{{ row.played }}</td>
+                                            <td>{{ row.wins }}</td>
+                                            <td>{{ row.goalsFor }}–{{ row.goalsAgainst }}</td>
+                                            <td>{{ row.goalDifference > 0 ? '+' : '' }}{{ row.goalDifference }}</td>
+                                            <td><strong>{{ row.points }}</strong></td>
+                                        </tr>
+                                        @if (row.placementReason; as reason) {
+                                            <tr class="cross-ranking__reason">
+                                                <td></td>
+                                                <td colspan="7">{{ reason.description }}</td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                }
+
+                @if (stage.type === 'knockout' || stage.bracket.matches.length) {
+                    <section class="panel">
+                        <h3>Сетка плей-офф</h3>
+                        @if (stage.bracket.matches.length) {
+                            <app-knockout-bracket [matches]="stage.bracket.matches" />
+                        } @else {
+                            <p class="panel__empty">
+                                Участники сетки ещё не определены.
+                            </p>
+                        }
+                    </section>
+                }
+            }
+
+            @if (canViewSuspensions() && stageSuspensions().length) {
+                <section class="panel suspensions">
+                    <h3>Дисквалифицированные игроки</h3>
+                    <div class="suspensions__list">
+                        @for (item of stageSuspensions(); track item.id) {
+                            <article>
+                                <strong>{{ item.player.name }}</strong>
+                                <span>{{ item.team.name }}</span>
+                                <small>
+                                    {{ suspensionReason(item.reason) }} · осталось матчей:
+                                    {{ item.matchesRemaining }}
+                                </small>
+                            </article>
+                        }
+                    </div>
+                </section>
+            }
+        } @else {
+            <div class="state">В турнире пока нет опубликованных этапов.</div>
+        }
+      }
+    }
+</section>

@@ -46,6 +46,10 @@ import { ConfirmKnockoutBracketDto } from './dto/confirm-knockout-bracket.dto';
 import { AdvanceKnockoutMatchDto } from './dto/advance-knockout-match.dto';
 import { PlayerSuspensionsService } from '../player-suspensions/player-suspensions.service';
 import { ExtendPlayerSuspensionDto } from '../player-suspensions/dto/extend-player-suspension.dto';
+import { AddTournamentTeamDto } from './dto/add-tournament-team.dto';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RoleCode } from '../users/enums/role-code.enum';
 
 @Controller('tournaments')
 export class TournamentsController {
@@ -75,6 +79,20 @@ export class TournamentsController {
     );
   }
 
+  @Get(':tournamentId/discipline/suspensions/active')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(
+    RoleCode.SuperAdmin,
+    RoleCode.Admin,
+    RoleCode.Referee,
+    RoleCode.Captain,
+  )
+  getActivePlayerSuspensions(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+  ) {
+    return this.playerSuspensionsService.listActiveForTournament(tournamentId);
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard)
   create(
@@ -82,6 +100,25 @@ export class TournamentsController {
     @Req() request: AuthenticatedTournamentRequest,
   ) {
     return this.lifecycleService.create(dto, request.user.id);
+  }
+
+  @Get(':tournamentId/builder')
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.READ)
+  getBuilderDraft(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+  ) {
+    return this.lifecycleService.getBuilderDraft(tournamentId);
+  }
+
+  @Post(':tournamentId/teams')
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  addTournamentTeam(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Body() dto: AddTournamentTeamDto,
+  ) {
+    return this.lifecycleService.addTournamentTeam(tournamentId, dto.teamId);
   }
 
   @Post(':tournamentId/stages/:stageId/knockout-bracket/preview')

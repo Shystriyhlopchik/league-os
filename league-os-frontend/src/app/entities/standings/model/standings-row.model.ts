@@ -3,7 +3,8 @@ export interface StandingRow {
     team: {
         id: number;
         name: string;
-        logoUrl: string;
+        shortName?: string;
+        logoUrl?: string;
     };
     played: number;
     wins: number;
@@ -13,4 +14,22 @@ export interface StandingRow {
     goalsAgainst: number;
     goalDifference: number;
     points: number;
+    disciplinaryScore?: number;
+    qualificationStatus?:
+        | 'qualified'
+        | 'best_placed'
+        | 'not_qualified'
+        | 'pending'
+        | 'not_applicable';
+    placementReason?: {
+        type: 'qualification' | 'tie_break' | 'position' | 'pending';
+        title: string;
+        description: string;
+        tieBreak?: {
+            criterion: string;
+            comparedTeamIds: number[];
+            value: number | Record<string, number>;
+            description: string;
+        };
+    };
 }

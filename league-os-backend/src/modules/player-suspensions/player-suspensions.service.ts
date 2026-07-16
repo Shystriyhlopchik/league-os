@@ -78,6 +78,46 @@ export class PlayerSuspensionsService {
     private readonly engine: DisciplineEngine,
   ) {}
 
+  async listActiveForTournament(tournamentId: number) {
+    const rows = await this.suspensionRepository.find({
+      where: {
+        tournamentId,
+        status: PlayerSuspensionStatus.ACTIVE,
+      },
+      relations: { player: true, team: true, stage: true },
+      order: { stageId: 'ASC', teamId: 'ASC', playerId: 'ASC' },
+    });
+    return rows.map((suspension) => ({
+      id: suspension.id,
+      stageId: suspension.stageId,
+      stageName: suspension.stage?.name,
+      player: {
+        id: suspension.playerId,
+        name: [
+          suspension.player.lastName,
+          suspension.player.firstName,
+          suspension.player.middleName,
+        ]
+          .filter(Boolean)
+          .join(' '),
+      },
+      team: {
+        id: suspension.teamId,
+        name: suspension.team.name,
+        logoUrl: suspension.team.logoUrl,
+      },
+      reason: suspension.reason,
+      matchesRequired: suspension.matchesRequired,
+      matchesServed: suspension.matchesServed,
+      matchesRemaining: Math.max(
+        suspension.matchesRequired - suspension.matchesServed,
+        0,
+      ),
+      sourceMatchId: suspension.sourceMatchId,
+      manualDecisionId: suspension.manualDecisionId,
+    }));
+  }
+
   async applyCardEvent(params: {
     match: MatchEntity;
     teamId: number;

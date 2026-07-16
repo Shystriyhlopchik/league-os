@@ -19,6 +19,13 @@ export class DashboardPageComponent {
 
     readonly actions: DashboardAction[] = [
         {
+            title: 'Конструктор турниров',
+            description: 'Создание формата, этапов, групп, правил и плей-офф',
+            route: '/dashboard/tournaments/new',
+            roles: [UserRole.Admin, UserRole.SuperAdmin],
+            variant: '#72DF9C',
+        },
+        {
             title: 'Трансферы игроков',
             description: 'Переход игрока из одной команды в другую',
             route: '/dashboard/player-transfers',

@@ -1,0 +1,32 @@
+<div class="bracket" aria-label="Сетка плей-офф">
+    @for (round of rounds(); track round.key) {
+        <section class="round" [attr.data-round]="round.key">
+            <h4>{{ round.title }}</h4>
+            <div class="round__matches">
+                @for (match of round.matches; track match.id ?? match.position) {
+                    <article class="match" [class.match--pending]="match.status === 'pending'">
+                        <div class="match__position">{{ match.position }}</div>
+                        <div class="team" [class.team--winner]="isWinner(match, 'home')">
+                            <span>{{ teamName(match, 'home') }}</span>
+                            <strong>{{ score(match, 'home') }}</strong>
+                        </div>
+                        <div class="team" [class.team--winner]="isWinner(match, 'away')">
+                            <span>{{ teamName(match, 'away') }}</span>
+                            <strong>{{ score(match, 'away') }}</strong>
+                        </div>
+                        @if (match.penalties) {
+                            <div class="match__detail">
+                                Пенальти: {{ match.penalties.home }}:{{ match.penalties.away }}
+                            </div>
+                        }
+                        @if (match.administrativeDecision) {
+                            <div class="match__decision">
+                                {{ match.administrativeDecision.label }}
+                            </div>
+                        }
+                    </article>
+                }
+            </div>
+        </section>
+    }
+</div>
