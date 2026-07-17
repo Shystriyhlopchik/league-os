@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, Subject, throwError } from 'rxjs';
 import { StandingsApi } from '../../entities/standings/api/standings.api';
 import { PublicTournamentView } from '../../entities/standings/model/public-tournament-view.model';
+import { StandingRow } from '../../entities/standings/model/standings-row.model';
 import { SessionStore } from '../../entities/user/model/session.store';
 import { FeatureFlagsApi } from '../../shared/api/feature-flags.api';
 import { TournamentPublicViewComponent } from './tournament-public-view.component';
@@ -83,6 +84,106 @@ describe('TournamentPublicViewComponent', () => {
         );
     });
 
+    it('renders one standings panel and switches groups with a select', () => {
+        const groupedView = view();
+        groupedView.stages[0].groups = [
+            {
+                id: 101,
+                key: 'A',
+                name: 'Группа A',
+                order: 1,
+                standings: [standing(1, 'Команда Альфа')],
+            },
+            {
+                id: 102,
+                key: 'B',
+                name: 'Группа B',
+                order: 2,
+                standings: [standing(2, 'Команда Бета')],
+            },
+            {
+                id: 103,
+                key: 'C',
+                name: 'Группа C',
+                order: 3,
+                standings: [standing(3, 'Команда Гамма')],
+            },
+        ];
+        api.getPublicTournamentView.and.returnValue(of(groupedView));
+
+        fixture = createFixture();
+
+        expect(
+            fixture.nativeElement.querySelectorAll('.panel--standings').length,
+        ).toBe(1);
+        expect(fixture.nativeElement.textContent).toContain('Команда Альфа');
+        expect(fixture.nativeElement.textContent).not.toContain('Команда Бета');
+
+        const select = fixture.nativeElement.querySelector(
+            '.group-switcher select',
+        ) as HTMLSelectElement;
+        expect(select.options.length).toBe(3);
+        select.value = '102';
+        select.dispatchEvent(new Event('change'));
+        fixture.detectChanges();
+
+        expect(fixture.nativeElement.textContent).toContain('Команда Бета');
+        expect(fixture.nativeElement.textContent).not.toContain('Команда Альфа');
+    });
+
+    it('shows the preliminary bracket structure for an unconfirmed playoff', () => {
+        const tournamentView = view();
+        tournamentView.stages[1] = {
+            ...tournamentView.stages[1],
+            empty: true,
+            bracket: {
+                confirmed: false,
+                matches: [
+                    pendingMatch(
+                        'SF-1',
+                        'semi_final',
+                        'Лучшая вторая команда',
+                        'Победитель другой группы',
+                    ),
+                    pendingMatch(
+                        'SF-2',
+                        'semi_final',
+                        'Победитель группы',
+                        'Победитель группы',
+                    ),
+                    pendingMatch(
+                        'THIRD_PLACE',
+                        'third_place',
+                        'Проигравший SF-1',
+                        'Проигравший SF-2',
+                    ),
+                    pendingMatch(
+                        'FINAL',
+                        'final',
+                        'Победитель SF-1',
+                        'Победитель SF-2',
+                    ),
+                ],
+            },
+        };
+        api.getPublicTournamentView.and.returnValue(of(tournamentView));
+        fixture = createFixture();
+
+        const buttons = fixture.nativeElement.querySelectorAll(
+            '.stage-tabs button',
+        ) as NodeListOf<HTMLButtonElement>;
+        buttons[1].click();
+        fixture.detectChanges();
+
+        expect(fixture.nativeElement.querySelectorAll('.match').length).toBe(4);
+        expect(fixture.nativeElement.textContent).toContain(
+            'Это предварительная структура сетки',
+        );
+        expect(fixture.nativeElement.textContent).not.toContain(
+            'участники и матчи пока не опубликованы',
+        );
+    });
+
     function createFixture(): ComponentFixture<TournamentPublicViewComponent> {
         const result = TestBed.createComponent(TournamentPublicViewComponent);
         result.componentRef.setInput('tournamentId', 1);
@@ -90,6 +191,38 @@ describe('TournamentPublicViewComponent', () => {
         return result;
     }
 });
+
+function pendingMatch(
+    position: string,
+    roundType: 'semi_final' | 'third_place' | 'final',
+    homeSourceLabel: string,
+    awaySourceLabel: string,
+) {
+    return {
+        position,
+        roundType,
+        roundNumber: roundType === 'semi_final' ? 1 : 2,
+        status: 'pending' as const,
+        homeSourceLabel,
+        awaySourceLabel,
+    };
+}
+
+function standing(teamId: number, teamName: string): StandingRow {
+    return {
+        position: 1,
+        team: { id: teamId, name: teamName },
+        played: 3,
+        wins: 2,
+        draws: 1,
+        losses: 0,
+        goalsFor: 6,
+        goalsAgainst: 2,
+        goalDifference: 4,
+        points: 7,
+        qualificationStatus: 'pending',
+    };
+}
 
 function view(): PublicTournamentView {
     return {

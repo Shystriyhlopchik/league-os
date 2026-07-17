@@ -1,0 +1,112 @@
+:host {
+    display: block;
+    min-height: 100vh;
+    background: #101716;
+    color: #f5f5f5;
+}
+.news-editor {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 16px 48px;
+}
+form {
+    display: grid;
+    gap: 18px;
+    margin-top: 20px;
+    padding: 20px;
+    border-radius: 12px;
+    background: #222a2d;
+}
+label {
+    display: grid;
+    gap: 7px;
+}
+label span {
+    color: #dfe5e2;
+    font-weight: 700;
+}
+input,
+textarea {
+    width: 100%;
+    padding: 12px;
+    box-sizing: border-box;
+    border: 1px solid #46504e;
+    border-radius: 8px;
+    color: #f5f5f5;
+    background: #151b1c;
+    font: inherit;
+}
+.file-input {
+    padding: 9px;
+    cursor: pointer;
+}
+.cover-preview {
+    display: grid;
+    justify-items: start;
+    gap: 10px;
+}
+.cover-preview img {
+    width: min(100%, 560px);
+    max-height: 315px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: #151b1c;
+}
+textarea {
+    resize: vertical;
+    line-height: 1.55;
+}
+input:focus,
+textarea:focus {
+    outline: 2px solid #72df9c;
+    outline-offset: 1px;
+}
+label em {
+    color: #8f9b97;
+    font-size: 12px;
+    font-style: normal;
+}
+label small {
+    color: #ff9ca1;
+}
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+button {
+    padding: 12px 16px;
+    border: 1px solid #46504e;
+    border-radius: 8px;
+    color: #f5f5f5;
+    background: #30393a;
+    cursor: pointer;
+}
+button.primary {
+    border: 0;
+    color: #101716;
+    background: #72df9c;
+    font-weight: 800;
+}
+button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+.state,
+.message {
+    padding: 20px;
+    border: 1px dashed #46504e;
+    border-radius: 10px;
+    color: #aeb7b4;
+    text-align: center;
+}
+.message--error {
+    border-color: #8a3e43;
+    color: #ffd1d3;
+}
+@media (max-width: 600px) {
+    .actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}

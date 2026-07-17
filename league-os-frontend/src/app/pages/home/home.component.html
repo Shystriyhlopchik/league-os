@@ -1,15 +1,22 @@
-<app-matches-slider [seasonId]="1" />
+@if (activeTournament(); as tournament) {
+    <app-matches-slider [seasonId]="tournament.season.id" />
+}
+
 <div class="home__body">
     <div class="home__section">
         <app-advertising-banner />
-        <h2>новости</h2>
+        <h2>Новости</h2>
         <app-news-preview [limit]="3" />
-        <h2>статистика</h2>
+        <h2>Статистика</h2>
         <div class="home__statistics">
-            <app-statistics-preview />
-            <app-stats-summary [tournamentId]="1" />
+            @if (activeTournament(); as tournament) {
+                <app-statistics-preview
+                    [seasonId]="tournament.season.id"
+                    [initialTournamentId]="tournament.id"
+                />
+                <app-stats-summary [tournamentId]="tournament.id" />
+            }
         </div>
-        <app-teams-map></app-teams-map>
-<!--        <app-teams-showcase />-->
+        <app-teams-map />
     </div>
 </div>

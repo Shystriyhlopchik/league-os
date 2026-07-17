@@ -1,20 +1,14 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { NewsService } from './news.service';
+import { ListNewsQueryDto } from './dto/list-news-query.dto';
 
 @Controller('news')
 export class NewsController {
   constructor(private readonly newsService: NewsService) {}
 
   @Get()
-  getPublishedNews() {
-    return this.newsService.findPublished();
-  }
-
-  @Get()
-  getNews() {
-    return this.newsService.findOne({
-      where: { status: 'published' },
-    });
+  getPublishedNews(@Query() query: ListNewsQueryDto) {
+    return this.newsService.findPublished(query);
   }
 
   @Get(':slug')

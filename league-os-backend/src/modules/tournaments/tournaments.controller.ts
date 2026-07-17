@@ -575,6 +575,11 @@ export class TournamentsController {
     return this.lifecycleService.complete(tournamentId);
   }
 
+  @Get('active')
+  getActive() {
+    return this.tournamentsService.findActive();
+  }
+
   @Get('season/:seasonId')
   getBySeason(@Param('seasonId', ParseIntPipe) seasonId: number) {
     return this.tournamentsService.findBySeason(seasonId);

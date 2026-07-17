@@ -8,10 +8,16 @@ import { Tournament } from '../model/tournaments.model';
     providedIn: 'root',
 })
 export class TournamentsApi {
-    private readonly apiUrl = `${environment.apiUrl}/tournaments/season/`;
+    private readonly apiUrl = `${environment.apiUrl}/tournaments`;
     private readonly http = inject(HttpClient);
 
     getTournamentsSeason(seasonId: number): Observable<Tournament[]> {
-        return this.http.get<Tournament[]>(this.apiUrl + seasonId);
+        return this.http.get<Tournament[]>(
+            `${this.apiUrl}/season/${seasonId}`,
+        );
+    }
+
+    getActiveTournament(): Observable<Tournament | null> {
+        return this.http.get<Tournament | null>(`${this.apiUrl}/active`);
     }
 }

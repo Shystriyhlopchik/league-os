@@ -42,7 +42,34 @@ export class TournamentsService extends BaseCrudService<TournamentEntity> {
       },
     });
 
-    return tournaments.map((tournament) => ({
+    return tournaments.map((tournament) => this.toPublicTournament(tournament));
+  }
+
+  async findActive() {
+    const tournament = await this.tournamentsRepository
+      .createQueryBuilder('tournament')
+      .leftJoinAndSelect('tournament.season', 'season')
+      .leftJoinAndSelect('season.competition', 'competition')
+      .where('tournament.isActive = :isActive', { isActive: true })
+      .andWhere('tournament.status != :cancelled', { cancelled: 'cancelled' })
+      .orderBy(
+        `CASE
+          WHEN tournament.status = 'active' THEN 0
+          WHEN tournament.lifecycle_status = 'in_progress' THEN 1
+          WHEN tournament.lifecycle_status = 'published' THEN 2
+          ELSE 3
+        END`,
+        'ASC',
+      )
+      .addOrderBy('tournament.startDate', 'DESC', 'NULLS LAST')
+      .addOrderBy('tournament.id', 'DESC')
+      .getOne();
+
+    return tournament ? this.toPublicTournament(tournament) : null;
+  }
+
+  private toPublicTournament(tournament: TournamentEntity) {
+    return {
       id: tournament.id,
       name: tournament.name,
       slug: tournament.slug,
@@ -68,7 +95,7 @@ export class TournamentsService extends BaseCrudService<TournamentEntity> {
         logoUrl: tournament.season.competition.logoUrl,
         colorPrimary: tournament.season.competition.colorPrimary,
       },
-    }));
+    };
   }
 
   async getStatsSummary(tournamentId: number): Promise<TournamentStatsSummaryDto> {

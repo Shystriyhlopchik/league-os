@@ -157,6 +157,30 @@ export const routes: Routes = [
                     ),
             },
             {
+                path: 'new-news',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
+                loadComponent: () =>
+                    import('./pages/news-management/news-management-page.component').then(
+                        (m) => m.NewsManagementPageComponent,
+                    ),
+            },
+            {
+                path: 'new-news/new',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
+                loadComponent: () =>
+                    import('./pages/news-editor/news-editor-page.component').then(
+                        (m) => m.NewsEditorPageComponent,
+                    ),
+            },
+            {
+                path: 'new-news/:newsId/edit',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
+                loadComponent: () =>
+                    import('./pages/news-editor/news-editor-page.component').then(
+                        (m) => m.NewsEditorPageComponent,
+                    ),
+            },
+            {
                 path: 'tournaments/:tournamentId/edit',
                 canActivate: [
                     tournamentBuilderFeatureGuard,

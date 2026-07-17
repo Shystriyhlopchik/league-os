@@ -1,0 +1,87 @@
+<main class="news-management">
+    <app-page-header
+        title="Управление новостями"
+        description="Создание, редактирование и публикация новостей сайта"
+        (back)="goBack()"
+    />
+
+    <div class="toolbar">
+        <a routerLink="/dashboard/new-news/new">Создать новость</a>
+    </div>
+
+    @if (error()) {
+        <p class="message message--error" role="alert">{{ error() }}</p>
+    }
+
+    @if (loading()) {
+        <p class="state">Загружаем новости…</p>
+    } @else {
+        <section class="news-list">
+            @for (item of news(); track item.id) {
+                <article class="news-item">
+                    <div class="news-item__content">
+                        <div class="news-item__heading">
+                            <strong>{{ item.title }}</strong>
+                            <span
+                                [class.status--published]="
+                                    item.status === 'published'
+                                "
+                            >
+                                {{
+                                    item.status === "published"
+                                        ? "Опубликована"
+                                        : "Черновик"
+                                }}
+                            </span>
+                        </div>
+                        @if (item.excerpt) {
+                            <p>{{ item.excerpt }}</p>
+                        }
+                        <small>
+                            Изменена
+                            {{ item.updatedAt | date: "dd.MM.yyyy HH:mm" }}
+                            @if (item.publishedAt) {
+                                · опубликована
+                                {{
+                                    item.publishedAt | date: "dd.MM.yyyy HH:mm"
+                                }}
+                            }
+                        </small>
+                    </div>
+                    <div class="news-item__actions">
+                        <a
+                            [routerLink]="[
+                                '/dashboard/new-news',
+                                item.id,
+                                'edit',
+                            ]"
+                        >
+                            Редактировать
+                        </a>
+                        <button
+                            type="button"
+                            [disabled]="processingId() === item.id"
+                            (click)="togglePublication(item)"
+                        >
+                            {{
+                                item.status === "published"
+                                    ? "Снять с публикации"
+                                    : "Опубликовать"
+                            }}
+                        </button>
+                        <button
+                            class="danger"
+                            type="button"
+                            [disabled]="processingId() === item.id"
+                            (click)="remove(item)"
+                        >
+                            Удалить
+                        </button>
+                    </div>
+                </article>
+            } @empty {
+                <p class="state">Новостей пока нет. Создайте первую статью.</p>
+            }
+        </section>
+    }
+</main>

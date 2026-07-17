@@ -71,6 +71,13 @@ export class DashboardPageComponent {
             roles: [UserRole.Admin, UserRole.SuperAdmin, UserRole.Captain],
             variant: '#2ECC71',
         },
+        {
+            title: 'Написать новость',
+            description: 'Создание, редактирование и публикация новостей сайта',
+            route: '/dashboard/new-news',
+            roles: [UserRole.Admin, UserRole.SuperAdmin],
+            variant: '#2ECC71',
+        },
     ];
 
     readonly featureFlags = toSignal(this.featureFlagsApi.get(), {

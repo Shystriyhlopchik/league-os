@@ -1,23 +1,29 @@
 <section class="statistics-preview">
-    @if (tournaments().length > 1) {
-        <app-competition-tabs
-            [tournaments]="tournaments()"
-            [selectedId]="selectedTournamentId()"
-            (selected)="selectCompetition($event)"
-        />
-    }
-
     <app-section-title>Турнир</app-section-title>
 
-    <app-tournament-public-view
-        [tournamentId]="selectedTournamentId()"
-        [compact]="true"
-    />
+    @if (selectedTournamentId(); as tournamentId) {
+        @if (tournaments().length > 1) {
+            <app-competition-tabs
+                [tournaments]="tournaments()"
+                [selectedId]="tournamentId"
+                (selected)="selectCompetition($event)"
+            />
+        }
 
-    <a
-        class="statistics-preview__link"
-        [routerLink]="['/tournaments', selectedTournamentId()]"
-    >
-        <app-slanted-link>Открыть турнир</app-slanted-link>
-    </a>
+        <app-tournament-public-view
+            [tournamentId]="tournamentId"
+            [compact]="true"
+        />
+
+        <a
+            class="statistics-preview__link"
+            [routerLink]="['/tournaments', tournamentId]"
+        >
+            <app-slanted-link>Открыть турнир</app-slanted-link>
+        </a>
+    } @else {
+        <p class="statistics-preview__empty">
+            Активный турнир пока не опубликован.
+        </p>
+    }
 </section>

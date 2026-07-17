@@ -1,0 +1,117 @@
+:host {
+    display: block;
+    min-height: 100vh;
+    background: #101716;
+    color: #f5f5f5;
+}
+.news-management {
+    max-width: 1050px;
+    margin: 0 auto;
+    padding: 20px 16px 48px;
+}
+.toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin: 20px 0;
+}
+.toolbar a,
+.news-item__actions a,
+button {
+    padding: 10px 14px;
+    border: 1px solid #46504e;
+    border-radius: 8px;
+    color: #f5f5f5;
+    background: #222a2d;
+    text-decoration: none;
+    cursor: pointer;
+}
+.toolbar a {
+    border: 0;
+    color: #101716;
+    background: #72df9c;
+    font-weight: 800;
+}
+.news-list {
+    display: grid;
+    gap: 12px;
+}
+.news-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 18px;
+    border-radius: 10px;
+    background: #222a2d;
+}
+.news-item__content {
+    min-width: 0;
+    flex: 1;
+}
+.news-item__heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.news-item__heading strong {
+    font:
+        700 20px Oswald,
+        Arial,
+        sans-serif;
+}
+.news-item__heading span {
+    padding: 4px 8px;
+    border-radius: 999px;
+    color: #ffd91a;
+    background: #3a3725;
+    font-size: 12px;
+}
+.news-item__heading .status--published {
+    color: #72df9c;
+    background: #243a2d;
+}
+.news-item p {
+    margin: 8px 0;
+    color: #c0c8c5;
+}
+.news-item small {
+    color: #8f9b97;
+}
+.news-item__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+.news-item__actions .danger {
+    color: #ff8b91;
+}
+button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+.state,
+.message {
+    padding: 20px;
+    border: 1px dashed #46504e;
+    border-radius: 10px;
+    color: #aeb7b4;
+    text-align: center;
+}
+.message--error {
+    border-color: #8a3e43;
+    color: #ffd1d3;
+}
+@media (max-width: 760px) {
+    .news-item {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .news-item__actions {
+        justify-content: flex-start;
+    }
+    .news-item__heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}

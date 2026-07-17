@@ -53,24 +53,41 @@
                 }
             </div>
 
-            @if (stage.empty) {
+            @if (stage.empty && stage.type !== 'knockout') {
                 <div class="state">
                     Этап создан, но участники и матчи пока не опубликованы.
                 </div>
             } @else {
                 @if (stage.groups.length) {
-                    <div class="groups">
-                        @for (group of stage.groups; track group.id) {
-                            <section class="panel">
-                                <h3>{{ group.name }}</h3>
-                                @if (group.standings.length) {
-                                    <app-standings-table [rows]="group.standings" />
-                                } @else {
-                                    <p class="panel__empty">В группе пока нет команд.</p>
-                                }
-                            </section>
+                    <section class="panel panel--standings">
+                        <div class="panel__title panel__title--standings">
+                            <h3>Турнирная таблица</h3>
+                            <label class="group-switcher">
+                                <span>Группа</span>
+                                <select
+                                    aria-label="Выбор группы"
+                                    [value]="currentGroup().id"
+                                    (change)="selectGroup($event)"
+                                >
+                                    @for (group of stage.groups; track group.id) {
+                                        <option [value]="group.id">
+                                            {{ group.name }}
+                                        </option>
+                                    }
+                                </select>
+                            </label>
+                        </div>
+
+                        @if (currentGroup(); as group) {
+                            @if (group.standings.length) {
+                                <app-standings-table [rows]="group.standings" />
+                            } @else {
+                                <p class="panel__empty">
+                                    В выбранной группе пока нет команд.
+                                </p>
+                            }
                         }
-                    </div>
+                    </section>
                 } @else if (stage.standings.length) {
                     <section class="panel">
                         <h3>Турнирная таблица</h3>
@@ -131,6 +148,11 @@
                 @if (stage.type === 'knockout' || stage.bracket.matches.length) {
                     <section class="panel">
                         <h3>Сетка плей-офф</h3>
+                        @if (!stage.bracket.confirmed) {
+                            <p class="panel__notice">
+                                Это предварительная структура сетки. Команды появятся после завершения группового этапа и подтверждения квалификации.
+                            </p>
+                        }
                         @if (stage.bracket.matches.length) {
                             <app-knockout-bracket [matches]="stage.bracket.matches" />
                         } @else {

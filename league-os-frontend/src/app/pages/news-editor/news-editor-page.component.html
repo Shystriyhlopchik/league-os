@@ -1,0 +1,101 @@
+<main class="news-editor">
+    <app-page-header
+        [title]="newsId() ? 'Редактирование новости' : 'Новая новость'"
+        description="Сохраните материал как черновик или сразу опубликуйте его на сайте"
+        (back)="goBack()"
+    />
+
+    @if (loading()) {
+        <p class="state">Загружаем новость…</p>
+    } @else {
+        <form [formGroup]="form" (ngSubmit)="save(false)">
+            <label>
+                <span>Заголовок *</span>
+                <input formControlName="title" maxlength="180" />
+                @if (
+                    form.controls.title.touched && form.controls.title.invalid
+                ) {
+                    <small
+                        >Введите заголовок длиной от 3 до 180 символов.</small
+                    >
+                }
+            </label>
+
+            <label>
+                <span>Адрес статьи</span>
+                <input
+                    formControlName="slug"
+                    maxlength="200"
+                    placeholder="Заполнится автоматически"
+                />
+                <em
+                    >Латинские буквы, цифры и дефисы. Для новой статьи можно
+                    оставить пустым.</em
+                >
+            </label>
+
+            <label>
+                <span>Краткий анонс</span>
+                <textarea
+                    formControlName="excerpt"
+                    maxlength="500"
+                    rows="3"
+                ></textarea>
+            </label>
+
+            <label>
+                <span>Обложка</span>
+                <input
+                    class="file-input"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    (change)="selectCover($event)"
+                />
+                <em>PNG, JPEG или WebP, не более 5 МБ.</em>
+            </label>
+
+            @if (coverPreview(); as previewUrl) {
+                <div class="cover-preview">
+                    <img [src]="previewUrl" alt="Предпросмотр обложки" />
+                    <button type="button" (click)="removeCover()">
+                        Удалить обложку
+                    </button>
+                </div>
+            }
+
+            <label>
+                <span>Текст новости *</span>
+                <textarea
+                    formControlName="content"
+                    maxlength="50000"
+                    rows="18"
+                ></textarea>
+                <em>Разделяйте абзацы пустой строкой.</em>
+                @if (
+                    form.controls.content.touched &&
+                    form.controls.content.invalid
+                ) {
+                    <small>Введите текст новости.</small>
+                }
+            </label>
+
+            @if (error()) {
+                <p class="message message--error" role="alert">{{ error() }}</p>
+            }
+
+            <div class="actions">
+                <button type="submit" [disabled]="saving()">
+                    {{ saving() ? "Сохраняем…" : "Сохранить черновик" }}
+                </button>
+                <button
+                    class="primary"
+                    type="button"
+                    [disabled]="saving()"
+                    (click)="save(true)"
+                >
+                    Сохранить и опубликовать
+                </button>
+            </div>
+        </form>
+    }
+</main>

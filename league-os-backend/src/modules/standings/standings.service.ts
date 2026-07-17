@@ -11,10 +11,14 @@ import { BaseCrudService } from '../../common/base/base-crud.service';
 import { MatchEventEntity } from '../match-events/entities/match-event.entity';
 import { MatchEventType } from '../match-events/enums/match-event-type.enum';
 import { MatchEntity } from '../matches/entities/match.entity';
+import { MatchRoundType } from '../matches/enums/match-round-type.enum';
 import { MatchStatus } from '../matches/enums/match-status.enum';
 import { TournamentGroupEntity } from '../tournament-groups/entities/tournament-group.entity';
 import { TournamentRuleVersionEntity } from '../tournament-rules/entities/tournament-rule-version.entity';
-import type { StageRulesV1 } from '../tournament-rules/types/tournament-rules-config.type';
+import type {
+  KnockoutStageRulesV1,
+  StageRulesV1,
+} from '../tournament-rules/types/tournament-rules-config.type';
 import { TournamentStageParticipantEntity } from '../tournament-stage-participants/entities/tournament-stage-participant.entity';
 import { TournamentStageEntity } from '../tournament-stages/entities/tournament-stage.entity';
 import { TournamentStageType } from '../tournament-stages/enums/tournament-stage-type.enum';
@@ -327,8 +331,8 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
             )
         : [];
       const bracket = brackets.find((item) => item.stageId === stage.id);
-      const bracketMatches =
-        bracket?.plans
+      const bracketMatches = bracket
+        ? (bracket.plans
           ?.slice()
           .sort((left, right) => left.order - right.order)
           .map((plan) =>
@@ -342,7 +346,11 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
                   homeSourceLabel: this.sourceLabel(plan.homeSource),
                   awaySourceLabel: this.sourceLabel(plan.awaySource),
                 },
-          ) ?? [];
+          ) ?? [])
+        : this.pendingBracketStructure(
+            stage.key,
+            activeRuleVersion?.config.stages,
+          );
 
       return {
         id: stage.id,
@@ -676,6 +684,115 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
       return `Место квалификации №${source.selectionOrder}`;
     }
     return `${source.outcome === 'winner' ? 'Победитель' : 'Проигравший'} ${source.bracketPosition}`;
+  }
+
+  private pendingBracketStructure(
+    stageKey: string,
+    stages?: StageRulesV1[],
+  ): PublicBracketMatch[] {
+    const rules = stages?.find(
+      (stage): stage is KnockoutStageRulesV1 =>
+        stage.stageKey === stageKey && stage.type === 'knockout',
+    );
+    if (!rules) return [];
+
+    const matches: PublicBracketMatch[] = [];
+    let teamsInRound = rules.bracket.size;
+    let roundNumber = 1;
+    let previousPositions: string[] = [];
+
+    while (teamsInRound >= 2) {
+      const matchCount = teamsInRound / 2;
+      const roundType = this.roundTypeForSize(teamsInRound);
+      const positions = Array.from({ length: matchCount }, (_, index) =>
+        this.bracketPosition(roundType, index + 1),
+      );
+
+      if (
+        teamsInRound === 2 &&
+        rules.bracket.placementMatch === 'third_place' &&
+        previousPositions.length === 2
+      ) {
+        matches.push({
+          position: 'THIRD_PLACE',
+          roundType: MatchRoundType.THIRD_PLACE,
+          roundNumber,
+          status: 'pending',
+          homeSourceLabel: `Проигравший ${previousPositions[0]}`,
+          awaySourceLabel: `Проигравший ${previousPositions[1]}`,
+        });
+      }
+
+      positions.forEach((position, index) => {
+        const sourceLabels = previousPositions.length
+          ? [
+              `Победитель ${previousPositions[index * 2]}`,
+              `Победитель ${previousPositions[index * 2 + 1]}`,
+            ]
+          : this.initialSeedLabels(rules, index);
+        matches.push({
+          position,
+          roundType,
+          roundNumber,
+          status: 'pending',
+          homeSourceLabel: sourceLabels[0],
+          awaySourceLabel: sourceLabels[1],
+        });
+      });
+
+      previousPositions = positions;
+      teamsInRound /= 2;
+      roundNumber += 1;
+    }
+
+    return matches;
+  }
+
+  private initialSeedLabels(
+    rules: KnockoutStageRulesV1,
+    matchIndex: number,
+  ): [string, string] {
+    if (
+      rules.bracket.size === 4 &&
+      rules.bracket.seeding.type === 'best_eligible_opponent'
+    ) {
+      return matchIndex === 0
+        ? [
+            'Лучшая команда среди вторых мест',
+            'Лучший доступный победитель другой группы',
+          ]
+        : ['Оставшийся победитель группы', 'Оставшийся победитель группы'];
+    }
+    return [
+      `Участник посева №${matchIndex * 2 + 1}`,
+      `Участник посева №${matchIndex * 2 + 2}`,
+    ];
+  }
+
+  private roundTypeForSize(size: number): MatchRoundType {
+    const types: Record<number, MatchRoundType> = {
+      32: MatchRoundType.ROUND_OF_32,
+      16: MatchRoundType.ROUND_OF_16,
+      8: MatchRoundType.QUARTER_FINAL,
+      4: MatchRoundType.SEMI_FINAL,
+      2: MatchRoundType.FINAL,
+    };
+    return types[size];
+  }
+
+  private bracketPosition(
+    roundType: MatchRoundType,
+    index: number,
+  ): string {
+    const prefixes: Partial<Record<MatchRoundType, string>> = {
+      [MatchRoundType.ROUND_OF_32]: 'R32',
+      [MatchRoundType.ROUND_OF_16]: 'R16',
+      [MatchRoundType.QUARTER_FINAL]: 'QF',
+      [MatchRoundType.SEMI_FINAL]: 'SF',
+    };
+    return roundType === MatchRoundType.FINAL
+      ? 'FINAL'
+      : `${prefixes[roundType]}-${index}`;
   }
 
   async getStageStandings(

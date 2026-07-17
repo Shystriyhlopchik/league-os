@@ -1,7 +1,5 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { tap } from 'rxjs';
 import { CompetitionTabsComponent } from '../../features/select-competition/ui/competition-tabs/competition-tabs.component';
 import { TournamentsApi } from '../../entities/tournaments/api/tournaments.api';
 import { Tournament } from '../../entities/tournaments/model/tournaments.model';
@@ -25,17 +23,39 @@ import { TournamentPublicViewComponent } from '../tournament-public-view/tournam
 export class StatisticsPreviewComponent {
     private readonly tournamentApi = inject(TournamentsApi);
 
-    readonly selectedTournamentId = signal<number | string>(1);
-    readonly tournaments = toSignal(
-        this.tournamentApi.getTournamentsSeason(1).pipe(
-            tap((tournaments) => {
-                if (tournaments.length) {
-                    this.selectedTournamentId.set(tournaments[0].id);
-                }
-            }),
-        ),
-        { initialValue: [] as Tournament[] },
-    );
+    readonly seasonId = input.required<number>();
+    readonly initialTournamentId = input.required<number>();
+    readonly selectedTournamentId = signal<number | string | null>(null);
+    readonly tournaments = signal<Tournament[]>([]);
+
+    constructor() {
+        effect((onCleanup) => {
+            const seasonId = this.seasonId();
+            const initialTournamentId = this.initialTournamentId();
+            const subscription = this.tournamentApi
+                .getTournamentsSeason(seasonId)
+                .subscribe({
+                    next: (tournaments) => {
+                        this.tournaments.set(tournaments);
+                        const initialTournament = tournaments.find(
+                            (tournament) =>
+                                tournament.id === initialTournamentId,
+                        );
+                        this.selectedTournamentId.set(
+                            initialTournament?.id ??
+                                tournaments[0]?.id ??
+                                null,
+                        );
+                    },
+                    error: () => {
+                        this.tournaments.set([]);
+                        this.selectedTournamentId.set(null);
+                    },
+                });
+
+            onCleanup(() => subscription.unsubscribe());
+        });
+    }
 
     selectCompetition(id: number | string): void {
         this.selectedTournamentId.set(id);

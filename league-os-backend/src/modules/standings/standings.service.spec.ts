@@ -193,4 +193,47 @@ describe('StandingsService rule-driven scope', () => {
       expect.any(Function),
     );
   });
+
+  it('returns a preliminary playoff structure before the bracket is confirmed', async () => {
+    const playoff = {
+      id: 20,
+      key: 'playoff',
+      name: 'Суперфинал',
+      tournamentId: 1,
+      type: TournamentStageType.KNOCKOUT,
+      order: 2,
+      status: 'pending',
+    } as TournamentStageEntity;
+    jest.mocked(stageRepository.find).mockResolvedValue([stage, playoff]);
+    jest.mocked(groupRepository.find).mockResolvedValue([]);
+    jest.mocked(standingsRepository.find).mockResolvedValue([]);
+    jest.mocked(participantRepository.find).mockResolvedValue([]);
+
+    const result = await service.getPublicTournamentView(1);
+    const playoffView = result.stages.find((item) => item.id === playoff.id);
+
+    expect(playoffView?.bracket.confirmed).toBe(false);
+    expect(playoffView?.empty).toBe(false);
+    expect(playoffView?.bracket.matches).toEqual([
+      expect.objectContaining({
+        position: 'SF-1',
+        roundType: 'semi_final',
+        homeSourceLabel: 'Лучшая команда среди вторых мест',
+        awaySourceLabel: 'Лучший доступный победитель другой группы',
+      }),
+      expect.objectContaining({ position: 'SF-2', roundType: 'semi_final' }),
+      expect.objectContaining({
+        position: 'THIRD_PLACE',
+        roundType: 'third_place',
+        homeSourceLabel: 'Проигравший SF-1',
+        awaySourceLabel: 'Проигравший SF-2',
+      }),
+      expect.objectContaining({
+        position: 'FINAL',
+        roundType: 'final',
+        homeSourceLabel: 'Победитель SF-1',
+        awaySourceLabel: 'Победитель SF-2',
+      }),
+    ]);
+  });
 });

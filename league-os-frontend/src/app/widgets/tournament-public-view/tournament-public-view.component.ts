@@ -37,6 +37,7 @@ export class TournamentPublicViewComponent {
     readonly error = signal<string | null>(null);
     readonly view = signal<PublicTournamentView | null>(null);
     readonly selectedStageId = signal<number | null>(null);
+    readonly selectedGroupId = signal<number | null>(null);
     readonly suspensions = signal<PublicSuspension[]>([]);
 
     readonly currentStage = computed(() => {
@@ -47,6 +48,15 @@ export class TournamentPublicViewComponent {
                 (stage) => stage.id === this.selectedStageId(),
             ) ??
             data.stages[0] ??
+            null
+        );
+    });
+
+    readonly currentGroup = computed(() => {
+        const groups = this.currentStage()?.groups ?? [];
+        return (
+            groups.find((group) => group.id === this.selectedGroupId()) ??
+            groups[0] ??
             null
         );
     });
@@ -97,6 +107,7 @@ export class TournamentPublicViewComponent {
                                     null,
                             );
                         }
+                        this.syncSelectedGroup();
                         this.loading.set(false);
                     },
                     error: () => {
@@ -127,6 +138,16 @@ export class TournamentPublicViewComponent {
 
     selectStage(stage: PublicTournamentStage): void {
         this.selectedStageId.set(stage.id);
+        this.selectedGroupId.set(stage.groups[0]?.id ?? null);
+    }
+
+    selectGroup(event: Event): void {
+        const groupId = Number((event.target as HTMLSelectElement).value);
+        if (
+            this.currentStage()?.groups.some((group) => group.id === groupId)
+        ) {
+            this.selectedGroupId.set(groupId);
+        }
     }
 
     retry(): void {
@@ -154,5 +175,15 @@ export class TournamentPublicViewComponent {
             manual: 'решение организатора',
         };
         return labels[reason] ?? reason;
+    }
+
+    private syncSelectedGroup(): void {
+        const groups = this.currentStage()?.groups ?? [];
+        const selectedStillExists = groups.some(
+            (group) => group.id === this.selectedGroupId(),
+        );
+        if (!selectedStillExists) {
+            this.selectedGroupId.set(groups[0]?.id ?? null);
+        }
     }
 }

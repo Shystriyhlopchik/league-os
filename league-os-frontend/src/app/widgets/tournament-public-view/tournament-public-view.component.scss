@@ -15,11 +15,22 @@ h1 { margin-bottom: 6px; font: 700 clamp(28px, 5vw, 46px) Play, Arial, sans-seri
 .stage-heading span { color: #7f8b88; font-size: 12px; text-transform: uppercase; }
 .stage-heading h2 { margin: 2px 0 0; font: 700 26px Play, Arial, sans-serif; }
 .stage-heading small { color: #72df9c; }
-.groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap: 18px; }
 .panel { min-width: 0; margin-bottom: 20px; padding: 16px; border: 1px solid #303839; border-radius: 12px; background: #191d1e; }
 .panel h3 { margin-bottom: 12px; color: #72df9c; font: 700 20px Play, Arial, sans-serif; text-transform: uppercase; }
 .panel__title { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.panel__title--standings { align-items: center; margin-bottom: 12px; }
+.panel__title--standings h3 { margin-bottom: 0; }
+.group-switcher { display: flex; align-items: center; gap: 10px; color: #aeb7b4; font-size: 13px; }
+.group-switcher select {
+    min-width: 150px; padding: 9px 34px 9px 12px; border: 1px solid #3b4546;
+    border-radius: 8px; color: #f5f5f5; background: #202526; cursor: pointer;
+}
+.group-switcher select:focus { outline: 2px solid #72df9c; outline-offset: 2px; }
 .panel__title p, .panel__empty { color: #9da7a4; font-size: 13px; }
+.panel__notice {
+    margin-bottom: 16px; padding: 10px 12px; border-left: 3px solid #72df9c;
+    border-radius: 0 8px 8px 0; color: #cbd1cf; background: #22292a; font-size: 13px;
+}
 .cross-ranking__scroll { overflow-x: auto; }
 .cross-ranking table { width: 100%; min-width: 650px; border-collapse: collapse; }
 .cross-ranking th, .cross-ranking td { padding: 9px; border-bottom: 1px solid #323a3b; text-align: center; }
@@ -39,6 +50,9 @@ h1 { margin-bottom: 6px; font: 700 clamp(28px, 5vw, 46px) Play, Arial, sans-seri
 @media (max-width: 680px) {
     .panel { padding: 12px; }
     .panel__title { align-items: flex-start; flex-direction: column; gap: 0; }
+    .panel__title--standings { gap: 12px; }
+    .group-switcher { width: 100%; justify-content: space-between; }
+    .group-switcher select { min-width: 0; width: min(70%, 220px); }
     .tournament-header { align-items: flex-start; }
     .tournament-header img { width: 52px; height: 52px; }
 }
