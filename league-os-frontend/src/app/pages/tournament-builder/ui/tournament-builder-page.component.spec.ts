@@ -57,20 +57,17 @@ describe('TournamentBuilderPageComponent', () => {
         );
     });
 
-    it('builds the Yard League preview with 30 group matches', () => {
+    it('builds the Yard League preview with 35 group matches', () => {
         component.applyTemplate('yard_league');
         fixture.detectChanges();
 
         const groupStage = component.groupStage();
         expect(groupStage?.groups.length).toBe(3);
-        expect(component.expectedTeamCount()).toBe(15);
-        expect(component.store.previews().schedule.length).toBe(30);
-        expect(component.store.previews().bracket.map((item) => item.position)).toEqual([
-            'SF-1',
-            'SF-2',
-            'THIRD_PLACE',
-            'FINAL',
-        ]);
+        expect(component.expectedTeamCount()).toBe(16);
+        expect(component.store.previews().schedule.length).toBe(35);
+        expect(
+            component.store.previews().bracket.map((item) => item.position),
+        ).toEqual(['SF-1', 'SF-2', 'THIRD_PLACE', 'FINAL']);
     });
 
     it('blocks structural changes after publication', () => {

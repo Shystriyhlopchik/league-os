@@ -16,9 +16,12 @@ import { MatchStatus } from '../matches/enums/match-status.enum';
 import { TournamentGroupEntity } from '../tournament-groups/entities/tournament-group.entity';
 import { TournamentRuleVersionEntity } from '../tournament-rules/entities/tournament-rule-version.entity';
 import type {
+  CrossGroupComparisonRuleV1,
+  GroupStageRulesV1,
   KnockoutStageRulesV1,
   StageRulesV1,
 } from '../tournament-rules/types/tournament-rules-config.type';
+import { normalizeCrossGroupStandings } from '../tournament-rules/cross-group-normalization';
 import { TournamentStageParticipantEntity } from '../tournament-stage-participants/entities/tournament-stage-participant.entity';
 import { TournamentStageEntity } from '../tournament-stages/entities/tournament-stage.entity';
 import { TournamentStageType } from '../tournament-stages/enums/tournament-stage-type.enum';
@@ -45,9 +48,7 @@ import type {
   PublicTournamentView,
 } from './types/public-tournament-view.type';
 import { MatchResolutionType } from '../matches/enums/match-resolution-type.enum';
-import type {
-  KnockoutParticipantSourceV1,
-} from '../tournament-rules/types/tournament-rules-config.type';
+import type { KnockoutParticipantSourceV1 } from '../tournament-rules/types/tournament-rules-config.type';
 import type { QualificationSelectionReason } from '../tournament-qualifications/types/qualification-engine.type';
 import type { TeamEntity } from '../teams/entities/team.entity';
 
@@ -172,42 +173,56 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
     }
 
     const stageIds = stages.map((stage) => stage.id);
-    const [groups, standingRows, participants, qualificationSnapshots, brackets] =
-      await Promise.all([
-        this.groupRepository.find({
-          where: { stageId: In(stageIds) },
-          order: { order: 'ASC' },
-        }),
-        this.standingsRepository.find({
-          where: { tournamentId, stageId: In(stageIds) },
-          relations: { team: true },
-          order: { position: 'ASC', teamId: 'ASC' },
-        }),
-        this.participantRepository.find({
-          where: { stageId: In(stageIds) },
-          relations: { tournamentTeam: { team: true }, group: true },
-          order: { tournamentTeamId: 'ASC' },
-        }),
-        this.qualificationSnapshotRepository.find({
-          where: { tournamentId, isCurrent: true },
-          relations: {
-            entries: {
-              tournamentTeam: { team: true },
-              sourceGroup: true,
-            },
+    const [
+      groups,
+      standingRows,
+      participants,
+      qualificationSnapshots,
+      brackets,
+      stageMatches,
+    ] = await Promise.all([
+      this.groupRepository.find({
+        where: { stageId: In(stageIds) },
+        order: { order: 'ASC' },
+      }),
+      this.standingsRepository.find({
+        where: { tournamentId, stageId: In(stageIds) },
+        relations: { team: true },
+        order: { position: 'ASC', teamId: 'ASC' },
+      }),
+      this.participantRepository.find({
+        where: { stageId: In(stageIds) },
+        relations: { tournamentTeam: { team: true }, group: true },
+        order: { tournamentTeamId: 'ASC' },
+      }),
+      this.qualificationSnapshotRepository.find({
+        where: { tournamentId, isCurrent: true },
+        relations: {
+          entries: {
+            tournamentTeam: { team: true },
+            sourceGroup: true,
           },
-          order: { revision: 'DESC' },
-        }),
-        this.bracketSnapshotRepository.find({
-          where: { tournamentId, isCurrent: true },
-          relations: {
-            plans: {
-              match: { homeTeam: true, awayTeam: true },
-            },
+        },
+        order: { revision: 'DESC' },
+      }),
+      this.bracketSnapshotRepository.find({
+        where: { tournamentId, isCurrent: true },
+        relations: {
+          plans: {
+            match: { homeTeam: true, awayTeam: true },
           },
-          order: { revision: 'DESC' },
-        }),
-      ]);
+        },
+        order: { revision: 'DESC' },
+      }),
+      this.matchesRepository.find({
+        where: {
+          tournamentId,
+          stageId: In(stageIds),
+          status: MatchStatus.FINISHED,
+        },
+        order: { id: 'ASC' },
+      }),
+    ]);
     const activeRuleVersion = tournament.activeRuleVersionId
       ? await this.ruleVersionRepository.findOne({
           where: {
@@ -227,6 +242,10 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
       );
       const transition = activeRuleVersion?.config.transitions.find(
         (candidate) => candidate.fromStageKey === stage.key,
+      );
+      const stageRules = activeRuleVersion?.config.stages.find(
+        (candidate): candidate is GroupStageRulesV1 =>
+          candidate.stageKey === stage.key && candidate.type === 'group_stage',
       );
       const bestPlacedRuleIds = new Set(
         transition?.qualification
@@ -327,26 +346,29 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
                 groupViews,
                 stageParticipants,
                 qualification,
+                stageRules,
+                transition.crossGroupComparison,
+                stageMatches.filter((match) => match.stageId === stage.id),
               ),
             )
         : [];
       const bracket = brackets.find((item) => item.stageId === stage.id);
       const bracketMatches = bracket
         ? (bracket.plans
-          ?.slice()
-          .sort((left, right) => left.order - right.order)
-          .map((plan) =>
-            plan.match
-              ? this.publicMatch(plan.match, plan.homeSource, plan.awaySource)
-              : {
-                  position: plan.bracketPosition,
-                  roundType: plan.roundType,
-                  roundNumber: plan.roundNumber,
-                  status: 'pending' as const,
-                  homeSourceLabel: this.sourceLabel(plan.homeSource),
-                  awaySourceLabel: this.sourceLabel(plan.awaySource),
-                },
-          ) ?? [])
+            ?.slice()
+            .sort((left, right) => left.order - right.order)
+            .map((plan) =>
+              plan.match
+                ? this.publicMatch(plan.match, plan.homeSource, plan.awaySource)
+                : {
+                    position: plan.bracketPosition,
+                    roundType: plan.roundType,
+                    roundNumber: plan.roundNumber,
+                    status: 'pending' as const,
+                    homeSourceLabel: this.sourceLabel(plan.homeSource),
+                    awaySourceLabel: this.sourceLabel(plan.awaySource),
+                  },
+            ) ?? [])
         : this.pendingBracketStructure(
             stage.key,
             activeRuleVersion?.config.stages,
@@ -487,14 +509,15 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
     rule: Extract<
       QualificationRuleV1,
       {
-        type:
-          | 'best_placed_teams_between_groups'
-          | 'best_placed_between_groups';
+        type: 'best_placed_teams_between_groups' | 'best_placed_between_groups';
       }
     >,
     groups: PublicTournamentStageView['groups'],
     participants: TournamentStageParticipantEntity[],
     snapshot?: QualificationSnapshotEntity,
+    stageRules?: GroupStageRulesV1,
+    comparisonRule?: CrossGroupComparisonRuleV1,
+    matches: MatchEntity[] = [],
   ): PublicCrossGroupRanking {
     const participantByTeam = new Map(
       participants.map((participant) => [
@@ -512,12 +535,59 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
         .filter((result) => result.qualificationRuleId === rule.id)
         .map((result) => [result.tournamentTeamId, result.rank]) ?? [],
     );
+    const normalized = stageRules
+      ? normalizeCrossGroupStandings(
+          groups.flatMap((group) =>
+            group.standings.map((row) => ({
+              ...row,
+              teamId: row.team.id,
+              groupId: group.id,
+            })),
+          ),
+          matches.map((match) => ({
+            id: match.id,
+            groupId: match.groupId,
+            homeTeamId: match.homeTeamId,
+            awayTeamId: match.awayTeamId,
+            homeScore: match.homeScore,
+            awayScore: match.awayScore,
+          })),
+          stageRules.scoring,
+          comparisonRule,
+        )
+      : [];
+    const normalizedByTeam = new Map(
+      normalized.map((row) => [`${row.groupId}:${row.teamId}`, row]),
+    );
     const rows = groups
       .map((group) => {
         const row = group.standings.find(
           (standing) => standing.position === rule.sourcePosition,
         );
-        return row ? { row, group } : undefined;
+        if (!row) return undefined;
+        const adjusted = normalizedByTeam.get(`${group.id}:${row.team.id}`);
+        return {
+          row: adjusted?.comparisonAdjustment
+            ? {
+                ...row,
+                played: adjusted.played,
+                wins: adjusted.wins,
+                draws: adjusted.draws,
+                losses: adjusted.losses,
+                points: adjusted.points,
+                goalsFor: adjusted.goalsFor,
+                goalsAgainst: adjusted.goalsAgainst,
+                goalDifference: adjusted.goalDifference,
+                placementReason: {
+                  type: 'position' as const,
+                  title: 'Межгрупповое сравнение',
+                  description:
+                    'Для равного количества учитываемых матчей исключён результат против последней команды группы.',
+                },
+              }
+            : row,
+          group,
+        };
       })
       .filter(
         (
@@ -590,10 +660,12 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
       return left.disciplinaryScore - right.disciplinaryScore;
     }
     if (criterion === 'draw_lots') {
-      const leftTournamentTeamId =
-        participantByTeam.get(left.team.id)?.tournamentTeamId;
-      const rightTournamentTeamId =
-        participantByTeam.get(right.team.id)?.tournamentTeamId;
+      const leftTournamentTeamId = participantByTeam.get(
+        left.team.id,
+      )?.tournamentTeamId;
+      const rightTournamentTeamId = participantByTeam.get(
+        right.team.id,
+      )?.tournamentTeamId;
       return (
         (drawRankByTournamentTeam.get(leftTournamentTeamId ?? 0) ??
           Number.MAX_SAFE_INTEGER) -
@@ -780,10 +852,7 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
     return types[size];
   }
 
-  private bracketPosition(
-    roundType: MatchRoundType,
-    index: number,
-  ): string {
+  private bracketPosition(roundType: MatchRoundType, index: number): string {
     const prefixes: Partial<Record<MatchRoundType, string>> = {
       [MatchRoundType.ROUND_OF_32]: 'R32',
       [MatchRoundType.ROUND_OF_16]: 'R16',
@@ -989,9 +1058,7 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
         disciplinaryEvents: disciplinaryEvents.map((event) => ({
           teamId: event.teamId,
           eventType: event.eventType as
-            | 'yellow_card'
-            | 'second_yellow_card'
-            | 'red_card',
+            'yellow_card' | 'second_yellow_card' | 'red_card',
         })),
         disciplinaryWeights: stageRules.standings.disciplinaryScore,
         manualDecisionRanks: manualRanks,

@@ -1,4 +1,8 @@
-import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
+import {
+    CdkDragDrop,
+    DragDropModule,
+    moveItemInArray,
+} from '@angular/cdk/drag-drop';
 import { CommonModule } from '@angular/common';
 import {
     ChangeDetectionStrategy,
@@ -311,12 +315,18 @@ export class TournamentBuilderPageComponent implements OnInit {
         this.refreshLocalPreviews();
     }
 
-    setTeamsPerGroup(stageKey: string, capacity: number): void {
+    setGroupCapacity(
+        stageKey: string,
+        groupKey: string,
+        capacity: number,
+    ): void {
         const safeCapacity = Math.max(2, Math.min(32, Number(capacity) || 2));
         this.store.mutate((draft) => {
-            draft.stages
-                .find((item) => item.clientKey === stageKey)
-                ?.groups.forEach((group) => (group.capacity = safeCapacity));
+            const stage = draft.stages.find(
+                (item) => item.clientKey === stageKey,
+            );
+            const group = stage?.groups.find((item) => item.key === groupKey);
+            if (group) group.capacity = safeCapacity;
         });
         this.refreshLocalPreviews();
     }
@@ -345,10 +355,6 @@ export class TournamentBuilderPageComponent implements OnInit {
             }
         });
         this.refreshLocalPreviews();
-    }
-
-    groupCapacity(stage: TournamentStageDraft): number {
-        return stage.groups[0]?.capacity ?? 4;
     }
 
     firstErrorStep(): number {
@@ -460,8 +466,7 @@ export class TournamentBuilderPageComponent implements OnInit {
             .validationIssues()
             .filter((issue) =>
                 hints.some(
-                    (hint) =>
-                        issue.path === hint || issue.path.includes(hint),
+                    (hint) => issue.path === hint || issue.path.includes(hint),
                 ),
             ).length;
     }
@@ -472,7 +477,11 @@ export class TournamentBuilderPageComponent implements OnInit {
         this.store.saving.set(true);
         this.store.notice.set(null);
         this.store.setIssues(this.localValidation());
-        if (this.store.validationIssues().some((issue) => issue.code === 'required')) {
+        if (
+            this.store
+                .validationIssues()
+                .some((issue) => issue.code === 'required')
+        ) {
             this.store.notice.set('Заполните обязательные поля');
             this.operation.set(null);
             this.store.saving.set(false);
@@ -515,8 +524,8 @@ export class TournamentBuilderPageComponent implements OnInit {
                 return;
             }
 
-            for (const stage of this.draft().stages
-                .slice()
+            for (const stage of this.draft()
+                .stages.slice()
                 .sort((a, b) => a.order - b.order)) {
                 const payload = this.compact({
                     key: stage.key,
@@ -694,9 +703,7 @@ export class TournamentBuilderPageComponent implements OnInit {
         key: keyof TournamentBuilderDraft['scoring'],
         value: number,
     ): void {
-        this.store.mutate(
-            (draft) => (draft.scoring[key] = Number(value)),
-        );
+        this.store.mutate((draft) => (draft.scoring[key] = Number(value)));
     }
 
     updateQualification(
@@ -704,9 +711,8 @@ export class TournamentBuilderPageComponent implements OnInit {
         value: unknown,
     ): void {
         this.store.mutate((draft) => {
-            (
-                draft.qualification as unknown as Record<string, unknown>
-            )[key] = value;
+            (draft.qualification as unknown as Record<string, unknown>)[key] =
+                value;
         });
         this.refreshLocalPreviews();
     }
@@ -716,8 +722,7 @@ export class TournamentBuilderPageComponent implements OnInit {
         value: unknown,
     ): void {
         this.store.mutate((draft) => {
-            (draft.playoff as unknown as Record<string, unknown>)[key] =
-                value;
+            (draft.playoff as unknown as Record<string, unknown>)[key] = value;
         });
         this.refreshLocalPreviews();
     }
@@ -782,10 +787,7 @@ export class TournamentBuilderPageComponent implements OnInit {
         for (const participant of this.draft().participants) {
             if (participant.tournamentTeamId) continue;
             const saved = await firstValueFrom(
-                this.api.ensureTournamentTeam(
-                    tournamentId,
-                    participant.teamId,
-                ),
+                this.api.ensureTournamentTeam(tournamentId, participant.teamId),
             );
             this.store.mutate((draft) => {
                 const target = draft.participants.find(
@@ -854,11 +856,12 @@ export class TournamentBuilderPageComponent implements OnInit {
         const hasKnockout = snapshot.stages.some(
             (stage) => stage.type === 'knockout',
         );
-        const template = hasGroups && hasKnockout
-            ? 'groups_playoff'
-            : hasKnockout
-              ? 'knockout'
-              : 'round_robin';
+        const template =
+            hasGroups && hasKnockout
+                ? 'groups_playoff'
+                : hasKnockout
+                  ? 'knockout'
+                  : 'round_robin';
         const draft = createTournamentTemplate(template);
         draft.tournamentId = tournament.id;
         draft.lifecycleStatus = tournament.lifecycleStatus ?? 'draft';
@@ -973,9 +976,7 @@ export class TournamentBuilderPageComponent implements OnInit {
             | undefined;
         if (standings?.tieBreakers?.length) {
             draft.tieBreakers = standings.tieBreakers
-                .map((item) =>
-                    item.type === 'draw_lots' ? 'draw' : item.type,
-                )
+                .map((item) => (item.type === 'draw_lots' ? 'draw' : item.type))
                 .filter((item): item is TieBreakerType => Boolean(item));
         }
 
@@ -994,9 +995,7 @@ export class TournamentBuilderPageComponent implements OnInit {
                     ? ((top['positions'] as unknown[])?.length ?? 1)
                     : 1;
             const best = qualification.find(
-                (rule) =>
-                    rule['type'] ===
-                    'best_placed_teams_between_groups',
+                (rule) => rule['type'] === 'best_placed_teams_between_groups',
             );
             if (best) {
                 draft.qualification.bestPlacedSourcePosition = Number(
@@ -1011,8 +1010,7 @@ export class TournamentBuilderPageComponent implements OnInit {
                       }
                     | undefined;
                 if (ranking?.criteria) {
-                    draft.qualification.crossGroupCriteria =
-                        ranking.criteria;
+                    draft.qualification.crossGroupCriteria = ranking.criteria;
                 }
             }
         }
@@ -1025,9 +1023,7 @@ export class TournamentBuilderPageComponent implements OnInit {
             const seeding = bracket?.['seeding'] as
                 | Record<string, unknown>
                 | undefined;
-            draft.playoff.bracketSize = this.asBracketSize(
-                bracket?.['size'],
-            );
+            draft.playoff.bracketSize = this.asBracketSize(bracket?.['size']);
             draft.playoff.thirdPlaceMatch =
                 bracket?.['placementMatch'] === 'third_place';
             const seedingType = seeding?.['type'];
@@ -1054,16 +1050,8 @@ export class TournamentBuilderPageComponent implements OnInit {
             }
         }
 
-        this.applyMatchAndDiscipline(
-            draft,
-            tableStage,
-            'groupMatchRules',
-        );
-        this.applyMatchAndDiscipline(
-            draft,
-            knockout,
-            'playoffMatchRules',
-        );
+        this.applyMatchAndDiscipline(draft, tableStage, 'groupMatchRules');
+        this.applyMatchAndDiscipline(draft, knockout, 'playoffMatchRules');
     }
 
     private applyMatchAndDiscipline(
@@ -1090,8 +1078,7 @@ export class TournamentBuilderPageComponent implements OnInit {
                 allowDraw: Boolean(match['allowDraw']),
                 extraTimeEnabled: Boolean(extraTime?.['enabled']),
                 extraTimePeriods: Number(
-                    extraTime?.['periods'] ??
-                        draft[target].extraTimePeriods,
+                    extraTime?.['periods'] ?? draft[target].extraTimePeriods,
                 ),
                 extraTimePeriodDurationMinutes: Number(
                     extraTime?.['periodDurationMinutes'] ??
@@ -1155,10 +1142,7 @@ export class TournamentBuilderPageComponent implements OnInit {
     }
 
     private asBracketSize(value: unknown): 2 | 4 | 8 | 16 | 32 {
-        return value === 2 ||
-            value === 8 ||
-            value === 16 ||
-            value === 32
+        return value === 2 || value === 8 || value === 16 || value === 32
             ? value
             : 4;
     }
@@ -1242,11 +1226,7 @@ export class TournamentBuilderPageComponent implements OnInit {
             for (let leg = 0; leg < stage.legs; leg += 1) {
                 const current = rotating.slice();
                 for (let round = 0; round < rounds; round += 1) {
-                    for (
-                        let pair = 0;
-                        pair < current.length / 2;
-                        pair += 1
-                    ) {
+                    for (let pair = 0; pair < current.length / 2; pair += 1) {
                         const left = current[pair];
                         const right = current[current.length - 1 - pair];
                         if (!left || !right) continue;
@@ -1278,7 +1258,8 @@ export class TournamentBuilderPageComponent implements OnInit {
         if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(draft.details.slug)) {
             issues.push({
                 path: '$.slug',
-                message: 'Slug должен содержать латинские буквы, цифры и дефисы',
+                message:
+                    'Slug должен содержать латинские буквы, цифры и дефисы',
                 code: 'required',
             });
         }
@@ -1334,8 +1315,7 @@ export class TournamentBuilderPageComponent implements OnInit {
             groupStage
         ) {
             const qualified =
-                groupStage.groups.length *
-                    draft.qualification.winnersPerGroup +
+                groupStage.groups.length * draft.qualification.winnersPerGroup +
                 draft.qualification.bestPlacedCount;
             if (qualified !== draft.playoff.bracketSize) {
                 issues.push({
@@ -1344,10 +1324,7 @@ export class TournamentBuilderPageComponent implements OnInit {
                 });
             }
         }
-        if (
-            draft.playoff.enabled &&
-            draft.playoffMatchRules.allowDraw
-        ) {
+        if (draft.playoff.enabled && draft.playoffMatchRules.allowDraw) {
             issues.push({
                 path: '$.stages.playoff.match.allowDraw',
                 message: 'В матче плей-офф должен определяться победитель',
@@ -1376,9 +1353,7 @@ export class TournamentBuilderPageComponent implements OnInit {
             ((body?.['message'] as Record<string, unknown> | undefined)?.[
                 'errors'
             ] as TournamentValidationIssue[] | undefined);
-        let issues = Array.isArray(validation)
-            ? validation
-            : [];
+        let issues = Array.isArray(validation) ? validation : [];
         if (!issues.length) {
             const message = body?.['message'];
             const messages = Array.isArray(message)
@@ -1413,11 +1388,39 @@ export class TournamentBuilderPageComponent implements OnInit {
 
     private slugify(value: string): string {
         const transliteration: Record<string, string> = {
-            а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e',
-            ж: 'zh', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm',
-            н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u',
-            ф: 'f', х: 'h', ц: 'c', ч: 'ch', ш: 'sh', щ: 'sch',
-            ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya',
+            а: 'a',
+            б: 'b',
+            в: 'v',
+            г: 'g',
+            д: 'd',
+            е: 'e',
+            ё: 'e',
+            ж: 'zh',
+            з: 'z',
+            и: 'i',
+            й: 'y',
+            к: 'k',
+            л: 'l',
+            м: 'm',
+            н: 'n',
+            о: 'o',
+            п: 'p',
+            р: 'r',
+            с: 's',
+            т: 't',
+            у: 'u',
+            ф: 'f',
+            х: 'h',
+            ц: 'c',
+            ч: 'ch',
+            ш: 'sh',
+            щ: 'sch',
+            ъ: '',
+            ы: 'y',
+            ь: '',
+            э: 'e',
+            ю: 'yu',
+            я: 'ya',
         };
         return value
             .toLowerCase()

@@ -40,29 +40,41 @@ describe('TournamentsService active tournament', () => {
     };
     const tournamentsRepository = {
       createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
+      findOne: jest.fn().mockResolvedValue(
+        result
+          ? {
+              ...result,
+              seasonId: result.season.id,
+              season: {
+                ...result.season,
+                competitionId: result.season.competition.id,
+              },
+            }
+          : null,
+      ),
+    };
+    const matchesRepository = {
+      find: jest.fn().mockResolvedValue([]),
     };
 
     return {
       service: new TournamentsService(
         tournamentsRepository as never,
-        {} as never,
+        matchesRepository as never,
         {} as never,
       ),
       queryBuilder,
+      matchesRepository,
     };
   }
 
   it('returns the public projection of the highest-priority active tournament', async () => {
     const { service, queryBuilder } = createService(tournament);
 
-    await expect(service.findActive()).resolves.toEqual(
-      expect.objectContaining({
-        id: 9,
-        name: 'Active tournament',
-        season: expect.objectContaining({ id: 6 }),
-        competition: expect.objectContaining({ id: 3 }),
-      }),
-    );
+    const result = await service.findActive();
+    expect(result).toMatchObject({ id: 9, name: 'Active tournament' });
+    expect(result?.season).toMatchObject({ id: 6 });
+    expect(result?.competition).toMatchObject({ id: 3 });
     expect(queryBuilder.orderBy).toHaveBeenCalled();
     expect(queryBuilder.getOne).toHaveBeenCalled();
   });
@@ -71,5 +83,22 @@ describe('TournamentsService active tournament', () => {
     const { service } = createService(null);
 
     await expect(service.findActive()).resolves.toBeNull();
+  });
+
+  it('filters the statistics summary by group without changing the endpoint contract', async () => {
+    const { service, matchesRepository } = createService(tournament);
+
+    await expect(service.getStatsSummary(9, 12)).resolves.toEqual(
+      expect.objectContaining({
+        tournamentId: 9,
+        groupId: 12,
+        played: 0,
+      }),
+    );
+    expect(matchesRepository.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tournamentId: 9, groupId: 12 },
+      }),
+    );
   });
 });

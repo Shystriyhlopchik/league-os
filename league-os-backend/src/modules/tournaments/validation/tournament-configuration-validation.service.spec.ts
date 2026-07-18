@@ -23,12 +23,14 @@ describe('TournamentConfigurationValidationService', () => {
         id,
         stageId: 1,
         key: String.fromCharCode(64 + id),
+        order: id,
       }) as TournamentGroupEntity,
   );
-  const participants = Array.from({ length: 15 }, (_, index) => ({
+  const participants = Array.from({ length: 16 }, (_, index) => ({
     id: index + 1,
     stageId: 1,
-    groupId: groups[Math.floor(index / 5)].id,
+    groupId:
+      index < 6 ? groups[0].id : index < 11 ? groups[1].id : groups[2].id,
   })) as TournamentStageParticipantEntity[];
   const stageValues = [
     {
@@ -82,17 +84,17 @@ describe('TournamentConfigurationValidationService', () => {
     jest
       .mocked(participantRepository.createQueryBuilder)
       .mockReturnValue(queryBuilder(participants) as never);
-    jest.mocked(teams.count).mockResolvedValue(15);
+    jest.mocked(teams.count).mockResolvedValue(16);
   });
 
-  it('accepts three groups with five registered teams each', async () => {
+  it('accepts groups containing six, five and five registered teams', async () => {
     await expect(
       service.validate(10, createYardLeagueRules()),
     ).resolves.toEqual({ valid: true, errors: [], warnings: [] });
   });
 
   it('reports group and initial participant count mismatches', async () => {
-    jest.mocked(teams.count).mockResolvedValue(14);
+    jest.mocked(teams.count).mockResolvedValue(15);
     jest
       .mocked(groupRepository.createQueryBuilder)
       .mockReturnValue(queryBuilder(groups.slice(0, 2)) as never);

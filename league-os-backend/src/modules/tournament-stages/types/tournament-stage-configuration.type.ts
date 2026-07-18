@@ -16,6 +16,7 @@ export interface GroupStageConfiguration extends StageConfigurationBase {
   type: 'group_stage';
   groupsCount?: number;
   teamsPerGroup?: number;
+  groupSizes?: number[];
   legs?: 1 | 2 | 3 | 4;
 }
 

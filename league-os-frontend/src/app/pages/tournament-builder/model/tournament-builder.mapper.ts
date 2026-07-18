@@ -14,8 +14,7 @@ function matchRules(rules: MatchRulesDraft): Record<string, unknown> {
             ? {
                   enabled: true,
                   periods: rules.extraTimePeriods,
-                  periodDurationMinutes:
-                      rules.extraTimePeriodDurationMinutes,
+                  periodDurationMinutes: rules.extraTimePeriodDurationMinutes,
               }
             : { enabled: false },
         penalties: rules.penaltiesEnabled
@@ -80,6 +79,17 @@ function tieBreaker(type: string): Record<string, unknown> {
     return { type };
 }
 
+function groupSizes(stage: TournamentStageDraft): Record<string, unknown> {
+    const capacities = stage.groups.map((group) => group.capacity);
+    const equal = capacities.every((capacity) => capacity === capacities[0]);
+    return {
+        count: stage.groups.length,
+        ...(equal
+            ? { teamsPerGroup: capacities[0] }
+            : { groupSizes: capacities }),
+    };
+}
+
 function stageRules(
     draft: TournamentBuilderDraft,
     stage: TournamentStageDraft,
@@ -121,8 +131,7 @@ function stageRules(
                       ...(draft.playoff.seeding === 'standard'
                           ? {
                                 ranking: {
-                                    criteria:
-                                        draft.playoff.candidateRanking,
+                                    criteria: draft.playoff.candidateRanking,
                                 },
                             }
                           : {}),
@@ -145,8 +154,7 @@ function stageRules(
         ...(stage.type === 'group_stage'
             ? {
                   groups: {
-                      count: stage.groups.length,
-                      teamsPerGroup: stage.groups[0]?.capacity,
+                      ...groupSizes(stage),
                   },
               }
             : {}),
@@ -173,11 +181,7 @@ export function buildTournamentRules(
     );
     const transitions: Array<Record<string, unknown>> = [];
 
-    if (
-        draft.qualification.enabled &&
-        groupStage &&
-        knockoutStage
-    ) {
+    if (draft.qualification.enabled && groupStage && knockoutStage) {
         const qualification: Array<Record<string, unknown>> = [];
         if (draft.qualification.winnersPerGroup === 1) {
             qualification.push({
@@ -198,8 +202,7 @@ export function buildTournamentRules(
             qualification.push({
                 id: 'best-placed',
                 type: 'best_placed_teams_between_groups',
-                sourcePosition:
-                    draft.qualification.bestPlacedSourcePosition,
+                sourcePosition: draft.qualification.bestPlacedSourcePosition,
                 count: draft.qualification.bestPlacedCount,
                 ranking: {
                     criteria: draft.qualification.crossGroupCriteria,
@@ -210,6 +213,15 @@ export function buildTournamentRules(
             fromStageKey: groupStage.key,
             toStageKey: knockoutStage.key,
             qualification,
+            ...(draft.qualification.normalizeUnequalGroups
+                ? {
+                      crossGroupComparison: {
+                          unequalGroups: {
+                              type: 'exclude_matches_against_last_placed',
+                          },
+                      },
+                  }
+                : {}),
             confirmationRequired: true,
         });
     }
@@ -231,11 +243,13 @@ export function stageConfiguration(
         return { schemaVersion: 1, type: stage.type, legs: stage.legs };
     }
     if (stage.type === 'group_stage') {
+        const sizes = stage.groups.map((group) => group.capacity);
+        const equal = sizes.every((size) => size === sizes[0]);
         return {
             schemaVersion: 1,
             type: stage.type,
             groupsCount: stage.groups.length,
-            teamsPerGroup: stage.groups[0]?.capacity,
+            ...(equal ? { teamsPerGroup: sizes[0] } : { groupSizes: sizes }),
             legs: stage.legs,
         };
     }

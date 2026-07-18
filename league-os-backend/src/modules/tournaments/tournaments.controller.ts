@@ -10,6 +10,7 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -110,9 +111,7 @@ export class TournamentsController {
   @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
   @RequireFeature(FeatureFlag.TournamentBuilder)
   @RequireTournamentAccess(TournamentAccessAction.READ)
-  getBuilderDraft(
-    @Param('tournamentId', ParseIntPipe) tournamentId: number,
-  ) {
+  getBuilderDraft(@Param('tournamentId', ParseIntPipe) tournamentId: number) {
     return this.lifecycleService.getBuilderDraft(tournamentId);
   }
 
@@ -586,7 +585,10 @@ export class TournamentsController {
   }
 
   @Get(':tournamentId/stats-summary')
-  getStatsSummary(@Param('tournamentId', ParseIntPipe) tournamentId: number) {
-    return this.tournamentsService.getStatsSummary(tournamentId);
+  getStatsSummary(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Query('groupId', new ParseIntPipe({ optional: true })) groupId?: number,
+  ) {
+    return this.tournamentsService.getStatsSummary(tournamentId, groupId);
   }
 }

@@ -3,10 +3,10 @@
 -- Creates:
 --   * one competition and one 2026 season;
 --   * a two-stage Yard League tournament;
---   * three groups with five teams each;
+--   * three groups containing six, five and five teams;
 --   * twelve players per team;
 --   * three venues;
---   * all 30 group-stage fixtures (18 finished, 12 scheduled);
+--   * all 35 group-stage fixtures (21 finished, 14 scheduled);
 --   * match rosters, officials, goals and disciplinary events;
 --   * current group standings;
 --   * one active and one served suspension;
@@ -199,6 +199,8 @@ DECLARE
   group_slot integer;
   round_index integer;
   pair_index integer;
+  pairs_in_round integer;
+  group_offset integer;
   event_index integer;
   score_key integer;
   home_slot integer;
@@ -227,7 +229,8 @@ DECLARE
     'Сокол',
     'Дружба',
     'Старт',
-    'Ракета'
+    'Ракета',
+    'Победа'
   ];
   team_short_names text[] := ARRAY[
     'Северный',
@@ -244,7 +247,8 @@ DECLARE
     'Сокол',
     'Дружба',
     'Старт',
-    'Ракета'
+    'Ракета',
+    'Победа'
   ];
   team_slugs text[] := ARRAY[
     'demo-yard-team-severny',
@@ -261,17 +265,18 @@ DECLARE
     'demo-yard-team-sokol',
     'demo-yard-team-druzhba',
     'demo-yard-team-start',
-    'demo-yard-team-raketa'
+    'demo-yard-team-raketa',
+    'demo-yard-team-pobeda'
   ];
   primary_colors text[] := ARRAY[
     '#174EA6', '#F9AB00', '#137333', '#9334E6', '#C5221F',
     '#1A73E8', '#E37400', '#188038', '#D93025', '#5F6368',
-    '#202124', '#A142F4', '#0B8043', '#3C4043', '#D01884'
+    '#202124', '#A142F4', '#0B8043', '#3C4043', '#D01884', '#00695C'
   ];
   secondary_colors text[] := ARRAY[
     '#D2E3FC', '#FEF7E0', '#CEEAD6', '#F3E8FD', '#FAD2CF',
     '#E8F0FE', '#FCE8E6', '#E6F4EA', '#FCE8E6', '#E8EAED',
-    '#F1F3F4', '#E9D2FD', '#B7E1CD', '#F8F9FA', '#FAD2CF'
+    '#F1F3F4', '#E9D2FD', '#B7E1CD', '#F8F9FA', '#FAD2CF', '#B2DFDB'
   ];
   team_ids integer[] := ARRAY[]::integer[];
   venue_ids integer[] := ARRAY[]::integer[];
@@ -300,6 +305,20 @@ DECLARE
     [4, 3],
     [3, 2],
     [2, 5]
+  ];
+  home_slots_six integer[][] := ARRAY[
+    [1, 2, 3],
+    [1, 6, 2],
+    [1, 5, 6],
+    [1, 4, 5],
+    [1, 3, 4]
+  ];
+  away_slots_six integer[][] := ARRAY[
+    [6, 5, 4],
+    [5, 4, 3],
+    [4, 3, 2],
+    [3, 2, 6],
+    [2, 6, 5]
   ];
 BEGIN
   INSERT INTO users (
@@ -461,9 +480,17 @@ BEGIN
   RETURNING id INTO venue_id;
   venue_ids := array_append(venue_ids, venue_id);
 
-  FOR team_index IN 1..15 LOOP
-    group_index := ((team_index - 1) / 5) + 1;
-    group_slot := ((team_index - 1) % 5) + 1;
+  FOR team_index IN 1..16 LOOP
+    group_index := CASE
+      WHEN team_index <= 6 THEN 1
+      WHEN team_index <= 11 THEN 2
+      ELSE 3
+    END;
+    group_slot := CASE
+      WHEN team_index <= 6 THEN team_index
+      WHEN team_index <= 11 THEN team_index - 6
+      ELSE team_index - 11
+    END;
 
     INSERT INTO teams (
       name,
@@ -578,7 +605,7 @@ BEGIN
     season_id,
     'Дворовая лига — лето 2026',
     'demo-yard-league-2026',
-    'Три группы по пять команд. Победители групп и лучшая вторая команда выходят в суперфинал.',
+    'Шестнадцать команд в группах по шесть, пять и пять. Победители групп и лучшая вторая команда выходят в суперфинал.',
     'league',
     'mixed',
     DATE '2026-07-05',
@@ -617,11 +644,11 @@ BEGIN
     DATE '2026-07-23',
     '{
       "groupsCount": 3,
-      "teamsPerGroup": 5,
+      "groupSizes": [6, 5, 5],
       "schedule": {
         "algorithm": "circle",
         "legs": 1,
-        "matchesPerGroup": 10
+        "totalMatches": 35
       }
     }'::jsonb
   )
@@ -669,7 +696,7 @@ BEGIN
       group_keys[group_index],
       format('Группа %s', group_keys[group_index]),
       group_index,
-      5,
+      CASE WHEN group_index = 1 THEN 6 ELSE 5 END,
       'confirmed'
     );
   END LOOP;
@@ -696,7 +723,7 @@ BEGIN
         {
           "stageKey": "group-stage",
           "type": "group_stage",
-          "groups": { "count": 3, "teamsPerGroup": 5 },
+          "groups": { "count": 3, "groupSizes": [6, 5, 5] },
           "schedule": {
             "algorithm": "circle",
             "legs": 1,
@@ -824,7 +851,12 @@ BEGIN
                 "criteria": ["points", "goal_difference", "goals_for", "draw_lots"]
               }
             }
-          ]
+          ],
+          "crossGroupComparison": {
+            "unequalGroups": {
+              "type": "exclude_matches_against_last_placed"
+            }
+          }
         }
       ]
     }
@@ -841,9 +873,17 @@ BEGIN
   SET active_rule_version_id = rule_version_id
   WHERE id = tournament_id;
 
-  FOR team_index IN 1..15 LOOP
-    group_index := ((team_index - 1) / 5) + 1;
-    group_slot := ((team_index - 1) % 5) + 1;
+  FOR team_index IN 1..16 LOOP
+    group_index := CASE
+      WHEN team_index <= 6 THEN 1
+      WHEN team_index <= 11 THEN 2
+      ELSE 3
+    END;
+    group_slot := CASE
+      WHEN team_index <= 6 THEN team_index
+      WHEN team_index <= 11 THEN team_index - 6
+      ELSE team_index - 11
+    END;
 
     SELECT id
     INTO group_id
@@ -892,12 +932,21 @@ BEGIN
     WHERE stage_id = group_stage_id
       AND key = group_keys[group_index];
 
+    group_offset := CASE group_index WHEN 1 THEN 0 WHEN 2 THEN 6 ELSE 11 END;
+    pairs_in_round := CASE WHEN group_index = 1 THEN 3 ELSE 2 END;
+
     FOR round_index IN 1..5 LOOP
-      FOR pair_index IN 1..2 LOOP
-        home_slot := home_slots[round_index][pair_index];
-        away_slot := away_slots[round_index][pair_index];
-        home_team_id := team_ids[(group_index - 1) * 5 + home_slot];
-        away_team_id := team_ids[(group_index - 1) * 5 + away_slot];
+      FOR pair_index IN 1..pairs_in_round LOOP
+        home_slot := CASE
+          WHEN group_index = 1 THEN home_slots_six[round_index][pair_index]
+          ELSE home_slots[round_index][pair_index]
+        END;
+        away_slot := CASE
+          WHEN group_index = 1 THEN away_slots_six[round_index][pair_index]
+          ELSE away_slots[round_index][pair_index]
+        END;
+        home_team_id := team_ids[group_offset + home_slot];
+        away_team_id := team_ids[group_offset + away_slot];
         score_key := group_index * 100 + round_index * 10 + pair_index;
 
         home_score := CASE score_key
@@ -1605,8 +1654,8 @@ BEGIN
     (
       'Дворовая лига стартовала',
       'demo-yard-news-season-start',
-      'Пятнадцать команд начали борьбу за четыре места в суперфинале.',
-      'В турнире участвуют пятнадцать команд, распределённых по трём группам. После группового этапа в суперфинал выйдут победители групп и лучшая команда среди вторых мест.',
+      'Шестнадцать команд начали борьбу за четыре места в суперфинале.',
+      'В турнире участвуют шестнадцать команд, распределённых по трём группам: шесть, пять и пять. При сравнении одинаковых мест результат против последней команды большей группы не учитывается. В суперфинал выйдут победители групп и лучшая команда среди вторых мест.',
       NULL,
       'published',
       TIMESTAMP '2026-07-05 09:00:00'
@@ -1622,7 +1671,7 @@ BEGIN
     );
 
   RAISE NOTICE
-    'Created realistic Yard League demo: tournament %, 15 teams, 180 players, 30 matches',
+    'Created realistic Yard League demo: tournament %, 16 teams, 192 players, 35 matches',
     tournament_id;
 END
 $seed$;

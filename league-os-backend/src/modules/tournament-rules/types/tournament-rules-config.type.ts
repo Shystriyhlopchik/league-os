@@ -7,9 +7,7 @@ export interface TournamentRulesConfigV1 {
 export type TournamentRulesConfig = TournamentRulesConfigV1;
 
 export type StageRulesV1 =
-  | RoundRobinStageRulesV1
-  | GroupStageRulesV1
-  | KnockoutStageRulesV1;
+  RoundRobinStageRulesV1 | GroupStageRulesV1 | KnockoutStageRulesV1;
 
 interface StageRulesBaseV1 {
   stageKey: string;
@@ -26,10 +24,10 @@ export interface RoundRobinStageRulesV1 extends StageRulesBaseV1 {
 
 export interface GroupStageRulesV1 extends StageRulesBaseV1 {
   type: 'group_stage';
-  groups: {
-    count: number;
-    teamsPerGroup?: number;
-  };
+  groups: { count: number } & (
+    | { teamsPerGroup: number; groupSizes?: never }
+    | { groupSizes: number[]; teamsPerGroup?: never }
+  );
   schedule: RoundRobinScheduleRuleV1;
   scoring: ScoringRuleV1;
   standings: StandingsRuleV1;
@@ -81,17 +79,21 @@ export type TieBreakerRuleV1 =
   | { type: 'draw_lots' };
 
 export type HeadToHeadMetricV1 =
-  | 'points'
-  | 'wins'
-  | 'goal_difference'
-  | 'goals_for';
+  'points' | 'wins' | 'goal_difference' | 'goals_for';
 
 export interface StageTransitionRuleV1 {
   fromStageKey: string;
   toStageKey: string;
   qualification: QualificationRuleV1[];
+  crossGroupComparison?: CrossGroupComparisonRuleV1;
   confirmationRequired: true;
 }
+
+export type CrossGroupComparisonRuleV1 = {
+  unequalGroups: {
+    type: 'exclude_matches_against_last_placed';
+  };
+};
 
 export type QualificationRuleV1 =
   | { id: string; type: 'top_n_per_group'; positions: number[] }

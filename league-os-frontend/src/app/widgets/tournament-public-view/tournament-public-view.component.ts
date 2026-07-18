@@ -33,6 +33,7 @@ export class TournamentPublicViewComponent {
 
     readonly tournamentId = input.required<number | string>();
     readonly compact = input(false);
+    readonly groupId = input<number | null>(null);
     readonly loading = signal(true);
     readonly error = signal<string | null>(null);
     readonly view = signal<PublicTournamentView | null>(null);
@@ -44,9 +45,7 @@ export class TournamentPublicViewComponent {
         const data = this.view();
         if (!data) return null;
         return (
-            data.stages.find(
-                (stage) => stage.id === this.selectedStageId(),
-            ) ??
+            data.stages.find((stage) => stage.id === this.selectedStageId()) ??
             data.stages[0] ??
             null
         );
@@ -134,6 +133,18 @@ export class TournamentPublicViewComponent {
                 });
             onCleanup(() => subscription.unsubscribe());
         });
+
+        effect(() => {
+            const groupId = this.groupId();
+            const view = this.view();
+            if (groupId === null || !view) return;
+            const stage = view.stages.find((candidate) =>
+                candidate.groups.some((group) => group.id === groupId),
+            );
+            if (!stage) return;
+            this.selectedStageId.set(stage.id);
+            this.selectedGroupId.set(groupId);
+        });
     }
 
     selectStage(stage: PublicTournamentStage): void {
@@ -143,9 +154,7 @@ export class TournamentPublicViewComponent {
 
     selectGroup(event: Event): void {
         const groupId = Number((event.target as HTMLSelectElement).value);
-        if (
-            this.currentStage()?.groups.some((group) => group.id === groupId)
-        ) {
+        if (this.currentStage()?.groups.some((group) => group.id === groupId)) {
             this.selectedGroupId.set(groupId);
         }
     }

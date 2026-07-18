@@ -12,34 +12,46 @@ describe('StandingsTableComponent', () => {
         fixture = TestBed.createComponent(StandingsTableComponent);
     });
 
-    it('uses qualificationStatus instead of the row position', () => {
+    it('renders rows in the position order returned by the backend', () => {
         const rows: StandingRow[] = [
-            row(1, 'Лидер без подтверждённого выхода', 'not_qualified'),
-            row(2, 'Подтверждённый участник', 'qualified'),
+            row(2, 'Вторая команда', 'not_qualified'),
+            row(1, 'Первая команда', 'qualified'),
         ];
         fixture.componentRef.setInput('rows', rows);
         fixture.detectChanges();
 
-        const rendered = Array.from(
-            fixture.nativeElement.querySelectorAll('tbody tr:not(.reason-row)'),
-        ) as HTMLElement[];
-        expect(rendered[0].classList).not.toContain('row--qualified');
-        expect(rendered[0].classList).toContain('row--eliminated');
-        expect(rendered[1].classList).toContain('row--qualified');
+        const names = Array.from(
+            fixture.nativeElement.querySelectorAll(
+                '.standings-table__team-name',
+            ),
+            (element: Element) => element.textContent?.trim(),
+        );
+        expect(names).toEqual(['Первая команда', 'Вторая команда']);
     });
 
-    it('shows the backend tiebreak explanation', () => {
-        const item = row(1, 'Команда', 'qualified');
-        item.placementReason = {
-            type: 'tie_break',
-            title: 'Дополнительный критерий',
-            description: 'Выше по разнице мячей.',
-        };
-        fixture.componentRef.setInput('rows', [item]);
+    it('marks the first, middle and last rows with the new status indicators', () => {
+        fixture.componentRef.setInput('rows', [
+            row(1, 'Первая команда', 'qualified'),
+            row(2, 'Средняя команда', 'not_qualified'),
+            row(3, 'Последняя команда', 'not_qualified'),
+        ]);
         fixture.detectChanges();
-        expect(fixture.nativeElement.textContent).toContain(
-            'Выше по разнице мячей.',
-        );
+
+        expect(
+            fixture.nativeElement.querySelectorAll(
+                '.standings-table__status--green',
+            ).length,
+        ).toBe(1);
+        expect(
+            fixture.nativeElement.querySelectorAll(
+                '.standings-table__status--white',
+            ).length,
+        ).toBe(1);
+        expect(
+            fixture.nativeElement.querySelectorAll(
+                '.standings-table__status--yellow',
+            ).length,
+        ).toBe(1);
     });
 });
 

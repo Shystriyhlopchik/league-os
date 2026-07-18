@@ -1,8 +1,10 @@
 .match-protocol {
     min-height: 100vh;
     padding: 24px 16px 48px;
-    background: #000;
+    box-sizing: border-box;
     color: #fff;
+    margin: 0 auto;
+    max-width: 1200px;
 }
 
 .match-protocol__back {

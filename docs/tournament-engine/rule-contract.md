@@ -33,7 +33,10 @@ interface RoundRobinStageRulesV1 extends StageRulesBaseV1 {
 
 interface GroupStageRulesV1 extends StageRulesBaseV1 {
   type: 'group_stage';
-  groups: { count: number; teamsPerGroup?: number };
+  groups: { count: number } & (
+    | { teamsPerGroup: number }
+    | { groupSizes: number[] }
+  );
   schedule: RoundRobinScheduleRuleV1;
   scoring: ScoringRuleV1;
   standings: StandingsRuleV1;
@@ -116,6 +119,11 @@ interface StageTransitionRuleV1 {
   fromStageKey: string;
   toStageKey: string;
   qualification: QualificationRuleV1[];
+  crossGroupComparison?: {
+    unequalGroups: {
+      type: 'exclude_matches_against_last_placed';
+    };
+  };
   confirmationRequired: true;
 }
 
@@ -162,7 +170,7 @@ type CrossGroupCriterionV1 =
   | 'draw_lots';
 ```
 
-Если группы имеют разное число матчей, конфигурация обязана использовать нормализованные критерии отдельного будущего типа либо квалификация блокируется. V1 не интерпретирует «лучший результат» автоматически.
+Если группы имеют разный размер, `exclude_matches_against_last_placed` приводит сравнение к размеру наименьшей группы: у кандидатов из большей группы исключаются матчи против команд на последних лишних местах. Внутригрупповая таблица при этом не изменяется. Нормализованные показатели и список исключённых матчей сохраняются в qualification snapshot.
 
 ## Посев и сетка
 

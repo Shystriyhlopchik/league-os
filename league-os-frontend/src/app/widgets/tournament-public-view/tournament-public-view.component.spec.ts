@@ -42,9 +42,7 @@ describe('TournamentPublicViewComponent', () => {
         const response = new Subject<PublicTournamentView>();
         api.getPublicTournamentView.and.returnValue(response);
         fixture = createFixture();
-        expect(fixture.nativeElement.textContent).toContain(
-            'Загружаем турнир',
-        );
+        expect(fixture.nativeElement.textContent).toContain('Загружаем турнир');
 
         response.next(view());
         response.complete();
@@ -128,7 +126,41 @@ describe('TournamentPublicViewComponent', () => {
         fixture.detectChanges();
 
         expect(fixture.nativeElement.textContent).toContain('Команда Бета');
-        expect(fixture.nativeElement.textContent).not.toContain('Команда Альфа');
+        expect(fixture.nativeElement.textContent).not.toContain(
+            'Команда Альфа',
+        );
+    });
+
+    it('uses the external group in compact mode without stage or group controls', () => {
+        const groupedView = view();
+        groupedView.stages[0].groups = [
+            {
+                id: 101,
+                key: 'A',
+                name: 'Группа A',
+                order: 1,
+                standings: [standing(1, 'Команда Альфа')],
+            },
+            {
+                id: 102,
+                key: 'B',
+                name: 'Группа B',
+                order: 2,
+                standings: [standing(2, 'Команда Бета')],
+            },
+        ];
+        api.getPublicTournamentView.and.returnValue(of(groupedView));
+
+        fixture = createFixture({ compact: true, groupId: 102 });
+
+        expect(fixture.nativeElement.querySelector('.stage-tabs')).toBeNull();
+        expect(
+            fixture.nativeElement.querySelector('.group-switcher'),
+        ).toBeNull();
+        expect(fixture.nativeElement.textContent).toContain('Команда Бета');
+        expect(fixture.nativeElement.textContent).not.toContain(
+            'Команда Альфа',
+        );
     });
 
     it('shows the preliminary bracket structure for an unconfirmed playoff', () => {
@@ -184,9 +216,17 @@ describe('TournamentPublicViewComponent', () => {
         );
     });
 
-    function createFixture(): ComponentFixture<TournamentPublicViewComponent> {
+    function createFixture(
+        inputs: { compact?: boolean; groupId?: number } = {},
+    ): ComponentFixture<TournamentPublicViewComponent> {
         const result = TestBed.createComponent(TournamentPublicViewComponent);
         result.componentRef.setInput('tournamentId', 1);
+        if (inputs.compact !== undefined) {
+            result.componentRef.setInput('compact', inputs.compact);
+        }
+        if (inputs.groupId !== undefined) {
+            result.componentRef.setInput('groupId', inputs.groupId);
+        }
         result.detectChanges();
         return result;
     }

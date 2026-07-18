@@ -178,6 +178,37 @@ export class TournamentConfigurationValidationService {
           }
         }
       }
+      if (rule.groups.groupSizes) {
+        const expected = rule.groups.groupSizes.reduce(
+          (total, size) => total + size,
+          0,
+        );
+        if (stageParticipants.length !== expected) {
+          this.add(
+            errors,
+            'GROUP_TEAM_COUNT_MISMATCH',
+            `$.stages.${stage.key}.groups`,
+            `Groups require ${expected} teams, stage has ${stageParticipants.length}`,
+          );
+        }
+        const orderedGroups = [...stageGroups].sort(
+          (left, right) => left.order - right.order,
+        );
+        orderedGroups.forEach((group, index) => {
+          const required = rule.groups.groupSizes?.[index];
+          const count = stageParticipants.filter(
+            (participant) => participant.groupId === group.id,
+          ).length;
+          if (required !== undefined && count !== required) {
+            this.add(
+              errors,
+              'GROUP_CAPACITY_MISMATCH',
+              `$.stages.${stage.key}.groups.${group.key}`,
+              `Group has ${count} participants, rules require ${required}`,
+            );
+          }
+        });
+      }
     }
 
     for (const participant of participants) {

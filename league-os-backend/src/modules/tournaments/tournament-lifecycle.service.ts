@@ -703,7 +703,7 @@ export class TournamentLifecycleService {
       type === TournamentStageType.ROUND_ROBIN
         ? [...common, 'legs']
         : type === TournamentStageType.GROUP_STAGE
-          ? [...common, 'groupsCount', 'teamsPerGroup', 'legs']
+          ? [...common, 'groupsCount', 'teamsPerGroup', 'groupSizes', 'legs']
           : [...common, 'bracketSize', 'thirdPlaceMatch'];
     const unknownFields = Object.keys(value).filter(
       (key) => !allowed.includes(key),
@@ -742,6 +742,31 @@ export class TournamentLifecycleService {
         (value.teamsPerGroup as number) < 2)
     ) {
       throw new BadRequestException('teamsPerGroup must be at least 2');
+    }
+    if (value.teamsPerGroup !== undefined && value.groupSizes !== undefined) {
+      throw new BadRequestException(
+        'Use either teamsPerGroup or groupSizes, not both',
+      );
+    }
+    if (value.groupSizes !== undefined) {
+      if (
+        !Array.isArray(value.groupSizes) ||
+        value.groupSizes.some(
+          (size) => !Number.isInteger(size) || (size as number) < 2,
+        )
+      ) {
+        throw new BadRequestException(
+          'groupSizes must contain integers of at least 2',
+        );
+      }
+      if (
+        typeof value.groupsCount === 'number' &&
+        value.groupSizes.length !== value.groupsCount
+      ) {
+        throw new BadRequestException(
+          'groupSizes must contain one value for every group',
+        );
+      }
     }
     if (
       value.bracketSize !== undefined &&

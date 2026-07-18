@@ -11,10 +11,7 @@ export type TournamentTemplateId =
     | 'yard_league'
     | 'clone';
 
-export type TournamentStageType =
-    | 'round_robin'
-    | 'group_stage'
-    | 'knockout';
+export type TournamentStageType = 'round_robin' | 'group_stage' | 'knockout';
 
 export type TieBreakerType =
     | 'points'
@@ -101,17 +98,14 @@ export interface QualificationDraft {
     bestPlacedSourcePosition: number;
     bestPlacedCount: number;
     crossGroupCriteria: CrossGroupCriterion[];
+    normalizeUnequalGroups: boolean;
     confirmationRequired: true;
 }
 
 export interface PlayoffDraft {
     enabled: boolean;
     bracketSize: 2 | 4 | 8 | 16 | 32;
-    seeding:
-        | 'standard'
-        | 'random_draw'
-        | 'manual'
-        | 'best_eligible_opponent';
+    seeding: 'standard' | 'random_draw' | 'manual' | 'best_eligible_opponent';
     avoidSameSourceGroup: boolean;
     constraintMode: 'required' | 'best_effort';
     thirdPlaceMatch: boolean;

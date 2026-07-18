@@ -35,7 +35,7 @@
         "key": "A",
         "name": "Группа A",
         "order": 1,
-        "capacity": 5
+        "capacity": 6
       },
       {
         "stageKey": "group-stage",
@@ -61,7 +61,11 @@
         "type": "group_stage",
         "groups": {
           "count": 3,
-          "teamsPerGroup": 5
+          "groupSizes": [
+            6,
+            5,
+            5
+          ]
         },
         "schedule": {
           "algorithm": "circle",
@@ -205,6 +209,11 @@
         "fromStageKey": "group-stage",
         "toStageKey": "super-final",
         "confirmationRequired": true,
+        "crossGroupComparison": {
+          "unequalGroups": {
+            "type": "exclude_matches_against_last_placed"
+          }
+        },
         "qualification": [
           {
             "id": "group-winners",

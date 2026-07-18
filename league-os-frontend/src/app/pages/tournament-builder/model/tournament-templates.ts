@@ -47,14 +47,17 @@ const defaultPlayoffMatchRules = (): MatchRulesDraft => ({
 function groups(
     stageKey: string,
     count: number,
-    capacity: number,
+    capacity: number | number[],
 ): TournamentStageDraft['groups'] {
+    const capacities = Array.isArray(capacity)
+        ? capacity
+        : Array.from({ length: count }, () => capacity);
     return Array.from({ length: count }, (_, index) => ({
         clientKey: `${stageKey}-group-${index + 1}`,
         key: String.fromCharCode(65 + index),
         name: `Группа ${String.fromCharCode(65 + index)}`,
         order: index + 1,
-        capacity,
+        capacity: capacities[index] ?? capacities[0] ?? 2,
     }));
 }
 
@@ -108,6 +111,7 @@ function baseDraft(templateId: TournamentTemplateId): TournamentBuilderDraft {
                 'goals_for',
                 'draw_lots',
             ],
+            normalizeUnequalGroups: false,
             confirmationRequired: true,
         },
         playoff: {
@@ -179,7 +183,7 @@ export function createTournamentTemplate(
     if (templateId === 'groups_playoff' || templateId === 'yard_league') {
         const yard = templateId === 'yard_league';
         const groupCount = yard ? 3 : 4;
-        const teamsPerGroup = yard ? 5 : 4;
+        const groupSizes = yard ? [6, 5, 5] : 4;
 
         draft.details.format = 'mixed';
         draft.details.name = yard ? 'Дворовая лига' : '';
@@ -192,13 +196,7 @@ export function createTournamentTemplate(
         draft.playoff.seeding = yard ? 'best_eligible_opponent' : 'standard';
         draft.playoff.avoidSameSourceGroup = yard;
         draft.tieBreakers = yard
-            ? [
-                  'head_to_head',
-                  'wins',
-                  'goal_difference',
-                  'goals_for',
-                  'draw',
-              ]
+            ? ['head_to_head', 'wins', 'goal_difference', 'goals_for', 'draw']
             : draft.tieBreakers;
         draft.stages = [
             {
@@ -210,7 +208,7 @@ export function createTournamentTemplate(
                 startDate: '',
                 endDate: '',
                 legs: 1,
-                groups: groups('groups', groupCount, teamsPerGroup),
+                groups: groups('groups', groupCount, groupSizes),
             },
             {
                 clientKey: 'playoff',
@@ -228,6 +226,7 @@ export function createTournamentTemplate(
         ];
 
         if (yard) {
+            draft.qualification.normalizeUnequalGroups = true;
             draft.groupMatchRules = {
                 ...defaultGroupMatchRules(),
                 periodDurationMinutes: 20,
@@ -257,22 +256,26 @@ export const TOURNAMENT_TEMPLATES: Array<{
     {
         id: 'round_robin',
         title: 'Круговой чемпионат',
-        description: 'Один этап, каждый играет с каждым в один или несколько кругов.',
+        description:
+            'Один этап, каждый играет с каждым в один или несколько кругов.',
     },
     {
         id: 'knockout',
         title: 'Кубок',
-        description: 'Сетка на выбывание со стандартным, случайным или ручным посевом.',
+        description:
+            'Сетка на выбывание со стандартным, случайным или ручным посевом.',
     },
     {
         id: 'groups_playoff',
         title: 'Группы + плей-офф',
-        description: 'Групповой этап, квалификация и последующая кубковая сетка.',
+        description:
+            'Групповой этап, квалификация и последующая кубковая сетка.',
     },
     {
         id: 'yard_league',
         title: 'Дворовая лига',
-        description: '3 группы по 5 команд, лучшая вторая команда и финальная четвёрка.',
+        description:
+            '16 команд: группы по 6, 5 и 5 команд, лучшая вторая команда и финальная четвёрка.',
     },
     {
         id: 'clone',

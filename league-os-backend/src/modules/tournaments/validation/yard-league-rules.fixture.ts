@@ -29,7 +29,7 @@ export const createYardLeagueRules = (): TournamentRulesConfig => ({
     {
       stageKey: 'groups',
       type: 'group_stage',
-      groups: { count: 3, teamsPerGroup: 5 },
+      groups: { count: 3, groupSizes: [6, 5, 5] },
       schedule: { algorithm: 'circle', legs: 1, balanceHomeAway: true },
       scoring: { win: 3, draw: 1, loss: 0 },
       standings: {
@@ -103,6 +103,9 @@ export const createYardLeagueRules = (): TournamentRulesConfig => ({
           },
         },
       ],
+      crossGroupComparison: {
+        unequalGroups: { type: 'exclude_matches_against_last_placed' },
+      },
       confirmationRequired: true,
     },
   ],

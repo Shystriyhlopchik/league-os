@@ -7,13 +7,13 @@ describe('tournament templates', () => {
         const groupStage = draft.stages.find(
             (stage) => stage.type === 'group_stage',
         );
-        const playoff = draft.stages.find(
-            (stage) => stage.type === 'knockout',
-        );
+        const playoff = draft.stages.find((stage) => stage.type === 'knockout');
         const config = buildTournamentRules(draft);
 
         expect(groupStage?.groups.length).toBe(3);
-        expect(groupStage?.groups.every((group) => group.capacity === 5)).toBeTrue();
+        expect(groupStage?.groups.map((group) => group.capacity)).toEqual([
+            6, 5, 5,
+        ]);
         expect(playoff?.bracketSize).toBe(4);
         expect(draft.tieBreakers).toEqual([
             'head_to_head',
@@ -33,6 +33,11 @@ describe('tournament templates', () => {
         expect(draft.playoffMatchRules.extraTimeEnabled).toBeFalse();
         expect(draft.playoffMatchRules.penaltiesEnabled).toBeTrue();
         expect(config.transitions.length).toBe(1);
+        expect(config.transitions[0]['crossGroupComparison']).toEqual({
+            unequalGroups: {
+                type: 'exclude_matches_against_last_placed',
+            },
+        });
     });
 
     it('creates independent template instances', () => {

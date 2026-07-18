@@ -1,29 +1,38 @@
+<!--<section class="statistics-preview">-->
+<!--    <app-section-title>Турнир</app-section-title>-->
+
+<!--    @if (groupId(); as selectedGroupId) {-->
+<!--        <app-tournament-public-view-->
+<!--            [tournamentId]="tournamentId()"-->
+<!--            [groupId]="selectedGroupId"-->
+<!--            [compact]="true"-->
+<!--        />-->
+
+<!--        <a-->
+<!--            class="statistics-preview__link"-->
+<!--            [routerLink]="['/tournaments', tournamentId()]"-->
+<!--        >-->
+<!--            <app-slanted-link>Открыть турнир</app-slanted-link>-->
+<!--        </a>-->
+<!--    } @else {-->
+<!--        <p class="statistics-preview__empty">-->
+<!--            В турнире пока нет доступных групп.-->
+<!--        </p>-->
+<!--    }-->
+<!--</section>-->
+
 <section class="statistics-preview">
-    <app-section-title>Турнир</app-section-title>
+    <!--    <app-competition-tabs-->
+    <!--        [tournaments]="tournaments()"-->
+    <!--        [selectedId]="selectedTournamentId()"-->
+    <!--        (selected)="selectCompetition($event)"-->
+    <!--    />-->
 
-    @if (selectedTournamentId(); as tournamentId) {
-        @if (tournaments().length > 1) {
-            <app-competition-tabs
-                [tournaments]="tournaments()"
-                [selectedId]="tournamentId"
-                (selected)="selectCompetition($event)"
-            />
-        }
+    <app-section-title>Таблица</app-section-title>
 
-        <app-tournament-public-view
-            [tournamentId]="tournamentId"
-            [compact]="true"
-        />
+    <app-standings-table [rows]="rows()" />
 
-        <a
-            class="statistics-preview__link"
-            [routerLink]="['/tournaments', tournamentId]"
-        >
-            <app-slanted-link>Открыть турнир</app-slanted-link>
-        </a>
-    } @else {
-        <p class="statistics-preview__empty">
-            Активный турнир пока не опубликован.
-        </p>
-    }
+    <a class="statistics-preview__link" routerLink="/statistics">
+        <app-slanted-link>Вся таблица</app-slanted-link>
+    </a>
 </section>

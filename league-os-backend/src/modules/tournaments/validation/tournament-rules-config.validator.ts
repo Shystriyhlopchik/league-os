@@ -151,8 +151,29 @@ export class TournamentRulesConfigValidator {
   ): void {
     const groups = this.object(value, path, errors);
     if (!groups) return;
-    this.exactKeys(groups, ['count', 'teamsPerGroup'], path, errors);
+    this.exactKeys(
+      groups,
+      ['count', 'teamsPerGroup', 'groupSizes'],
+      path,
+      errors,
+    );
     this.positiveInteger(groups.count, `${path}.count`, errors);
+    if (groups.teamsPerGroup !== undefined && groups.groupSizes !== undefined) {
+      this.error(
+        errors,
+        'AMBIGUOUS_GROUP_SIZE',
+        path,
+        'Use either teamsPerGroup or groupSizes, not both',
+      );
+    }
+    if (groups.teamsPerGroup === undefined && groups.groupSizes === undefined) {
+      this.error(
+        errors,
+        'GROUP_SIZE_REQUIRED',
+        path,
+        'Group size configuration is required',
+      );
+    }
     if (groups.teamsPerGroup !== undefined) {
       this.integerAtLeast(
         groups.teamsPerGroup,
@@ -160,6 +181,24 @@ export class TournamentRulesConfigValidator {
         `${path}.teamsPerGroup`,
         errors,
       );
+    }
+    if (groups.groupSizes !== undefined) {
+      const sizes = this.array(groups.groupSizes, `${path}.groupSizes`, errors);
+      sizes?.forEach((size, index) =>
+        this.integerAtLeast(size, 2, `${path}.groupSizes[${index}]`, errors),
+      );
+      if (
+        sizes &&
+        typeof groups.count === 'number' &&
+        sizes.length !== groups.count
+      ) {
+        this.error(
+          errors,
+          'GROUP_SIZE_COUNT_MISMATCH',
+          `${path}.groupSizes`,
+          'groupSizes must contain one value for every group',
+        );
+      }
     }
   }
 
@@ -821,7 +860,13 @@ export class TournamentRulesConfigValidator {
     if (!transition) return;
     this.exactKeys(
       transition,
-      ['fromStageKey', 'toStageKey', 'qualification', 'confirmationRequired'],
+      [
+        'fromStageKey',
+        'toStageKey',
+        'qualification',
+        'crossGroupComparison',
+        'confirmationRequired',
+      ],
       path,
       errors,
     );
@@ -834,6 +879,42 @@ export class TournamentRulesConfigValidator {
         `${path}.confirmationRequired`,
         'Stage transitions must require confirmation',
       );
+    }
+    if (transition.crossGroupComparison !== undefined) {
+      const comparison = this.object(
+        transition.crossGroupComparison,
+        `${path}.crossGroupComparison`,
+        errors,
+      );
+      if (comparison) {
+        this.exactKeys(
+          comparison,
+          ['unequalGroups'],
+          `${path}.crossGroupComparison`,
+          errors,
+        );
+        const unequalGroups = this.object(
+          comparison.unequalGroups,
+          `${path}.crossGroupComparison.unequalGroups`,
+          errors,
+        );
+        if (unequalGroups) {
+          this.exactKeys(
+            unequalGroups,
+            ['type'],
+            `${path}.crossGroupComparison.unequalGroups`,
+            errors,
+          );
+          if (unequalGroups.type !== 'exclude_matches_against_last_placed') {
+            this.error(
+              errors,
+              'INVALID_CROSS_GROUP_COMPARISON',
+              `${path}.crossGroupComparison.unequalGroups.type`,
+              'Unsupported unequal group comparison strategy',
+            );
+          }
+        }
+      }
     }
     const from = stages.get(transition.fromStageKey as string);
     const to = stages.get(transition.toStageKey as string);
@@ -978,9 +1059,19 @@ export class TournamentRulesConfigValidator {
           `${path}.positions`,
           'Qualification positions must be unique',
         );
-      const teamsPerGroup = Number(
-        (from?.groups as JsonObject | undefined)?.teamsPerGroup ?? 0,
-      );
+      const groupSettings = from?.groups as JsonObject | undefined;
+      const groupSizes = groupSettings?.groupSizes;
+      const teamsPerGroup =
+        typeof groupSettings?.teamsPerGroup === 'number'
+          ? groupSettings.teamsPerGroup
+          : Array.isArray(groupSizes)
+            ? Math.max(
+                0,
+                ...groupSizes.filter(
+                  (size): size is number => typeof size === 'number',
+                ),
+              )
+            : 0;
       if (
         teamsPerGroup > 0 &&
         positions?.some(
@@ -1008,10 +1099,22 @@ export class TournamentRulesConfigValidator {
       this.positiveInteger(rule.count, `${path}.count`, errors);
       this.validateCrossGroupRanking(rule.ranking, `${path}.ranking`, errors);
       const groupSettings = from?.groups as JsonObject | undefined;
+      const groupSizes = groupSettings?.groupSizes;
+      const maximumGroupSize =
+        typeof groupSettings?.teamsPerGroup === 'number'
+          ? groupSettings.teamsPerGroup
+          : Array.isArray(groupSizes)
+            ? Math.max(
+                0,
+                ...groupSizes.filter(
+                  (size): size is number => typeof size === 'number',
+                ),
+              )
+            : 0;
       if (
-        typeof groupSettings?.teamsPerGroup === 'number' &&
+        maximumGroupSize > 0 &&
         typeof rule.sourcePosition === 'number' &&
-        rule.sourcePosition > groupSettings.teamsPerGroup
+        rule.sourcePosition > maximumGroupSize
       ) {
         this.error(
           errors,

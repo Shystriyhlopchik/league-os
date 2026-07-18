@@ -2,6 +2,7 @@ import type {
   CrossGroupCriterionV1,
   QualificationRuleV1,
 } from '../../tournament-rules/types/tournament-rules-config.type';
+import type { CrossGroupComparisonAdjustment } from '../../tournament-rules/cross-group-normalization';
 
 export interface QualificationStandingInput {
   tournamentTeamId: number;
@@ -9,12 +10,14 @@ export interface QualificationStandingInput {
   groupId?: number;
   groupOrder: number;
   position: number;
+  played: number;
   points: number;
   wins: number;
   goalDifference: number;
   goalsFor: number;
   goalsAgainst: number;
   disciplinaryScore: number;
+  comparisonAdjustment?: CrossGroupComparisonAdjustment;
 }
 
 export interface QualificationResolutionInput {
@@ -40,6 +43,7 @@ export interface QualificationSelectionReason {
   criteria?: CrossGroupCriterionV1[];
   values?: Record<string, number>;
   description: string;
+  comparisonAdjustment?: CrossGroupComparisonAdjustment;
 }
 
 export interface QualificationSelection {

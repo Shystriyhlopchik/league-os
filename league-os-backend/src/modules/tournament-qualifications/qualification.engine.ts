@@ -200,6 +200,7 @@ export class QualificationEngine {
             )
           : undefined,
         description: `Selected by qualification rule ${rule.id}`,
+        comparisonAdjustment: standing.comparisonAdjustment,
       },
     });
   }
@@ -319,6 +320,7 @@ export class QualificationEngine {
     standing: QualificationStandingInput,
   ): Record<string, number> {
     return {
+      played: standing.played,
       points: standing.points,
       wins: standing.wins,
       goal_difference: standing.goalDifference,

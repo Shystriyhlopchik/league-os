@@ -1,0 +1,122 @@
+name: league-os-prod
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  database:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - ../../.env
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  migrations:
+    build:
+      context: ../../league-os-backend
+      dockerfile: Dockerfile
+      target: builder
+    restart: "no"
+    env_file:
+      - ../../.env
+    environment:
+      NODE_ENV: production
+      POSTGRES_HOST: database
+      POSTGRES_PORT: 5432
+    command: ["npm", "run", "migration:run"]
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - internal
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  backend:
+    build:
+      context: ../../league-os-backend
+      dockerfile: Dockerfile
+      target: runner
+    restart: unless-stopped
+    init: true
+    env_file:
+      - ../../.env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      POSTGRES_HOST: database
+      POSTGRES_PORT: 5432
+    depends_on:
+      database:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    volumes:
+      - uploads_data:/app/uploads
+    expose:
+      - "3000"
+    networks:
+      - internal
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health').then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1));",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  frontend:
+    build:
+      context: ../../league-os-frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-8081}:80"
+    volumes:
+      - uploads_data:/var/www/uploads:ro
+    networks:
+      - internal
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  postgres_data:
+  uploads_data:
+
+networks:
+  internal:
+    driver: bridge

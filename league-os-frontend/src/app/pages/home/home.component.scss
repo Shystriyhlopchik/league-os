@@ -8,6 +8,21 @@
     background-color: #16191A;
 }
 
+.home__static-header {
+    display: flex;
+    gap: 16px;
+    margin: 32px 0 0 16px;
+
+    h2 {
+        font-family: Play, Arial, sans-serif;
+        font-weight: 700;
+        font-size: 36px;
+        line-height: 1.2;
+        color: #F61129;
+        margin: 0!important;
+        text-transform: uppercase;
+    }
+}
 .home__section {
     max-width: 1200px;
     margin: 0 auto;
@@ -27,11 +42,31 @@
     display: flex;
     gap: 40px;
     padding: 16px;
-}
 
-@media (max-width: 540px) {
-    .home__statistics {
-        flex-direction: column;
+    app-stats-summary,
+    app-statistics-preview {
+        min-width: 0;
+    }
+
+    app-stats-summary {
+        flex: 0 1 485px;
+    }
+
+    app-statistics-preview {
+        flex: 1 1 0;
     }
 }
 
+@media (max-width: 767px) {
+    .home__statistics {
+        flex-direction: column;
+        gap: 24px;
+
+        app-stats-summary,
+        app-statistics-preview {
+            width: 100%;
+            max-width: none;
+            flex-basis: auto;
+        }
+    }
+}

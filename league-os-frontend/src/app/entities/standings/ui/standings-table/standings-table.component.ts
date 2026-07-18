@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { StandingRow } from '../../model/standings-row.model';
 
 @Component({
@@ -8,15 +8,14 @@ import { StandingRow } from '../../model/standings-row.model';
     styleUrl: './standings-table.component.scss',
 })
 export class StandingsTableComponent {
-    readonly rows = input.required<StandingRow[]>();
-    readonly showReason = input(true);
+    readonly sourceRows = input.required<readonly StandingRow[]>({
+        alias: 'rows',
+    });
 
-    qualificationLabel(row: StandingRow): string | null {
-        if (row.qualificationStatus === 'qualified') return 'Вышла';
-        if (row.qualificationStatus === 'best_placed') {
-            return 'Лучшая среди мест';
-        }
-        if (row.qualificationStatus === 'pending') return 'Ожидает';
-        return null;
-    }
+    readonly rows = computed(() =>
+        [...this.sourceRows()].sort(
+            (left, right) =>
+                left.position - right.position || left.team.id - right.team.id,
+        ),
+    );
 }

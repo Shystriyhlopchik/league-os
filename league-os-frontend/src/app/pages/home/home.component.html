@@ -7,14 +7,29 @@
         <app-advertising-banner />
         <h2>Новости</h2>
         <app-news-preview [limit]="3" />
-        <h2>Статистика</h2>
+        <div class="home__static-header">
+            <h2>Статистика</h2>
+            @if (groups().length) {
+                <app-select
+                    [size]="'large'"
+                    [options]="groups()"
+                    [placeholder]="''"
+                    [value]="selectedGroupId()"
+                    (valueChange)="selectedGroupId.set($event)"
+                />
+            }
+        </div>
         <div class="home__statistics">
             @if (activeTournament(); as tournament) {
-                <app-statistics-preview
-                    [seasonId]="tournament.season.id"
-                    [initialTournamentId]="tournament.id"
+                <app-stats-summary
+                    [tournamentId]="tournament.id"
+                    [groupId]="selectedGroupId()"
+                    [title]="statsTitle()"
                 />
-                <app-stats-summary [tournamentId]="tournament.id" />
+                <app-statistics-preview
+                    [tournamentId]="tournament.id"
+                    [groupId]="selectedGroupId()"
+                />
             }
         </div>
         <app-teams-map />

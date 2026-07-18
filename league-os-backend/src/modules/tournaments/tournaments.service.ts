@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, Not, Repository } from 'typeorm';
 
@@ -98,7 +102,13 @@ export class TournamentsService extends BaseCrudService<TournamentEntity> {
     };
   }
 
-  async getStatsSummary(tournamentId: number): Promise<TournamentStatsSummaryDto> {
+  async getStatsSummary(
+    tournamentId: number,
+    groupId?: number,
+  ): Promise<TournamentStatsSummaryDto> {
+    if (groupId !== undefined && groupId < 1) {
+      throw new BadRequestException('groupId must be a positive integer');
+    }
     const tournament = await this.tournamentsRepository.findOne({
       where: {
         id: tournamentId,
@@ -114,6 +124,7 @@ export class TournamentsService extends BaseCrudService<TournamentEntity> {
 
     const emptyStats = (): TournamentStatsSummaryDto => ({
       tournamentId,
+      ...(groupId ? { groupId } : {}),
       seasonId: tournament.seasonId,
       competitionId: tournament.season.competitionId,
       year: tournament.season.year ?? null,
@@ -131,6 +142,7 @@ export class TournamentsService extends BaseCrudService<TournamentEntity> {
     const matches = await this.matchesRepository.find({
       where: {
         tournamentId,
+        ...(groupId ? { groupId } : {}),
       },
       select: {
         id: true,
@@ -207,6 +219,7 @@ export class TournamentsService extends BaseCrudService<TournamentEntity> {
 
     return {
       tournamentId,
+      ...(groupId ? { groupId } : {}),
       seasonId: tournament.seasonId,
       competitionId: tournament.season.competitionId,
       year: tournament.season.year ?? null,

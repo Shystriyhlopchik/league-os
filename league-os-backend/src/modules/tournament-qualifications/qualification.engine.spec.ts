@@ -16,6 +16,7 @@ const standing = (
   groupId,
   groupOrder,
   position,
+  played: 4,
   points: 10 - position,
   wins: 4 - position,
   goalDifference: 5 - position,

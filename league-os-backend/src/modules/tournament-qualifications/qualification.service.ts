@@ -15,6 +15,8 @@ import { TournamentGroupEntity } from '../tournament-groups/entities/tournament-
 import { TournamentRuleVersionEntity } from '../tournament-rules/entities/tournament-rule-version.entity';
 import { TournamentRuleVersionStatus } from '../tournament-rules/enums/tournament-rule-version-status.enum';
 import type { StageTransitionRuleV1 } from '../tournament-rules/types/tournament-rules-config.type';
+import type { GroupStageRulesV1 } from '../tournament-rules/types/tournament-rules-config.type';
+import { normalizeCrossGroupStandings } from '../tournament-rules/cross-group-normalization';
 import { TournamentStageParticipantEntity } from '../tournament-stage-participants/entities/tournament-stage-participant.entity';
 import { TournamentStageParticipantStatus } from '../tournament-stage-participants/enums/tournament-stage-participant-status.enum';
 import { TournamentStageEntity } from '../tournament-stages/entities/tournament-stage.entity';
@@ -350,6 +352,7 @@ export class QualificationService {
     const participants = manager.getRepository(
       TournamentStageParticipantEntity,
     );
+    const matches = manager.getRepository(MatchEntity);
 
     const tournament = await tournaments.findOne({
       where: { id: tournamentId },
@@ -395,20 +398,25 @@ export class QualificationService {
       );
     }
 
-    const [standingRows, groupRows, participantRows] = await Promise.all([
-      standingsRepository.find({
-        where: { tournamentId, stageId: fromStageId },
-        order: { groupId: 'ASC', position: 'ASC', teamId: 'ASC' },
-      }),
-      groups.find({
-        where: { stageId: fromStageId },
-        order: { order: 'ASC' },
-      }),
-      participants.find({
-        where: { stageId: fromStageId },
-        relations: { tournamentTeam: true },
-      }),
-    ]);
+    const [standingRows, groupRows, participantRows, matchRows] =
+      await Promise.all([
+        standingsRepository.find({
+          where: { tournamentId, stageId: fromStageId },
+          order: { groupId: 'ASC', position: 'ASC', teamId: 'ASC' },
+        }),
+        groups.find({
+          where: { stageId: fromStageId },
+          order: { order: 'ASC' },
+        }),
+        participants.find({
+          where: { stageId: fromStageId },
+          relations: { tournamentTeam: true },
+        }),
+        matches.find({
+          where: { stageId: fromStageId, status: MatchStatus.FINISHED },
+          order: { id: 'ASC' },
+        }),
+      ]);
     if (
       standingRows.length === 0 ||
       standingRows.length !== participantRows.length
@@ -452,6 +460,7 @@ export class QualificationService {
           ? (groupOrder.get(standing.groupId) ?? 0)
           : 0,
         position: standing.position,
+        played: standing.played,
         points: standing.points,
         wins: standing.wins,
         goalDifference: standing.goalDifference,
@@ -460,13 +469,37 @@ export class QualificationService {
         disciplinaryScore: standing.disciplinaryScore,
       } satisfies QualificationStandingInput;
     });
+    const stageRules = ruleVersion.config.stages.find(
+      (stage): stage is GroupStageRulesV1 =>
+        stage.stageKey === actualFromStage.key && stage.type === 'group_stage',
+    );
+    if (!stageRules) {
+      throw new ConflictException('Source group-stage rules are missing');
+    }
+    const comparisonStandings = normalizeCrossGroupStandings(
+      standings,
+      matchRows.map((match) => ({
+        id: match.id,
+        groupId: match.groupId,
+        homeTeamId: match.homeTeamId,
+        awayTeamId: match.awayTeamId,
+        homeScore: match.homeScore,
+        awayScore: match.awayScore,
+      })),
+      stageRules.scoring,
+      transition.crossGroupComparison,
+    );
     return {
       fromStage: actualFromStage,
       toStage: actualToStage,
       ruleVersion,
       transition,
-      standings,
-      sourceHash: this.sourceHash(ruleVersion.id, transition, standings),
+      standings: comparisonStandings,
+      sourceHash: this.sourceHash(
+        ruleVersion.id,
+        transition,
+        comparisonStandings,
+      ),
     };
   }
 
