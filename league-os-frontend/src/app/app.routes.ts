@@ -21,6 +21,13 @@ export const routes: Routes = [
             ),
     },
     {
+        path: 'regulations',
+        loadComponent: () =>
+            import(
+                './pages/competition-regulations/competition-regulations-page.component'
+            ).then((m) => m.CompetitionRegulationsPageComponent),
+    },
+    {
         path: 'team',
         loadComponent: () =>
             import('./pages/team/team.component').then((m) => m.TeamComponent),
