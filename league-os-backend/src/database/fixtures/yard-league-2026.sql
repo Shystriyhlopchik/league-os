@@ -142,7 +142,7 @@ BEGIN
       "type": "group_stage",
       "groupsCount": 3,
       "groupSizes": [6, 5, 5],
-      "legs": 1
+      "legs": 2
     }'::jsonb
   )
   RETURNING id INTO v_group_stage_id;
@@ -217,7 +217,7 @@ BEGIN
           },
           "schedule": {
             "algorithm": "circle",
-            "legs": 1,
+            "legs": 2,
             "balanceHomeAway": true
           },
           "scoring": {
