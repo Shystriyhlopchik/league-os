@@ -16,7 +16,7 @@
 
 .teams-page__title {
     font-family: Play, Arial, sans-serif;
-    color: #27AE60;
+    color: #F61129;
 
     margin: 16px 0 40px;
     font-size: 32px;
@@ -32,6 +32,41 @@
     margin: 0;
     padding: 0;
     list-style: none;
+}
+
+.teams-page__state {
+    display: grid;
+    justify-items: start;
+    gap: 16px;
+    margin: 0;
+    padding: 24px;
+    border: 1px solid #313738;
+    background: #202526;
+    font-size: 18px;
+}
+
+.teams-page__state p {
+    margin: 0;
+}
+
+.teams-page__state--error {
+    border-color: #e63946;
+}
+
+.teams-page__state button {
+    min-height: 42px;
+    padding: 8px 24px;
+    border: 1px solid #27ae60;
+    background: transparent;
+    color: #ffffff;
+    font: inherit;
+    cursor: pointer;
+}
+
+.teams-page__state button:hover,
+.teams-page__state button:focus-visible {
+    background: #27ae60;
+    color: #16191a;
 }
 
 .team-card {

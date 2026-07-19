@@ -1,27 +1,37 @@
 <section class="teams-page">
-<!--    <nav class="teams-page__breadcrumbs" aria-label="Хлебные крошки">-->
-<!--        <a routerLink="/">Главная</a>-->
-<!--        <span aria-hidden="true">›</span>-->
-<!--        <a routerLink="/">Лига ARMAN</a>-->
-<!--        <span aria-hidden="true">›</span>-->
-<!--        <span aria-current="page">Команды</span>-->
-<!--    </nav>-->
+    <h1 class="teams-page__title">{{ title() }}</h1>
 
-    <h1 class="teams-page__title">Команды лиги Арман</h1>
-
-    <ul class="teams-page__grid">
-        @for (team of teams; track team.id) {
-            <li class="team-card">
-                <div class="team-card__logo-wrap">
-                    <img
-                        class="team-card__logo"
-                        [src]="team.logoUrl || '/images/teams/default-team-logo.png'"
-                        [alt]="'Логотип команды ' + team.name"
-                        (error)="useFallbackLogo($event)"
-                    />
-                </div>
-                <span class="team-card__name">{{ team.name }}</span>
-            </li>
-        }
-    </ul>
+    @if (isLoading()) {
+        <p class="teams-page__state" role="status">Загрузка команд...</p>
+    } @else if (error()) {
+        <div class="teams-page__state teams-page__state--error" role="alert">
+            <p>{{ error() }}</p>
+            <button type="button" (click)="loadTeams()">
+                Повторить
+            </button>
+        </div>
+    } @else if (isEmpty()) {
+        <p class="teams-page__state">
+            Участники турнира пока не опубликованы.
+        </p>
+    } @else {
+        <ul class="teams-page__grid">
+            @for (team of teams(); track team.id) {
+                <li class="team-card">
+                    <div class="team-card__logo-wrap">
+                        <img
+                            class="team-card__logo"
+                            [src]="
+                                team.logoUrl ||
+                                '/images/teams/default-team-logo.png'
+                            "
+                            [alt]="'Логотип команды ' + team.name"
+                            (error)="useFallbackLogo($event)"
+                        />
+                    </div>
+                    <span class="team-card__name">{{ team.name }}</span>
+                </li>
+            }
+        </ul>
+    }
 </section>

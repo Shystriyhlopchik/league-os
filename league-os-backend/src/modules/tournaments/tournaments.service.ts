@@ -13,6 +13,8 @@ import { MatchEntity } from '../matches/entities/match.entity';
 import { MatchStatus } from '../matches/enums/match-status.enum';
 import { TournamentStatsSummaryDto } from './dto/tournament-stats-summary.dto';
 import { TournamentEntity } from './entities/tournaments.entity';
+import { TournamentTeamEntity } from '../tournament-teams/entities/tournament-teams.entity';
+import { TournamentTeamStatus } from '../tournament-teams/enums/tournament-team-status.enum';
 
 @Injectable()
 export class TournamentsService extends BaseCrudService<TournamentEntity> {
@@ -25,6 +27,9 @@ export class TournamentsService extends BaseCrudService<TournamentEntity> {
 
     @InjectRepository(MatchEventEntity)
     private readonly matchEventsRepository: Repository<MatchEventEntity>,
+
+    @InjectRepository(TournamentTeamEntity)
+    private readonly tournamentTeamsRepository: Repository<TournamentTeamEntity>,
   ) {
     super(tournamentsRepository, 'Турнир');
   }
@@ -70,6 +75,39 @@ export class TournamentsService extends BaseCrudService<TournamentEntity> {
       .getOne();
 
     return tournament ? this.toPublicTournament(tournament) : null;
+  }
+
+  async findPublicTeams(tournamentId: number) {
+    const tournament = await this.tournamentsRepository.findOne({
+      where: { id: tournamentId, isActive: true },
+      select: { id: true },
+    });
+    if (!tournament) {
+      throw new NotFoundException('Tournament not found');
+    }
+
+    const tournamentTeams = await this.tournamentTeamsRepository.find({
+      where: {
+        tournamentId,
+        status: TournamentTeamStatus.ACTIVE,
+        team: { isActive: true },
+      },
+      relations: { team: true },
+      order: { seedNumber: 'ASC', id: 'ASC' },
+    });
+
+    return tournamentTeams.map(({ team }) => ({
+      id: team.id,
+      name: team.name,
+      shortName: team.shortName ?? null,
+      slug: team.slug,
+      logoUrl: team.logoUrl ?? null,
+      primaryColor: team.primaryColor ?? null,
+      secondaryColor: team.secondaryColor ?? null,
+      city: team.city ?? null,
+      village: team.village ?? null,
+      isActive: team.isActive,
+    }));
   }
 
   private toPublicTournament(tournament: TournamentEntity) {
