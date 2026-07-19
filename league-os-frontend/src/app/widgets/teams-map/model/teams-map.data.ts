@@ -54,4 +54,13 @@ export const TEAMS_MAP_MARKERS: TeamsMapMarker[] = [
         y: 96,
         delay: 2,
     },
+    {
+        id: 2,
+        name: 'ЧЭТК',
+        slug: 'chetk',
+        logoUrl: 'images/teams/CHETK.png',
+        x: 43,
+        y: 38,
+        delay: 2,
+    },
 ];
