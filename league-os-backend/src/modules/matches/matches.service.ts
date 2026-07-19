@@ -79,6 +79,9 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
       tournament: {
         id: match.tournament.id,
         name: match.tournament.name,
+        logoUrl:
+          match.tournament.logoUrl ??
+          match.tournament.season.competition.logoUrl,
 
         season: {
           id: match.tournament.season.id,
@@ -89,7 +92,9 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
         competition: {
           id: match.tournament.season.competition.id,
           name: match.tournament.season.competition.name,
+          slug: match.tournament.season.competition.slug,
           logoUrl: match.tournament.season.competition.logoUrl,
+          colorPrimary: match.tournament.season.competition.colorPrimary,
         },
       },
 
@@ -134,7 +139,9 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
         venue: true,
 
         tournament: {
-          season: true,
+          season: {
+            competition: true,
+          },
         },
       },
       order: {
@@ -153,9 +160,23 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
       tournament: {
         id: match.tournament.id,
         name: match.tournament.name,
-        logoUrl: match.tournament.logoUrl,
+        logoUrl:
+          match.tournament.logoUrl ??
+          match.tournament.season.competition.logoUrl,
 
-        season: match.tournament.season,
+        season: {
+          id: match.tournament.season.id,
+          name: match.tournament.season.name,
+          year: match.tournament.season.year,
+        },
+
+        competition: {
+          id: match.tournament.season.competition.id,
+          name: match.tournament.season.competition.name,
+          slug: match.tournament.season.competition.slug,
+          logoUrl: match.tournament.season.competition.logoUrl,
+          colorPrimary: match.tournament.season.competition.colorPrimary,
+        },
       },
 
       homeTeam: {

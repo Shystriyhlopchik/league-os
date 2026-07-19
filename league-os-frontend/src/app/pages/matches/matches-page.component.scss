@@ -1,0 +1,140 @@
+:host {
+    display: block;
+    min-height: calc(100vh - 217px);
+    background: #16191a;
+    color: #ffffff;
+}
+
+.matches-page {
+    width: min(100%, 1200px);
+    min-height: inherit;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+    box-sizing: border-box;
+    font-family: "Oswald", Arial, sans-serif;
+}
+
+.matches-page__header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 40px;
+}
+
+.matches-page__title {
+    margin: 0;
+    color: #e63946;
+    font-family: "Play", Arial, sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.matches-page__count {
+    flex: 0 0 auto;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 18px;
+}
+
+.matches-page__dates {
+    display: grid;
+    gap: 48px;
+
+    app-section-title {
+        margin-inline-end: 16px;
+    }
+}
+
+.matches-date__title {
+    margin: 0 0 20px;
+    padding-left: 14px;
+    border-left: 4px solid #e63946;
+    font-family: "Play", Arial, sans-serif;
+    font-size: 24px;
+    line-height: 1.25;
+    text-transform: capitalize;
+}
+
+.matches-date__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 355px));
+    justify-content: space-between;
+    gap: 24px;
+}
+
+app-match-card {
+    width: 100%;
+}
+
+.matches-page__state {
+    display: grid;
+    justify-items: start;
+    gap: 16px;
+    margin: 0;
+    padding: 24px;
+    border: 1px solid #313738;
+    background: #202526;
+    font-size: 18px;
+}
+
+.matches-page__state p {
+    margin: 0;
+}
+
+.matches-page__state--error {
+    border-color: #e63946;
+}
+
+.matches-page__state button {
+    min-height: 42px;
+    padding: 8px 24px;
+    border: 1px solid #27ae60;
+    background: transparent;
+    color: #ffffff;
+    font: inherit;
+    cursor: pointer;
+}
+
+.matches-page__state button:hover,
+.matches-page__state button:focus-visible {
+    background: #27ae60;
+    color: #16191a;
+}
+
+@media (max-width: 900px) {
+    .matches-date__grid {
+        grid-template-columns: repeat(2, minmax(0, 355px));
+        justify-content: start;
+    }
+}
+
+@media (max-width: 620px) {
+    .matches-page {
+        padding: 24px 16px 56px;
+    }
+
+    .matches-page__header {
+        display: grid;
+        gap: 12px;
+        margin-bottom: 32px;
+    }
+
+    .matches-page__title {
+        font-size: 27px;
+    }
+
+    .matches-page__dates {
+        gap: 40px;
+    }
+
+    .matches-date__title {
+        font-size: 21px;
+    }
+
+    .matches-date__grid {
+        grid-template-columns: minmax(0, 355px);
+    }
+}

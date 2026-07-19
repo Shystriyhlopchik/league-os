@@ -1,0 +1,45 @@
+<section class="matches-page">
+    <header class="matches-page__header">
+        <h1 class="matches-page__title">{{ title() }}</h1>
+        @if (!isLoading() && !error() && matches().length) {
+            <p class="matches-page__count">
+                Всего матчей: {{ matches().length }}
+            </p>
+        }
+    </header>
+
+    @if (isLoading()) {
+        <p class="matches-page__state" role="status">Загрузка матчей...</p>
+    } @else if (error()) {
+        <div class="matches-page__state matches-page__state--error" role="alert">
+            <p>{{ error() }}</p>
+            <button type="button" (click)="loadMatches()">
+                Повторить
+            </button>
+        </div>
+    } @else if (isEmpty()) {
+        <p class="matches-page__state">
+            Календарь турнира пока не опубликован.
+        </p>
+    } @else {
+        <div class="matches-page__dates">
+            @for (group of dateGroups(); track group.key) {
+                <section class="matches-date">
+<!--                    <h2 class="matches-date__title">-->
+<!--                        {{ group.date | date: "d MMMM, EEEE" }}-->
+<!--                    </h2>-->
+                    <app-section-title>{{ group.date | date: "d MMMM, EEEE" }}</app-section-title>
+
+                    <div class="matches-date__grid">
+                        @for (match of group.matches; track match.id) {
+                            <app-match-card
+                                [match]="match"
+                                (cardClick)="openProtocol($event)"
+                            />
+                        }
+                    </div>
+                </section>
+            }
+        </div>
+    }
+</section>

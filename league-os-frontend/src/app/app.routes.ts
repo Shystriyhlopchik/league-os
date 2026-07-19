@@ -63,6 +63,13 @@ export const routes: Routes = [
             ),
     },
     {
+        path: 'matches',
+        loadComponent: () =>
+            import('./pages/matches/matches-page.component').then(
+                (m) => m.MatchesPageComponent,
+            ),
+    },
+    {
         path: 'matches/:matchId/protocol',
         loadComponent: () =>
             import('./pages/match-view-protocol/ui/match-view-protocol-page/match-view-protocol-page.component').then(
