@@ -23,6 +23,7 @@ export interface MatchProtocolMatch {
 export interface MatchProtocolTournament {
     id: number;
     name: string;
+    logoUrl: string | null;
     season: {
         id: number;
         name: string;

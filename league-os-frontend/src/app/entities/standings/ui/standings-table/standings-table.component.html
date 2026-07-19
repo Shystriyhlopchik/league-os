@@ -55,7 +55,7 @@
                         <div class="standings-table__team">
                             <img
                                 class="standings-table__team-logo"
-                                [src]="team.team.logoUrl"
+                                [src]="team.team.logoUrl ?? DEFAULT_IMAGE"
                                 [alt]="team.team.name"
                             />
 

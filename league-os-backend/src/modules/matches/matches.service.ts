@@ -233,6 +233,7 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
         tournament: {
           id: match.tournament.id,
           name: match.tournament.name,
+          logoUrl: match.tournament.logoUrl ?? null,
 
           season: {
             id: match.tournament.season.id,
