@@ -1,0 +1,102 @@
+:host {
+    display: block;
+    padding: 0 16px 16px 16px;
+    box-sizing: border-box;
+}
+
+.sponsors {
+    width: 100%;
+    overflow: hidden;
+    background-color: #141718;
+}
+
+.sponsors__list {
+    display: grid;
+    grid-template-columns: 1.6fr 0.7fr 1fr 1fr;
+    align-items: center;
+    gap: 40px;
+    width: 100%;
+    min-height: 174px;
+    margin: 0;
+    padding: 32px 40px;
+    box-sizing: border-box;
+    list-style: none;
+}
+
+.sponsors__item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+}
+
+.sponsors__logo {
+    display: block;
+    max-width: 100%;
+    object-fit: contain;
+}
+
+.sponsors__logo--administration {
+    width: 100%;
+    height: auto;
+}
+
+.sponsors__logo--football-federation {
+    height: 78px;
+    width: 78px;
+}
+
+.sponsors__text {
+    color: #69727a;
+    font-size: 40px;
+    line-height: 1.1;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.sponsors__text--fsk {
+    font-family: "Play", Arial, sans-serif;
+    font-weight: 400;
+}
+
+.sponsors__text--arman {
+    font-family: "Oswald", Arial, sans-serif;
+    font-weight: 300;
+}
+
+@media (max-width: 1024px) {
+    .sponsors__list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 32px;
+    }
+
+    .sponsors__item--administration {
+        padding-inline: 24px;
+    }
+}
+
+@media (max-width: 767px) {
+    :host {
+        padding-inline: 0;
+    }
+
+    .sponsors__list {
+        min-height: 0;
+        gap: 24px 16px;
+        padding: 32px 16px;
+    }
+
+    .sponsors__item--administration {
+        padding-inline: 0;
+    }
+
+    .sponsors__logo--football-federation {
+        width: 78px;
+        height: 78px;
+    }
+
+    .sponsors__text {
+        font-size: 32px;
+        white-space: normal;
+    }
+}

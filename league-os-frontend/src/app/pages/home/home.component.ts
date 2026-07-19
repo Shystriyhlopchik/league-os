@@ -11,6 +11,7 @@ import { TournamentsApi } from '../../entities/tournaments/api/tournaments.api';
 import { SelectComponent } from '../../shared/ui/select/select.component';
 import { SelectOption } from '../../shared/ui/select/select-option.model';
 import { StandingsApi } from '../../entities/standings/api/standings.api';
+import { SponsorsComponent } from '../../widgets/sponsors/sponsors.component';
 
 @Component({
     selector: 'app-home',
@@ -22,6 +23,7 @@ import { StandingsApi } from '../../entities/standings/api/standings.api';
         StatsSummaryComponent,
         TeamsMapComponent,
         SelectComponent,
+        SponsorsComponent,
     ],
     templateUrl: './home.component.html',
     styleUrl: './home.component.scss',
