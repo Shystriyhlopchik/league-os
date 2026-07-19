@@ -25,9 +25,6 @@
         <div class="matches-page__dates">
             @for (group of dateGroups(); track group.key) {
                 <section class="matches-date">
-<!--                    <h2 class="matches-date__title">-->
-<!--                        {{ group.date | date: "d MMMM, EEEE" }}-->
-<!--                    </h2>-->
                     <app-section-title>{{ group.date | date: "d MMMM, EEEE" }}</app-section-title>
 
                     <div class="matches-date__grid">

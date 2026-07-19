@@ -24,7 +24,7 @@
 
 .matches-page__title {
     margin: 0;
-    color: #e63946;
+    color: #F61129;
     font-family: "Play", Arial, sans-serif;
     font-size: 32px;
     font-weight: 700;
@@ -46,16 +46,6 @@
     app-section-title {
         margin-inline-end: 16px;
     }
-}
-
-.matches-date__title {
-    margin: 0 0 20px;
-    padding-left: 14px;
-    border-left: 4px solid #e63946;
-    font-family: "Play", Arial, sans-serif;
-    font-size: 24px;
-    line-height: 1.25;
-    text-transform: capitalize;
 }
 
 .matches-date__grid {
@@ -128,10 +118,6 @@ app-match-card {
 
     .matches-page__dates {
         gap: 40px;
-    }
-
-    .matches-date__title {
-        font-size: 21px;
     }
 
     .matches-date__grid {
