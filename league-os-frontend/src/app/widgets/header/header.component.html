@@ -96,6 +96,7 @@
 
             <button
                 class="header__action header__action--menu"
+                [class.header__action--menu-open]="isMenuOpen()"
                 type="button"
                 [attr.aria-label]="menuIconLabel()"
                 [attr.aria-expanded]="isMenuOpen()"
@@ -120,14 +121,7 @@
             >
             <a
                 class="header__nav-link"
-                routerLink="/tournaments"
-                (click)="closeMenu()"
-            >
-                Турниры
-            </a>
-            <a
-                class="header__nav-link"
-                routerLink="/teams"
+                routerLink="/team"
                 (click)="closeMenu()"
             >
                 Команды
