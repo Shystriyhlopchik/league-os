@@ -100,6 +100,10 @@ export class TeamPlayersService {
     await this.ensureCanManageTeam(teamId, currentUserId);
     await this.ensureShirtNumberAvailable(teamId, dto.shirtNumber);
 
+    if (!photo) {
+      throw new BadRequestException('Добавьте фотографию игрока');
+    }
+
     const savedPlayer = await this.createPlayer(dto, photo);
     const savedTeamPlayer = await this.createTeamPlayer(
       teamId,
@@ -227,10 +231,10 @@ export class TeamPlayersService {
 
   private async createPlayer(
     dto: CreateTeamPlayerDto,
-    photo?: { buffer: Buffer },
+    photo: { buffer: Buffer },
   ): Promise<PlayerEntity> {
     const slug = await this.generatePlayerSlug(dto.lastName, dto.firstName);
-    const photoUrl = photo ? await this.savePlayerPhoto(slug, photo.buffer) : undefined;
+    const photoUrl = await this.savePlayerPhoto(slug, photo.buffer);
     const player = this.playersRepository.create({
       firstName: dto.firstName.trim(),
       lastName: dto.lastName.trim(),
@@ -247,19 +251,53 @@ export class TeamPlayersService {
   }
 
   private async savePlayerPhoto(slug: string, buffer: Buffer): Promise<string> {
-    const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+    const extension = this.detectPlayerPhotoExtension(buffer);
 
-    if (buffer.length < pngSignature.length || !buffer.subarray(0, 8).equals(pngSignature)) {
-      throw new BadRequestException('Фото игрока должно быть в формате PNG');
+    if (!extension) {
+      throw new BadRequestException(
+        'Фото игрока должно быть в формате PNG, JPEG или WebP',
+      );
     }
 
     const directory = join(process.cwd(), 'uploads', 'players');
-    const fileName = `${slug}-${Date.now()}.png`;
+    const fileName = `${slug}-${Date.now()}.${extension}`;
 
     await mkdir(directory, { recursive: true });
     await writeFile(join(directory, fileName), buffer);
 
     return `/uploads/players/${fileName}`;
+  }
+
+  private detectPlayerPhotoExtension(
+    buffer: Buffer,
+  ): 'png' | 'jpg' | 'webp' | null {
+    const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+
+    if (
+      buffer.length >= pngSignature.length &&
+      buffer.subarray(0, pngSignature.length).equals(pngSignature)
+    ) {
+      return 'png';
+    }
+
+    if (
+      buffer.length >= 3 &&
+      buffer[0] === 0xff &&
+      buffer[1] === 0xd8 &&
+      buffer[2] === 0xff
+    ) {
+      return 'jpg';
+    }
+
+    if (
+      buffer.length >= 12 &&
+      buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+      buffer.subarray(8, 12).toString('ascii') === 'WEBP'
+    ) {
+      return 'webp';
+    }
+
+    return null;
   }
 
   private createTeamPlayer(

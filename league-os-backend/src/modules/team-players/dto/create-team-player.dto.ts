@@ -44,8 +44,7 @@ export class CreateTeamPlayerDto {
     isCaptain?: boolean;
 
     @IsDateString()
-    @IsOptional()
-    birthDate?: string;
+    birthDate: string;
 
     @IsEnum(PreferredFoot)
     @IsOptional()

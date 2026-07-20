@@ -50,9 +50,9 @@
 
             <div class="player-form__grid">
                 <label class="player-form__photo-field">
-                    <span class="player-form__label">Фото игрока</span>
+                    <span class="player-form__label">Фото игрока *</span>
                     <span class="player-form__photo-control">
-                        <span class="player-form__photo-button">Выбрать PNG</span>
+                        <span class="player-form__photo-button">Выбрать фото</span>
                         <span class="player-form__photo-name">
                             {{ photoName() || 'Файл не выбран' }}
                         </span>
@@ -60,17 +60,19 @@
                     <input
                         class="player-form__file-input"
                         type="file"
-                        accept="image/png,.png"
+                        accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
                         (change)="onPhotoSelected($event)"
                     />
                     <span class="player-form__hint">
-                        Рекомендуем PNG без фона, вертикальное фото 1000 × 1500 px, до 5 МБ.
+                        PNG, JPEG или WebP, вертикальное фото 1000 × 1500 px, до 5 МБ.
                         @if (editingPlayer()?.player?.photoUrl) {
                             Новое фото заменит текущее.
                         }
                     </span>
                     @if (photoError()) {
                         <span class="player-form__validation-error">{{ photoError() }}</span>
+                    } @else if (form.controls.photo.touched && form.controls.photo.hasError('required')) {
+                        <span class="player-form__validation-error">Добавьте фотографию игрока</span>
                     }
                 </label>
 
@@ -117,13 +119,16 @@
                 </label>
 
                 <label class="player-form__field">
-                    <span class="player-form__label">Дата рождения</span>
+                    <span class="player-form__label">Дата рождения *</span>
                     <input
                         class="player-form__input"
                         type="date"
                         formControlName="birthDate"
                         [max]="today"
                     />
+                    @if (form.controls.birthDate.touched && form.controls.birthDate.hasError('required')) {
+                        <span class="player-form__validation-error">Укажите дату рождения</span>
+                    }
                 </label>
 
                 <label class="player-form__field">

@@ -4,6 +4,13 @@ import { TeamPlayersDetailStore } from '../../model/team-players-detail.store';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import { TeamPlayer } from '../../../../entities/team-player/model/team-player.types';
 
+const ALLOWED_PLAYER_PHOTO_TYPES = new Set([
+    'image/png',
+    'image/jpeg',
+    'image/jpg',
+    'image/webp',
+]);
+
 @Component({
     selector: 'app-team-players-detail-page',
     imports: [ReactiveFormsModule, RouterLink],
@@ -31,7 +38,7 @@ export class TeamPlayersDetailPageComponent implements OnInit {
             Validators.max(99),
         ]),
         position: [''],
-        birthDate: [''],
+        birthDate: ['', Validators.required],
         preferredFoot: [''],
         photo: this.fb.control<File | null>(null),
         isCaptain: [false],
@@ -47,6 +54,7 @@ export class TeamPlayersDetailPageComponent implements OnInit {
     openForm(): void {
         this.editingPlayer.set(null);
         this.store.createError.set(null);
+        this.setPhotoRequired(true);
         this.isFormOpened.set(true);
     }
 
@@ -56,6 +64,7 @@ export class TeamPlayersDetailPageComponent implements OnInit {
         this.isFormOpened.set(true);
         this.photoName.set(null);
         this.photoError.set(null);
+        this.setPhotoRequired(!teamPlayer.player.photoUrl);
         this.form.reset({
             lastName: teamPlayer.player.lastName,
             firstName: teamPlayer.player.firstName,
@@ -98,16 +107,18 @@ export class TeamPlayersDetailPageComponent implements OnInit {
         const input = event.target as HTMLInputElement;
         const file = input.files?.[0] ?? null;
 
-        if (file && file.type !== 'image/png') {
+        if (file && !ALLOWED_PLAYER_PHOTO_TYPES.has(file.type)) {
             this.form.controls.photo.setValue(null);
+            this.form.controls.photo.markAsTouched();
             this.photoName.set(null);
-            this.photoError.set('Выберите файл в формате PNG');
+            this.photoError.set('Выберите файл в формате PNG, JPEG или WebP');
             input.value = '';
             return;
         }
 
         if (file && file.size > 5 * 1024 * 1024) {
             this.form.controls.photo.setValue(null);
+            this.form.controls.photo.markAsTouched();
             this.photoName.set(null);
             this.photoError.set('Размер файла не должен превышать 5 МБ');
             input.value = '';
@@ -115,6 +126,8 @@ export class TeamPlayersDetailPageComponent implements OnInit {
         }
 
         this.form.controls.photo.setValue(file);
+        this.form.controls.photo.markAsTouched();
+        this.form.controls.photo.updateValueAndValidity();
         this.photoName.set(file?.name ?? null);
         this.photoError.set(null);
     }
@@ -191,5 +204,12 @@ export class TeamPlayersDetailPageComponent implements OnInit {
         } as const;
 
         return preferredFoot ? labels[preferredFoot] : '—';
+    }
+
+    private setPhotoRequired(required: boolean): void {
+        const photoControl = this.form.controls.photo;
+
+        photoControl.setValidators(required ? [Validators.required] : []);
+        photoControl.updateValueAndValidity();
     }
 }

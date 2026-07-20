@@ -46,9 +46,11 @@ export class TeamsController {
       storage: memoryStorage(),
       limits: { fileSize: PLAYER_PHOTO_MAX_SIZE },
       fileFilter: (_request, file, callback) => {
-        if (file.mimetype !== 'image/png') {
+        if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.mimetype)) {
           return callback(
-            new BadRequestException('Фото игрока должно быть в формате PNG'),
+            new BadRequestException(
+              'Фото игрока должно быть в формате PNG, JPEG или WebP',
+            ),
             false,
           );
         }
@@ -73,9 +75,11 @@ export class TeamsController {
       storage: memoryStorage(),
       limits: { fileSize: PLAYER_PHOTO_MAX_SIZE },
       fileFilter: (_request, file, callback) => {
-        if (file.mimetype !== 'image/png') {
+        if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.mimetype)) {
           return callback(
-            new BadRequestException('Фото игрока должно быть в формате PNG'),
+            new BadRequestException(
+              'Фото игрока должно быть в формате PNG, JPEG или WebP',
+            ),
             false,
           );
         }
