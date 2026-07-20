@@ -552,7 +552,7 @@ BEGIN
         CASE
           WHEN player_index = 1 THEN 'goalkeeper'::players_position_enum
           WHEN player_index BETWEEN 2 AND 5 THEN 'defender'::players_position_enum
-          WHEN player_index BETWEEN 6 AND 9 THEN 'midfielder'::players_position_enum
+          WHEN player_index BETWEEN 6 AND 9 THEN 'winger'::players_position_enum
           ELSE 'forward'::players_position_enum
         END,
         true
@@ -575,7 +575,7 @@ BEGIN
         CASE
           WHEN player_index = 1 THEN 'goalkeeper'::team_players_position_enum
           WHEN player_index BETWEEN 2 AND 5 THEN 'defender'::team_players_position_enum
-          WHEN player_index BETWEEN 6 AND 9 THEN 'midfielder'::team_players_position_enum
+          WHEN player_index BETWEEN 6 AND 9 THEN 'winger'::team_players_position_enum
           ELSE 'forward'::team_players_position_enum
         END,
         player_index = 10,
