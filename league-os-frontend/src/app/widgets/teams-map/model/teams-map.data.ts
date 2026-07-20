@@ -64,7 +64,7 @@ export const TEAMS_MAP_MARKERS: TeamsMapMarker[] = [
         delay: 2,
     },
     {
-        id: 2,
+        id: 3,
         name: 'FIRE',
         slug: 'fire',
         logoUrl: 'images/teams/fire.png',
