@@ -63,4 +63,13 @@ export const TEAMS_MAP_MARKERS: TeamsMapMarker[] = [
         y: 38,
         delay: 2,
     },
+    {
+        id: 2,
+        name: 'FIRE',
+        slug: 'fire',
+        logoUrl: 'images/teams/fire.png',
+        x: 53,
+        y: 34,
+        delay: 2.3,
+    },
 ];
