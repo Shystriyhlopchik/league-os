@@ -100,10 +100,6 @@ export class TeamPlayersService {
     await this.ensureCanManageTeam(teamId, currentUserId);
     await this.ensureShirtNumberAvailable(teamId, dto.shirtNumber);
 
-    if (!photo) {
-      throw new BadRequestException('Добавьте фотографию игрока');
-    }
-
     const savedPlayer = await this.createPlayer(dto, photo);
     const savedTeamPlayer = await this.createTeamPlayer(
       teamId,
@@ -231,10 +227,12 @@ export class TeamPlayersService {
 
   private async createPlayer(
     dto: CreateTeamPlayerDto,
-    photo: { buffer: Buffer },
+    photo?: { buffer: Buffer },
   ): Promise<PlayerEntity> {
     const slug = await this.generatePlayerSlug(dto.lastName, dto.firstName);
-    const photoUrl = await this.savePlayerPhoto(slug, photo.buffer);
+    const photoUrl = photo
+      ? await this.savePlayerPhoto(slug, photo.buffer)
+      : undefined;
     const player = this.playersRepository.create({
       firstName: dto.firstName.trim(),
       lastName: dto.lastName.trim(),

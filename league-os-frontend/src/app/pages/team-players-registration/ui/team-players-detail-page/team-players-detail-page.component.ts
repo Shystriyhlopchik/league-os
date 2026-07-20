@@ -55,7 +55,6 @@ export class TeamPlayersDetailPageComponent implements OnInit {
     openForm(): void {
         this.editingPlayer.set(null);
         this.store.createError.set(null);
-        this.setPhotoRequired(true);
         this.isFormOpened.set(true);
     }
 
@@ -65,7 +64,6 @@ export class TeamPlayersDetailPageComponent implements OnInit {
         this.isFormOpened.set(true);
         this.photoName.set(null);
         this.photoError.set(null);
-        this.setPhotoRequired(!teamPlayer.player.photoUrl);
         this.form.reset({
             lastName: teamPlayer.player.lastName,
             firstName: teamPlayer.player.firstName,
@@ -207,10 +205,4 @@ export class TeamPlayersDetailPageComponent implements OnInit {
         return preferredFoot ? labels[preferredFoot] : '—';
     }
 
-    private setPhotoRequired(required: boolean): void {
-        const photoControl = this.form.controls.photo;
-
-        photoControl.setValidators(required ? [Validators.required] : []);
-        photoControl.updateValueAndValidity();
-    }
 }

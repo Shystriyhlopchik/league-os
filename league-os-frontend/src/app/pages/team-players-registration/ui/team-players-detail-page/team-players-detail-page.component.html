@@ -50,7 +50,7 @@
 
             <div class="player-form__grid">
                 <label class="player-form__photo-field">
-                    <span class="player-form__label">Фото игрока *</span>
+                    <span class="player-form__label">Фото игрока</span>
                     <span class="player-form__photo-control">
                         <span class="player-form__photo-button">Выбрать фото</span>
                         <span class="player-form__photo-name">
@@ -71,8 +71,6 @@
                     </span>
                     @if (photoError()) {
                         <span class="player-form__validation-error">{{ photoError() }}</span>
-                    } @else if (form.controls.photo.touched && form.controls.photo.hasError('required')) {
-                        <span class="player-form__validation-error">Добавьте фотографию игрока</span>
                     }
                 </label>
 
