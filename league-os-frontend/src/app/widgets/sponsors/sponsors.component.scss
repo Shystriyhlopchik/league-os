@@ -51,12 +51,24 @@
     font-size: 40px;
     line-height: 1.1;
     text-align: center;
+    text-decoration: none;
     white-space: nowrap;
 }
 
 .sponsors__text--fsk {
     font-family: "Play", Arial, sans-serif;
     font-weight: 400;
+    transition: color 0.2s ease;
+
+    &:hover,
+    &:focus-visible {
+        color: #f61129;
+    }
+
+    &:focus-visible {
+        outline: 2px solid #f61129;
+        outline-offset: 6px;
+    }
 }
 
 .sponsors__text--arman {
