@@ -31,8 +31,7 @@ export class CreateTeamPlayerDto {
     @Type(() => Number)
     @Min(1)
     @Max(99)
-    @IsOptional()
-    shirtNumber?: number;
+    shirtNumber: number;
 
     @IsEnum(PlayerPosition)
     @IsOptional()

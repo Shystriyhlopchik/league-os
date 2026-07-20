@@ -34,6 +34,7 @@ export class TeamPlayersDetailPageComponent implements OnInit {
         firstName: ['', Validators.required],
         middleName: [''],
         shirtNumber: this.fb.control<number | null>(null, [
+            Validators.required,
             Validators.min(1),
             Validators.max(99),
         ]),

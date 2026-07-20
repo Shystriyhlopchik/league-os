@@ -107,7 +107,7 @@
                 </label>
 
                 <label class="player-form__field">
-                    <span class="player-form__label">Номер</span>
+                    <span class="player-form__label">Номер *</span>
                     <input
                         class="player-form__input"
                         type="number"
@@ -116,6 +116,11 @@
                         max="99"
                         placeholder="10"
                     />
+                    @if (form.controls.shirtNumber.touched && form.controls.shirtNumber.hasError('required')) {
+                        <span class="player-form__validation-error">Укажите номер игрока</span>
+                    } @else if (form.controls.shirtNumber.touched && (form.controls.shirtNumber.hasError('min') || form.controls.shirtNumber.hasError('max'))) {
+                        <span class="player-form__validation-error">Номер должен быть от 1 до 99</span>
+                    }
                 </label>
 
                 <label class="player-form__field">
