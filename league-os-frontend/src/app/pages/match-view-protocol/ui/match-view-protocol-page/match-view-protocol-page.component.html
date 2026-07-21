@@ -1,5 +1,8 @@
 <section class="match-protocol">
-    <a class="match-protocol__back" routerLink="/"> ← На главную </a>
+    <a class="match-protocol__back" routerLink="/matches">
+        <span aria-hidden="true">←</span>
+        К списку матчей
+    </a>
 
     @let match = store.match();
 
@@ -9,10 +12,32 @@
         <p class="match-protocol__message match-protocol__message--error">
             {{ store.error() }}
         </p>
-    } @else if (store.match()) {
-        @if (scoreboardVm(); as scoreboard) {
-            <app-match-scoreboard [match]="scoreboard" />
-        }
+    } @else if (match) {
+        <header class="match-protocol__header">
+            <div>
+                <p class="match-protocol__eyebrow">Протокол матча</p>
+                <h1>{{ match.tournament.competition.name }}</h1>
+                <p class="match-protocol__subtitle">
+                    {{ match.tournament.name }}
+                    @if (match.round) {
+                        <span aria-hidden="true">·</span> {{ match.round }} тур
+                    }
+                </p>
+            </div>
+
+            <span
+                class="match-protocol__status"
+                [class.match-protocol__status--live]="match.status === 'live'"
+            >
+                {{ getMatchStatusLabel() }}
+            </span>
+        </header>
+
+        <section class="match-protocol__scoreboard" aria-label="Счёт матча">
+            @if (scoreboardVm(); as scoreboard) {
+                <app-match-scoreboard [match]="scoreboard" />
+            }
+        </section>
 
         <section class="match-protocol__tabs">
             <app-tab-group
@@ -24,10 +49,32 @@
 
         @if (activeTab() === "events") {
             <section class="match-protocol__section">
+                <header class="match-protocol__section-header">
+                    <div>
+                        <p>Хронология</p>
+                        <h2>События матча</h2>
+                    </div>
+                    <span>{{ store.events().length }}</span>
+                </header>
+
                 @if (store.hasEvents()) {
                     <div class="events-list">
                         @for (event of store.events(); track event.id) {
                             <article class="event-card">
+                                <div
+                                    class="event-card__visual event-card__visual--{{
+                                        getEventVisual(event)
+                                    }}"
+                                    aria-hidden="true"
+                                >
+                                    <span class="event-card__ball"></span>
+                                    <span class="event-card__card"></span>
+                                    <span
+                                        class="event-card__card-shadow"
+                                    ></span>
+                                    <span class="event-card__state"></span>
+                                </div>
+
                                 <div class="event-card__time">
                                     {{ getEventTime(event) }}
                                 </div>
@@ -37,9 +84,7 @@
                                         {{ getEventTitle(event) }}
                                     </h3>
 
-                                    @if (
-                                        event.team
-                                    ) {
+                                    @if (event.team) {
                                         <p class="event-card__team">
                                             {{
                                                 event.team.shortName ||
@@ -84,6 +129,13 @@
 
         @if (activeTab() === "rosters") {
             <section class="match-protocol__section">
+                <header class="match-protocol__section-header">
+                    <div>
+                        <p>Команды</p>
+                        <h2>Составы на матч</h2>
+                    </div>
+                </header>
+
                 @if (store.hasRosters()) {
                     <div class="rosters">
                         <article class="roster">

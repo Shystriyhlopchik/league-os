@@ -38,15 +38,15 @@
 }
 
 .tab-group__item:hover {
-    color: #2dcc70;
+    color: var(--tab-accent-color, #2dcc70);
 }
 
 .tab-group__item--active {
-    color: #2dcc70;
+    color: var(--tab-accent-color, #2dcc70);
 }
 
 .tab-group__item--active::after {
-    background: #2dcc70;
+    background: var(--tab-accent-color, #2dcc70);
 }
 
 .tab-group__item--disabled {

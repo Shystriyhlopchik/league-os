@@ -1,13 +1,22 @@
-import {Component, computed, inject, signal} from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { TabGroupItem } from '../../../../shared/ui/tab-group/model/tab-group.types';
 import { MatchViewProtocolStore } from '../../model/match-view-protocol.store';
-import {ActivatedRoute, RouterLink} from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatchProtocolEvent } from '../../../../entities/match/model/match-protocol.types';
-import {TabGroupComponent} from '../../../../shared/ui/tab-group/tab-group.component';
-import {MatchScoreboardComponent} from '../../../../entities/match/ui/match-scoreboard/match-scoreboard.component';
-import {mapProtocolMatchToScoreboardVm} from '../../../../entities/match/model/match-scoreboard.mapper';
+import { TabGroupComponent } from '../../../../shared/ui/tab-group/tab-group.component';
+import { MatchScoreboardComponent } from '../../../../entities/match/ui/match-scoreboard/match-scoreboard.component';
+import { mapProtocolMatchToScoreboardVm } from '../../../../entities/match/model/match-scoreboard.mapper';
 
 type MatchProtocolTab = 'events' | 'rosters';
+type MatchEventVisual =
+    | 'ball'
+    | 'yellow-card'
+    | 'red-card'
+    | 'double-card'
+    | 'start'
+    | 'pause'
+    | 'finish'
+    | 'default';
 
 @Component({
     selector: 'app-match-view-protocol-page',
@@ -69,6 +78,9 @@ export class MatchViewProtocolPageComponent {
             case 'red_card':
                 return 'Красная карточка';
 
+            case 'red_ball':
+                return 'Красный мяч';
+
             case 'second_yellow':
             case 'second_yellow_card':
                 return 'Вторая жёлтая карточка';
@@ -104,6 +116,48 @@ export class MatchViewProtocolPageComponent {
         return [player.lastName, player.firstName, player.middleName]
             .filter(Boolean)
             .join(' ');
+    }
+
+    getEventVisual(event: MatchProtocolEvent): MatchEventVisual {
+        switch (event.type) {
+            case 'goal':
+            case 'own_goal':
+            case 'penalty':
+            case 'goal_cancelled':
+            case 'red_ball':
+                return 'ball';
+            case 'yellow_card':
+                return 'yellow-card';
+            case 'red_card':
+                return 'red-card';
+            case 'second_yellow':
+            case 'second_yellow_card':
+                return 'double-card';
+            case 'match_started':
+                return 'start';
+            case 'match_paused':
+                return 'pause';
+            case 'half_finished':
+            case 'match_finished':
+                return 'finish';
+            default:
+                return 'default';
+        }
+    }
+
+    getMatchStatusLabel(): string {
+        switch (this.store.match()?.status) {
+            case 'scheduled':
+                return 'Матч запланирован';
+            case 'live':
+                return 'Матч идёт';
+            case 'finished':
+                return 'Матч завершён';
+            case 'cancelled':
+                return 'Матч отменён';
+            default:
+                return '';
+        }
     }
 
     getEventTime(event: MatchProtocolEvent): string {
