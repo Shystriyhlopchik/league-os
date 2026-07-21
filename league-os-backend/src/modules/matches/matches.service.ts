@@ -243,6 +243,7 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
     }
 
     const rosters = await this.getProtocolRosters(match);
+    const activeEvents = match.events.filter((event) => !event.isCancelled);
 
     return {
       match: {
@@ -329,7 +330,7 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
         role: official.role,
       })),
 
-      events: match.events.map((event) => ({
+      events: activeEvents.map((event) => ({
         id: event.id,
         type: event.eventType,
 
