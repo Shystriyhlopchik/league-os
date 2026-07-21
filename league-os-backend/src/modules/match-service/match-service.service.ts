@@ -11,8 +11,6 @@ import {
   DataSource,
   DeepPartial,
   EntityManager,
-  LessThan,
-  MoreThanOrEqual,
   Repository,
   Brackets,
 } from 'typeorm';
@@ -59,6 +57,10 @@ import {
   PlayerSuspensionsService,
 } from '../player-suspensions/player-suspensions.service';
 import { PlayerSuspensionReason } from '../player-suspensions/enums/player-suspension-reason.enum';
+import {
+  matchDateTimeAtOrAfterNow,
+  matchDateTimeBeforeNow,
+} from '../matches/helper/matchDatetimeNow';
 
 type SyncEventResult =
   | {
@@ -117,12 +119,10 @@ export class MatchServiceService {
   ) {}
 
   async findAvailableMatches(): Promise<MatchServiceMatchDto[]> {
-    const now = new Date();
-
     const overdueMatches = await this.matchRepository.find({
       where: {
         status: MatchStatus.SCHEDULED,
-        matchDatetime: LessThan(now),
+        matchDatetime: matchDateTimeBeforeNow(),
       },
       relations: {
         homeTeam: true,
@@ -139,7 +139,7 @@ export class MatchServiceService {
     const nearestMatch = await this.matchRepository.findOne({
       where: {
         status: MatchStatus.SCHEDULED,
-        matchDatetime: MoreThanOrEqual(now),
+        matchDatetime: matchDateTimeAtOrAfterNow(),
       },
       order: {
         matchDatetime: 'ASC',
@@ -187,7 +187,7 @@ export class MatchServiceService {
     const matches = await this.matchRepository.find({
       where: {
         status: MatchStatus.SCHEDULED,
-        matchDatetime: LessThan(new Date()),
+        matchDatetime: matchDateTimeBeforeNow(),
       },
       relations: {
         homeTeam: true,
