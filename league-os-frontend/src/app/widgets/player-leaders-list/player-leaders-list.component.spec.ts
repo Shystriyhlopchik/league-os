@@ -79,4 +79,28 @@ describe('PlayerLeadersListComponent', () => {
             ).leaders()[0].value,
         ).toBe(1.5);
     });
+
+    it('does not render a card when a leaderboard is empty', () => {
+        getLeaderboards.and.returnValue(
+            of({
+                tournamentId: 12,
+                groupId: 4,
+                leaderboards: {
+                    ...leaderboards,
+                    redCards: [],
+                },
+            }),
+        );
+        fixture.componentRef.setInput('metrics', ['goals', 'redCards']);
+        fixture.detectChanges();
+
+        const cards = fixture.debugElement.queryAll(
+            By.directive(PlayerLeadersCardComponent),
+        );
+
+        expect(cards.length).toBe(1);
+        expect(
+            (cards[0].componentInstance as PlayerLeadersCardComponent).metric(),
+        ).toBe('goals');
+    });
 });

@@ -1,10 +1,12 @@
 <section class="player-leaders-list" aria-label="Лидеры турнира">
     @for (metric of metrics(); track $index) {
-        <app-player-leaders-card
-            [metric]="metric"
-            [leaders]="leaderboards()?.[metric] || []"
-            [isLoading]="isLoading()"
-            [hasError]="hasError()"
-        />
+        @if (isLoading() || (leaderboards()?.[metric]?.length ?? 0) > 0) {
+            <app-player-leaders-card
+                [metric]="metric"
+                [leaders]="leaderboards()?.[metric] || []"
+                [isLoading]="isLoading()"
+                [hasError]="hasError()"
+            />
+        }
     }
 </section>
