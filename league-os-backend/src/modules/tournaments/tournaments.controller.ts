@@ -580,9 +580,7 @@ export class TournamentsController {
   }
 
   @Get(':tournamentId/teams')
-  getPublicTeams(
-    @Param('tournamentId', ParseIntPipe) tournamentId: number,
-  ) {
+  getPublicTeams(@Param('tournamentId', ParseIntPipe) tournamentId: number) {
     return this.tournamentsService.findPublicTeams(tournamentId);
   }
 
@@ -597,5 +595,13 @@ export class TournamentsController {
     @Query('groupId', new ParseIntPipe({ optional: true })) groupId?: number,
   ) {
     return this.tournamentsService.getStatsSummary(tournamentId, groupId);
+  }
+
+  @Get(':tournamentId/player-leaders')
+  getPlayerLeaders(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Query('groupId', new ParseIntPipe({ optional: true })) groupId?: number,
+  ) {
+    return this.tournamentsService.getPlayerLeaders(tournamentId, groupId);
   }
 }

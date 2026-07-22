@@ -32,6 +32,7 @@ import { KnockoutBracketEngine } from '../tournament-knockout-brackets/knockout-
 import { KnockoutBracketService } from '../tournament-knockout-brackets/knockout-bracket.service';
 import { PlayerSuspensionsModule } from '../player-suspensions/player-suspensions.module';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { MatchRosterPlayerEntity } from '../match-rosters/entities/match-roster-player.entity';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
       QualificationSnapshotEntryEntity,
       KnockoutBracketSnapshotEntity,
       KnockoutBracketPlanEntity,
+      MatchRosterPlayerEntity,
     ]),
   ],
   controllers: [TournamentsController],

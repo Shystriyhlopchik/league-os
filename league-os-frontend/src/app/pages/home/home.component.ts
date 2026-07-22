@@ -12,6 +12,11 @@ import { SelectComponent } from '../../shared/ui/select/select.component';
 import { SelectOption } from '../../shared/ui/select/select-option.model';
 import { StandingsApi } from '../../entities/standings/api/standings.api';
 import { SponsorsComponent } from '../../widgets/sponsors/sponsors.component';
+import { PlayerLeadersListComponent } from '../../widgets/player-leaders-list/player-leaders-list.component';
+import {
+    PLAYER_LEADERBOARD_METRICS,
+    PlayerLeaderboardMetric,
+} from '../../entities/tournaments/model/player-leader.types';
 
 @Component({
     selector: 'app-home',
@@ -24,6 +29,7 @@ import { SponsorsComponent } from '../../widgets/sponsors/sponsors.component';
         TeamsMapComponent,
         SelectComponent,
         SponsorsComponent,
+        PlayerLeadersListComponent,
     ],
     templateUrl: './home.component.html',
     styleUrl: './home.component.scss',
@@ -65,6 +71,8 @@ export class HomeComponent {
     });
 
     readonly selectedGroupId = signal<number | null>(null);
+    readonly playerLeaderMetrics: readonly PlayerLeaderboardMetric[] =
+        PLAYER_LEADERBOARD_METRICS;
     readonly statsTitle = computed(() => {
         const group = this.groups().find(
             (option) => option.value === this.selectedGroupId(),

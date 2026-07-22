@@ -30,6 +30,11 @@
                     [tournamentId]="tournament.id"
                     [groupId]="selectedGroupId()"
                 />
+                <app-player-leaders-list
+                    [tournamentId]="tournament.id"
+                    [groupId]="selectedGroupId()"
+                    [metrics]="playerLeaderMetrics"
+                />
             }
         </div>
         <h2>Наша география</h2>

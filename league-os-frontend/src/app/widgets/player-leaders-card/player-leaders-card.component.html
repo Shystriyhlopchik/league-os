@@ -1,0 +1,68 @@
+<section class="leaders-card" [attr.aria-label]="'Тройка лидеров: ' + title()">
+    <app-section-title>{{ title() }}</app-section-title>
+
+    @if (isLoading()) {
+        <div
+            class="leaders-card__hero leaders-card__hero--loading"
+            aria-label="Загрузка лидеров"
+        ></div>
+        <div class="leaders-card__skeleton-row"></div>
+        <div class="leaders-card__skeleton-row"></div>
+        <div class="leaders-card__skeleton-row"></div>
+    } @else if (hasError()) {
+        <div class="leaders-card__state">Не удалось загрузить лидеров</div>
+    } @else {
+        @if (leader(); as firstLeader) {
+            <div class="leaders-card__hero">
+                <img
+                    [src]="
+                        firstLeader.player.photoUrl ||
+                        '/images/organization-team/not-photo.png'
+                    "
+                    [alt]="firstLeader.player.name"
+                    (error)="
+                        useFallbackImage(
+                            $event,
+                            '/images/organization-team/not-photo.png'
+                        )
+                    "
+                />
+            </div>
+
+            <ol class="leaders-card__list">
+                @for (item of leaders(); track item.player.id) {
+                    <li
+                        class="leaders-card__row"
+                        [class.leaders-card__row--winner]="item.position === 1"
+                    >
+                        <span class="leaders-card__position">{{
+                            item.position
+                        }}</span>
+                        <img
+                            class="leaders-card__team-logo"
+                            [src]="
+                                item.team.logoUrl ||
+                                '/images/teams/default-team-logo.png'
+                            "
+                            [alt]="item.team.name"
+                            (error)="
+                                useFallbackImage(
+                                    $event,
+                                    '/images/teams/default-team-logo.png'
+                                )
+                            "
+                        />
+                        <span class="leaders-card__name">{{
+                            item.player.name
+                        }}</span>
+                        <strong class="leaders-card__value">{{
+                            item.value
+                        }}</strong>
+                    </li>
+                }
+            </ol>
+        } @else {
+            <div class="leaders-card__state">Статистика пока не появилась</div>
+        }
+    }
+</section>

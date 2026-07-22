@@ -15,6 +15,24 @@ import { TournamentStatsSummaryDto } from './dto/tournament-stats-summary.dto';
 import { TournamentEntity } from './entities/tournaments.entity';
 import { TournamentTeamEntity } from '../tournament-teams/entities/tournament-teams.entity';
 import { TournamentTeamStatus } from '../tournament-teams/enums/tournament-team-status.enum';
+import { MatchRosterPlayerEntity } from '../match-rosters/entities/match-roster-player.entity';
+import { PlayerEntity } from '../players/entities/player.entity';
+import { TeamEntity } from '../teams/entities/team.entity';
+import {
+  PlayerLeaderboardEntryDto,
+  PlayerLeaderboardMetric,
+  TournamentPlayerLeadersDto,
+} from './dto/tournament-player-leaders.dto';
+
+interface PlayerLeaderboardAccumulator {
+  player: PlayerLeaderboardEntryDto['player'];
+  team: PlayerLeaderboardEntryDto['team'];
+  goals: number;
+  assists: number;
+  yellowCards: number;
+  redCards: number;
+  goalMatchIds: Set<number>;
+}
 
 @Injectable()
 export class TournamentsService extends BaseCrudService<TournamentEntity> {
@@ -30,6 +48,9 @@ export class TournamentsService extends BaseCrudService<TournamentEntity> {
 
     @InjectRepository(TournamentTeamEntity)
     private readonly tournamentTeamsRepository: Repository<TournamentTeamEntity>,
+
+    @InjectRepository(MatchRosterPlayerEntity)
+    private readonly matchRosterPlayersRepository: Repository<MatchRosterPlayerEntity>,
   ) {
     super(tournamentsRepository, 'Турнир');
   }
@@ -270,6 +291,218 @@ export class TournamentsService extends BaseCrudService<TournamentEntity> {
       goals,
       yellowCards,
       redCards,
+    };
+  }
+
+  async getPlayerLeaders(
+    tournamentId: number,
+    groupId?: number,
+  ): Promise<TournamentPlayerLeadersDto> {
+    if (groupId !== undefined && groupId < 1) {
+      throw new BadRequestException('groupId must be a positive integer');
+    }
+
+    const tournamentExists = await this.tournamentsRepository.existsBy({
+      id: tournamentId,
+    });
+    if (!tournamentExists) {
+      throw new NotFoundException('Tournament not found');
+    }
+
+    const matches = await this.matchesRepository.find({
+      where: {
+        tournamentId,
+        status: MatchStatus.FINISHED,
+        ...(groupId ? { groupId } : {}),
+      },
+      select: { id: true },
+    });
+    const matchIds = matches.map((match) => match.id);
+
+    if (matchIds.length === 0) {
+      return this.emptyPlayerLeaders(tournamentId, groupId);
+    }
+
+    const [events, rosterPlayers] = await Promise.all([
+      this.matchEventsRepository.find({
+        where: { matchId: In(matchIds), isCancelled: false },
+        relations: { player: true, assistPlayer: true, team: true },
+        order: { id: 'ASC' },
+      }),
+      this.matchRosterPlayersRepository.find({
+        where: {
+          matchRoster: { matchId: In(matchIds) },
+          wasAllowed: true,
+        },
+        relations: { matchRoster: true },
+      }),
+    ]);
+
+    const accumulators = new Map<number, PlayerLeaderboardAccumulator>();
+    const appearances = new Map<number, Set<number>>();
+
+    for (const rosterPlayer of rosterPlayers) {
+      const playerAppearances =
+        appearances.get(rosterPlayer.playerId) ?? new Set<number>();
+      playerAppearances.add(rosterPlayer.matchRoster.matchId);
+      appearances.set(rosterPlayer.playerId, playerAppearances);
+    }
+
+    const goalEventTypes = new Set<MatchEventType>([
+      MatchEventType.GOAL,
+      MatchEventType.PENALTY_GOAL,
+    ]);
+    const yellowCardEventTypes = new Set<MatchEventType>([
+      MatchEventType.YELLOW_CARD,
+      MatchEventType.SECOND_YELLOW_CARD,
+    ]);
+
+    for (const event of events) {
+      if (event.player && goalEventTypes.has(event.eventType)) {
+        const accumulator = this.getOrCreateLeaderboardAccumulator(
+          accumulators,
+          event.player,
+          event.team,
+        );
+        accumulator.goals += event.goalValue;
+        accumulator.goalMatchIds.add(event.matchId);
+      }
+
+      if (event.assistPlayer && goalEventTypes.has(event.eventType)) {
+        const accumulator = this.getOrCreateLeaderboardAccumulator(
+          accumulators,
+          event.assistPlayer,
+          event.team,
+        );
+        accumulator.assists += 1;
+      }
+
+      if (event.player && yellowCardEventTypes.has(event.eventType)) {
+        this.getOrCreateLeaderboardAccumulator(
+          accumulators,
+          event.player,
+          event.team,
+        ).yellowCards += 1;
+      }
+
+      if (event.player && event.eventType === MatchEventType.RED_CARD) {
+        this.getOrCreateLeaderboardAccumulator(
+          accumulators,
+          event.player,
+          event.team,
+        ).redCards += 1;
+      }
+    }
+
+    const values = [...accumulators.values()];
+    const goalsPerGame = (item: PlayerLeaderboardAccumulator): number => {
+      const playedMatchIds = new Set([
+        ...(appearances.get(item.player.id) ?? []),
+        ...item.goalMatchIds,
+      ]);
+      return playedMatchIds.size
+        ? Number((item.goals / playedMatchIds.size).toFixed(2))
+        : 0;
+    };
+
+    return {
+      tournamentId,
+      ...(groupId ? { groupId } : {}),
+      leaderboards: {
+        goals: this.buildLeaderboard(values, (item) => item.goals),
+        assists: this.buildLeaderboard(values, (item) => item.assists),
+        yellowCards: this.buildLeaderboard(values, (item) => item.yellowCards),
+        redCards: this.buildLeaderboard(values, (item) => item.redCards),
+        goalContributions: this.buildLeaderboard(
+          values,
+          (item) => item.goals + item.assists,
+        ),
+        goalsPerGame: this.buildLeaderboard(values, goalsPerGame),
+      },
+    };
+  }
+
+  private getOrCreateLeaderboardAccumulator(
+    accumulators: Map<number, PlayerLeaderboardAccumulator>,
+    player: PlayerEntity,
+    team: TeamEntity,
+  ): PlayerLeaderboardAccumulator {
+    const existing = accumulators.get(player.id);
+    if (existing) {
+      // The latest event determines the displayed team after a transfer.
+      existing.team = this.toLeaderboardTeam(team);
+      return existing;
+    }
+
+    const accumulator: PlayerLeaderboardAccumulator = {
+      player: {
+        id: player.id,
+        name: [player.firstName, player.lastName].filter(Boolean).join(' '),
+        photoUrl: player.photoUrl ?? null,
+      },
+      team: this.toLeaderboardTeam(team),
+      goals: 0,
+      assists: 0,
+      yellowCards: 0,
+      redCards: 0,
+      goalMatchIds: new Set<number>(),
+    };
+    accumulators.set(player.id, accumulator);
+    return accumulator;
+  }
+
+  private toLeaderboardTeam(
+    team: TeamEntity,
+  ): PlayerLeaderboardEntryDto['team'] {
+    return {
+      id: team.id,
+      name: team.name,
+      logoUrl: team.logoUrl ?? null,
+    };
+  }
+
+  private buildLeaderboard(
+    items: PlayerLeaderboardAccumulator[],
+    getValue: (item: PlayerLeaderboardAccumulator) => number,
+  ): PlayerLeaderboardEntryDto[] {
+    return items
+      .map((item) => ({ item, value: getValue(item) }))
+      .filter(({ value }) => value > 0)
+      .sort(
+        (left, right) =>
+          right.value - left.value ||
+          left.item.player.name.localeCompare(right.item.player.name, 'ru') ||
+          left.item.player.id - right.item.player.id,
+      )
+      .slice(0, 3)
+      .map(({ item, value }, index) => ({
+        position: index + 1,
+        value,
+        player: item.player,
+        team: item.team,
+      }));
+  }
+
+  private emptyPlayerLeaders(
+    tournamentId: number,
+    groupId?: number,
+  ): TournamentPlayerLeadersDto {
+    const emptyLeaderboards = (): Record<
+      PlayerLeaderboardMetric,
+      PlayerLeaderboardEntryDto[]
+    > => ({
+      goals: [],
+      assists: [],
+      yellowCards: [],
+      redCards: [],
+      goalContributions: [],
+      goalsPerGame: [],
+    });
+
+    return {
+      tournamentId,
+      ...(groupId ? { groupId } : {}),
+      leaderboards: emptyLeaderboards(),
     };
   }
 
