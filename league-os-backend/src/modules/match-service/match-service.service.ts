@@ -11,6 +11,7 @@ import {
   DataSource,
   DeepPartial,
   EntityManager,
+  In,
   Repository,
   Brackets,
 } from 'typeorm';
@@ -218,6 +219,7 @@ export class MatchServiceService {
   ): Promise<MatchEventEntity> {
     const allowedTypes = new Set<MatchEventType>([
       MatchEventType.GOAL,
+      MatchEventType.OWN_GOAL,
       MatchEventType.YELLOW_CARD,
       MatchEventType.SECOND_YELLOW_CARD,
       MatchEventType.RED_CARD,
@@ -433,19 +435,30 @@ export class MatchServiceService {
         }
       }
 
-      const goals = await eventRepository.find({
+      const scoringEvents = await eventRepository.find({
         where: {
           matchId,
-          eventType: MatchEventType.GOAL,
+          eventType: In([
+            MatchEventType.GOAL,
+            MatchEventType.OWN_GOAL,
+          ]),
           isCancelled: false,
         },
       });
 
-      const homeScore = goals.filter(
-        (event) => event.teamId === match.homeTeamId,
+      const homeScore = scoringEvents.filter(
+        (event) =>
+          (event.eventType === MatchEventType.GOAL &&
+            event.teamId === match.homeTeamId) ||
+          (event.eventType === MatchEventType.OWN_GOAL &&
+            event.teamId === match.awayTeamId),
       ).length;
-      const awayScore = goals.filter(
-        (event) => event.teamId === match.awayTeamId,
+      const awayScore = scoringEvents.filter(
+        (event) =>
+          (event.eventType === MatchEventType.GOAL &&
+            event.teamId === match.awayTeamId) ||
+          (event.eventType === MatchEventType.OWN_GOAL &&
+            event.teamId === match.homeTeamId),
       ).length;
       await this.applyOfficialResult(
         match,

@@ -7,6 +7,7 @@ import { HttpClient } from '@angular/common/http';
 
 export type ManualMatchEventType =
     | 'goal'
+    | 'own_goal'
     | 'yellow_card'
     | 'red_card'
     | 'red_ball';

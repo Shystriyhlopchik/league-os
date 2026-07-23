@@ -44,6 +44,7 @@ export class MatchResultTeamsComponent {
 
     readonly eventLabels: Record<ManualMatchEventType, string> = {
         goal: 'Гол',
+        own_goal: 'Автогол',
         yellow_card: 'Жёлтая карточка',
         red_card: 'Красная карточка',
         red_ball: 'Красный мяч',
@@ -159,18 +160,30 @@ export class MatchResultTeamsComponent {
     get homeScore(): number {
         if (this.isProtocolSigned)
             return this.store.data()?.match.homeScore ?? 0;
-        const teamId = this.store.data()?.match.homeTeam.id;
+        const match = this.store.data()?.match;
+        if (!match) return 0;
+
         return this.events.filter(
-            (event) => event.eventType === 'goal' && event.teamId === teamId,
+            (event) =>
+                (event.eventType === 'goal' &&
+                    event.teamId === match.homeTeam.id) ||
+                (event.eventType === 'own_goal' &&
+                    event.teamId === match.awayTeam.id),
         ).length;
     }
 
     get awayScore(): number {
         if (this.isProtocolSigned)
             return this.store.data()?.match.awayScore ?? 0;
-        const teamId = this.store.data()?.match.awayTeam.id;
+        const match = this.store.data()?.match;
+        if (!match) return 0;
+
         return this.events.filter(
-            (event) => event.eventType === 'goal' && event.teamId === teamId,
+            (event) =>
+                (event.eventType === 'goal' &&
+                    event.teamId === match.awayTeam.id) ||
+                (event.eventType === 'own_goal' &&
+                    event.teamId === match.homeTeam.id),
         ).length;
     }
 
