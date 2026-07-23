@@ -35,6 +35,11 @@ export class MatchResultTeamsComponent {
     isSavingEvent = false;
     deletingEventId: number | null = null;
     isSigningProtocol = false;
+    isTechnicalLossFormVisible = false;
+    selectedTechnicalLoserTeamId: number | null = null;
+    technicalResultReason = '';
+    isSavingTechnicalLoss = false;
+    technicalResultError = '';
     eventError = '';
 
     readonly eventLabels: Record<ManualMatchEventType, string> = {
@@ -87,7 +92,7 @@ export class MatchResultTeamsComponent {
                 playerId: this.selectedPlayerId ?? undefined,
                 assistPlayerId:
                     this.selectedEventType === 'goal'
-                        ? this.selectedAssistPlayerId ?? undefined
+                        ? (this.selectedAssistPlayerId ?? undefined)
                         : undefined,
             })
             .subscribe({
@@ -119,7 +124,9 @@ export class MatchResultTeamsComponent {
         this.eventError = '';
         this.rosterApi.cancelManualEvent(this.matchId, event.id).subscribe({
             next: () => {
-                this.events = this.events.filter((item) => item.id !== event.id);
+                this.events = this.events.filter(
+                    (item) => item.id !== event.id,
+                );
                 this.deletingEventId = null;
             },
             error: (error) => {
@@ -150,7 +157,8 @@ export class MatchResultTeamsComponent {
     }
 
     get homeScore(): number {
-        if (this.isProtocolSigned) return this.store.data()?.match.homeScore ?? 0;
+        if (this.isProtocolSigned)
+            return this.store.data()?.match.homeScore ?? 0;
         const teamId = this.store.data()?.match.homeTeam.id;
         return this.events.filter(
             (event) => event.eventType === 'goal' && event.teamId === teamId,
@@ -158,7 +166,8 @@ export class MatchResultTeamsComponent {
     }
 
     get awayScore(): number {
-        if (this.isProtocolSigned) return this.store.data()?.match.awayScore ?? 0;
+        if (this.isProtocolSigned)
+            return this.store.data()?.match.awayScore ?? 0;
         const teamId = this.store.data()?.match.awayTeam.id;
         return this.events.filter(
             (event) => event.eventType === 'goal' && event.teamId === teamId,
@@ -169,7 +178,9 @@ export class MatchResultTeamsComponent {
         if (
             this.isProtocolSigned ||
             this.isSigningProtocol ||
-            !confirm('Подписать протокол? После этого редактирование будет невозможно.')
+            !confirm(
+                'Подписать протокол? После этого редактирование будет невозможно.',
+            )
         ) {
             return;
         }
@@ -189,11 +200,92 @@ export class MatchResultTeamsComponent {
         });
     }
 
+    toggleTechnicalLossForm(): void {
+        if (this.isProtocolSigned || this.isSavingTechnicalLoss) return;
+
+        this.isTechnicalLossFormVisible = !this.isTechnicalLossFormVisible;
+        this.technicalResultError = '';
+        if (!this.isTechnicalLossFormVisible) {
+            this.resetTechnicalLossForm();
+        }
+    }
+
+    assignTechnicalLoss(): void {
+        const match = this.store.data()?.match;
+        const reason = this.technicalResultReason.trim();
+        const loserTeamId = this.selectedTechnicalLoserTeamId;
+
+        if (!match || this.isProtocolSigned || this.isSavingTechnicalLoss) {
+            return;
+        }
+
+        if (
+            loserTeamId !== match.homeTeam.id &&
+            loserTeamId !== match.awayTeam.id
+        ) {
+            this.technicalResultError =
+                'Выберите команду, которой засчитывается техническое поражение';
+            return;
+        }
+
+        if (!reason) {
+            this.technicalResultError =
+                'Укажите причину технического поражения';
+            return;
+        }
+
+        if (reason.length > 1000) {
+            this.technicalResultError =
+                'Причина не должна превышать 1000 символов';
+            return;
+        }
+
+        const isHomeTeamLoser = loserTeamId === match.homeTeam.id;
+        const winnerTeamId = isHomeTeamLoser
+            ? match.awayTeam.id
+            : match.homeTeam.id;
+        const loserTeamName = isHomeTeamLoser
+            ? match.homeTeam.name
+            : match.awayTeam.name;
+
+        if (
+            !confirm(
+                `Засчитать команде «${loserTeamName}» техническое поражение? Матч завершится со счётом ${isHomeTeamLoser ? '0:3' : '3:0'}, редактирование будет недоступно.`,
+            )
+        ) {
+            return;
+        }
+
+        this.isSavingTechnicalLoss = true;
+        this.technicalResultError = '';
+        this.rosterApi
+            .signTechnicalLoss(this.matchId, {
+                resolutionType: 'technical',
+                winnerTeamId,
+                technicalResultReason: reason,
+            })
+            .subscribe({
+                next: () => {
+                    this.isSavingTechnicalLoss = false;
+                    this.resetTechnicalLossForm();
+                    this.store.load(this.matchId);
+                },
+                error: (error) => {
+                    this.technicalResultError =
+                        error?.error?.message ||
+                        'Не удалось сохранить техническое поражение';
+                    this.isSavingTechnicalLoss = false;
+                },
+            });
+    }
+
     getPlayerNameById(playerId?: number): string {
         if (!playerId) return '';
         const data = this.store.data();
-        const player = [...(data?.homeRoster ?? []), ...(data?.awayRoster ?? [])]
-            .find((item) => item.id === playerId);
+        const player = [
+            ...(data?.homeRoster ?? []),
+            ...(data?.awayRoster ?? []),
+        ].find((item) => item.id === playerId);
         return player
             ? [player.lastName, player.firstName, player.middleName]
                   .filter(Boolean)
@@ -222,6 +314,13 @@ export class MatchResultTeamsComponent {
         this.selectedTeamId = null;
         this.selectedPlayerId = null;
         this.selectedAssistPlayerId = null;
+    }
+
+    private resetTechnicalLossForm(): void {
+        this.isTechnicalLossFormVisible = false;
+        this.selectedTechnicalLoserTeamId = null;
+        this.technicalResultReason = '';
+        this.technicalResultError = '';
     }
 
     private loadEvents(): void {

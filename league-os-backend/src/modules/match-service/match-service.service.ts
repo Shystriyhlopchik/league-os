@@ -61,6 +61,7 @@ import {
   matchDateTimeAtOrAfterNow,
   matchDateTimeBeforeNow,
 } from '../matches/helper/matchDatetimeNow';
+import { formatLocalDateTime } from '../matches/helper/formatLocalDateTime';
 
 type SyncEventResult =
   | {
@@ -349,6 +350,7 @@ export class MatchServiceService {
     awayScore: number;
     winnerTeamId?: number;
     resolutionType?: MatchResolutionType;
+    technicalResultReason?: string;
   }> {
     let tournamentId: number | undefined;
     const result = await this.dataSource.transaction(async (manager) => {
@@ -364,35 +366,71 @@ export class MatchServiceService {
         throw new BadRequestException('Протокол уже подписан');
       }
 
-      const rosterRepository = manager.getRepository(MatchRosterEntity);
-      const rosterPlayerRepository = manager.getRepository(
-        MatchRosterPlayerEntity,
-      );
-      const rosters = await rosterRepository.find({ where: { matchId } });
-      const rosterByTeamId = new Map(
-        rosters.map((roster) => [roster.teamId, roster]),
-      );
+      const isTechnicalResult =
+        dto.resolutionType === MatchResolutionType.TECHNICAL;
 
-      for (const teamId of [match.homeTeamId, match.awayTeamId]) {
-        const roster = rosterByTeamId.get(teamId);
-        if (!roster?.isSubmitted) {
+      if (isTechnicalResult) {
+        const reason = dto.technicalResultReason?.trim();
+        if (!reason) {
           throw new BadRequestException(
-            'Перед подписанием протокола сформируйте заявки обеих команд',
+            'Укажите причину технического поражения',
+          );
+        }
+        if (reason.length > 1000) {
+          throw new BadRequestException(
+            'Причина не должна превышать 1000 символов',
+          );
+        }
+        if (
+          dto.winnerTeamId !== match.homeTeamId &&
+          dto.winnerTeamId !== match.awayTeamId
+        ) {
+          throw new BadRequestException(
+            'Победителем должна быть одна из команд матча',
           );
         }
 
-        const playersCount = await rosterPlayerRepository.count({
-          where: { matchRosterId: roster.id },
-        });
-        if (playersCount < 5) {
-          throw new BadRequestException(
-            'В заявке каждой команды должно быть минимум 5 игроков',
-          );
-        }
+        dto = {
+          ...dto,
+          regularTime:
+            dto.winnerTeamId === match.homeTeamId
+              ? { home: 3, away: 0 }
+              : { home: 0, away: 3 },
+          technicalResultReason: reason,
+        };
+      }
 
-        roster.isApproved = true;
-        roster.approvedAt ??= new Date();
-        await rosterRepository.save(roster);
+      if (!isTechnicalResult) {
+        const rosterRepository = manager.getRepository(MatchRosterEntity);
+        const rosterPlayerRepository = manager.getRepository(
+          MatchRosterPlayerEntity,
+        );
+        const rosters = await rosterRepository.find({ where: { matchId } });
+        const rosterByTeamId = new Map(
+          rosters.map((roster) => [roster.teamId, roster]),
+        );
+
+        for (const teamId of [match.homeTeamId, match.awayTeamId]) {
+          const roster = rosterByTeamId.get(teamId);
+          if (!roster?.isSubmitted) {
+            throw new BadRequestException(
+              'Перед подписанием протокола сформируйте заявки обеих команд',
+            );
+          }
+
+          const playersCount = await rosterPlayerRepository.count({
+            where: { matchRosterId: roster.id },
+          });
+          if (playersCount < 5) {
+            throw new BadRequestException(
+              'В заявке каждой команды должно быть минимум 5 игроков',
+            );
+          }
+
+          roster.isApproved = true;
+          roster.approvedAt ??= new Date();
+          await rosterRepository.save(roster);
+        }
       }
 
       const goals = await eventRepository.find({
@@ -425,6 +463,7 @@ export class MatchServiceService {
         awayScore: match.awayScore,
         winnerTeamId: match.winnerTeamId,
         resolutionType: match.resolutionType,
+        technicalResultReason: match.technicalResultReason,
       };
     });
     if (tournamentId) {
@@ -721,7 +760,7 @@ export class MatchServiceService {
       id: match.id,
       tournamentId: match.tournamentId,
       round: match.round,
-      matchDatetime: match.matchDatetime,
+      matchDatetime: formatLocalDateTime(match.matchDatetime) ?? undefined,
       status: match.status,
 
       homeTeam: {
@@ -880,6 +919,8 @@ export class MatchServiceService {
         status: match.status,
         homeScore: match.homeScore,
         awayScore: match.awayScore,
+        resolutionType: match.resolutionType,
+        technicalResultReason: match.technicalResultReason,
         matchDatetime: match.matchDatetime,
         venueName: match.venue?.name,
 
@@ -2560,6 +2601,10 @@ export class MatchServiceService {
     match.winnerTeamId = resolved.winnerTeamId;
     match.loserTeamId = resolved.loserTeamId;
     match.resolutionType = resolved.resolutionType;
+    match.technicalResultReason =
+      resolved.resolutionType === MatchResolutionType.TECHNICAL
+        ? dto.technicalResultReason
+        : undefined;
     match.resultOfficialAt = new Date();
     match.status = MatchStatus.FINISHED;
   }

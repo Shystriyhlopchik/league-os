@@ -169,6 +169,9 @@ export class MatchEntity extends BaseEntity {
   @Column({ name: 'result_official_at', type: 'timestamp', nullable: true })
   resultOfficialAt?: Date;
 
+  @Column({ name: 'technical_result_reason', type: 'text', nullable: true })
+  technicalResultReason?: string;
+
   @Column({ name: 'effective_rule_version_id', nullable: true })
   effectiveRuleVersionId?: number;
 

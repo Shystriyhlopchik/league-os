@@ -1,9 +1,13 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsEnum,
   IsInt,
+  IsNotEmpty,
   IsOptional,
+  IsString,
+  MaxLength,
   Min,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 
@@ -53,4 +57,15 @@ export class FinalizeMatchResultDto {
   @IsInt()
   @Min(1)
   winnerTeamId?: number;
+
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @ValidateIf(
+    (dto: FinalizeMatchResultDto) =>
+      dto.resolutionType === MatchResolutionType.TECHNICAL ||
+      dto.technicalResultReason !== undefined,
+  )
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(1000)
+  technicalResultReason?: string;
 }

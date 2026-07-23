@@ -84,6 +84,27 @@ export class TeamPlayersDetailPageComponent implements OnInit {
         });
     }
 
+    removePlayer(teamPlayer: TeamPlayer): void {
+        if (this.store.deletingPlayerId() !== null) {
+            return;
+        }
+
+        const playerName = this.getPlayerFullName(teamPlayer);
+        if (
+            !confirm(
+                `Удалить игрока «${playerName}» из состава команды? Исторические данные матчей сохранятся.`,
+            )
+        ) {
+            return;
+        }
+
+        this.store.removePlayer(this.teamId, teamPlayer.id, () => {
+            if (this.editingPlayer()?.id === teamPlayer.id) {
+                this.closeForm();
+            }
+        });
+    }
+
     closeForm(): void {
         this.isFormOpened.set(false);
         this.editingPlayer.set(null);

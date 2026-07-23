@@ -12,8 +12,10 @@ export class TeamPlayersDetailStore {
     readonly players = signal<TeamPlayer[]>([]);
     readonly isLoading = signal(false);
     readonly isCreating = signal(false);
+    readonly deletingPlayerId = signal<number | null>(null);
     readonly error = signal<string | null>(null);
     readonly createError = signal<string | null>(null);
+    readonly deleteError = signal<string | null>(null);
 
     readonly isEmpty = computed(() => {
         return !this.isLoading() && this.players().length === 0;
@@ -108,6 +110,43 @@ export class TeamPlayersDetailStore {
                 }),
                 finalize(() => {
                     this.isCreating.set(false);
+                }),
+            )
+            .subscribe();
+    }
+
+    removePlayer(
+        teamId: number,
+        teamPlayerId: number,
+        onSuccess?: () => void,
+    ): void {
+        if (this.deletingPlayerId() !== null) {
+            return;
+        }
+
+        this.deletingPlayerId.set(teamPlayerId);
+        this.deleteError.set(null);
+
+        this.teamPlayersApi
+            .remove(teamId, teamPlayerId)
+            .pipe(
+                tap(() => {
+                    this.players.update((players) =>
+                        players.filter((player) => player.id !== teamPlayerId),
+                    );
+                    onSuccess?.();
+                }),
+                catchError((error) => {
+                    const message =
+                        error?.error?.message ||
+                        'Не удалось удалить игрока из команды';
+
+                    this.deleteError.set(message);
+
+                    return EMPTY;
+                }),
+                finalize(() => {
+                    this.deletingPlayerId.set(null);
                 }),
             )
             .subscribe();

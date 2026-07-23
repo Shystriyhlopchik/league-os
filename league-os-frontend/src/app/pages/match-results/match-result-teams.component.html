@@ -12,22 +12,32 @@
     } @else {
         @if (store.data(); as data) {
             <app-info-card
-                [title]="data.match.homeTeam.name + ' — ' + data.match.awayTeam.name"
-                [label]="(data.match.matchDatetime | date: 'd MMMM, HH:mm') || ''"
+                [title]="
+                    data.match.homeTeam.name + ' — ' + data.match.awayTeam.name
+                "
+                [label]="
+                    (data.match.matchDatetime | date: 'd MMMM, HH:mm') || ''
+                "
                 [description]="data.match.venueName || 'Место не указано'"
             />
 
             @if (!isProtocolSigned) {
-            <section class="team-choice">
-                <button type="button" (click)="openTeam(data.match.homeTeam.id)">
-                    <strong>{{ data.match.homeTeam.name }}</strong>
-                    <span>Сформировать заявку</span>
-                </button>
-                <button type="button" (click)="openTeam(data.match.awayTeam.id)">
-                    <strong>{{ data.match.awayTeam.name }}</strong>
-                    <span>Сформировать заявку</span>
-                </button>
-            </section>
+                <section class="team-choice">
+                    <button
+                        type="button"
+                        (click)="openTeam(data.match.homeTeam.id)"
+                    >
+                        <strong>{{ data.match.homeTeam.name }}</strong>
+                        <span>Сформировать заявку</span>
+                    </button>
+                    <button
+                        type="button"
+                        (click)="openTeam(data.match.awayTeam.id)"
+                    >
+                        <strong>{{ data.match.awayTeam.name }}</strong>
+                        <span>Сформировать заявку</span>
+                    </button>
+                </section>
             }
 
             <section class="match-events">
@@ -38,75 +48,147 @@
                     <span>{{ data.match.awayTeam.name }}</span>
                 </div>
                 @if (isProtocolSigned) {
-                    <p class="protocol-signed">Протокол подписан. Матч завершён, редактирование недоступно.</p>
+                    <p class="protocol-signed">
+                        Протокол подписан. Матч завершён, редактирование
+                        недоступно.
+                    </p>
+                    @if (data.match.resolutionType === "technical") {
+                        <div class="technical-result-summary">
+                            <strong>Техническое поражение</strong>
+                            @if (data.match.technicalResultReason) {
+                                <p>{{ data.match.technicalResultReason }}</p>
+                            }
+                        </div>
+                    }
                 }
                 @if (!isProtocolSigned) {
-                <form class="event-form" (ngSubmit)="addEvent()">
-                    <label>
-                        <span>Минута</span>
-                        <input type="number" min="0" max="200" required [(ngModel)]="eventMinute" name="minute" />
-                    </label>
-                    <label>
-                        <span>Тайм</span>
-                        <select [(ngModel)]="selectedHalf" name="half" required>
-                            <option [ngValue]="null" disabled>Выберите тайм</option>
-                            <option [ngValue]="1">Первый тайм</option>
-                            <option [ngValue]="2">Второй тайм</option>
-                        </select>
-                    </label>
-                    <label>
-                        <span>Событие</span>
-                        <select [(ngModel)]="selectedEventType" name="eventType" (ngModelChange)="onEventTypeChange()">
-                            <option [ngValue]="null" disabled>Выберите событие</option>
-                            <option value="goal">Гол</option>
-                            <option value="yellow_card">Жёлтая карточка</option>
-                            <option value="red_card">Красная карточка</option>
-                            <option value="red_ball">Красный мяч</option>
-                        </select>
-                    </label>
-                    <label>
-                        <span>Команда</span>
-                        <select [(ngModel)]="selectedTeamId" name="teamId" required (ngModelChange)="onTeamChange()">
-                            <option [ngValue]="null" disabled>Выберите команду</option>
-                            <option [ngValue]="data.match.homeTeam.id">{{ data.match.homeTeam.name }}</option>
-                            <option [ngValue]="data.match.awayTeam.id">{{ data.match.awayTeam.name }}</option>
-                        </select>
-                    </label>
-                    @if (selectedEventType !== 'red_ball') {
+                    <form class="event-form" (ngSubmit)="addEvent()">
                         <label>
-                            <span>Автор события</span>
-                            <select [(ngModel)]="selectedPlayerId" name="playerId" required>
-                                <option [ngValue]="null" disabled>Выберите игрока</option>
-                                @for (player of selectedTeamPlayers; track player.id) {
-                                    <option [ngValue]="player.id">
-                                        {{ player.lastName }} {{ player.firstName }} {{ player.middleName || '' }}
-                                    </option>
-                                }
+                            <span>Минута</span>
+                            <input
+                                type="number"
+                                min="0"
+                                max="200"
+                                required
+                                [(ngModel)]="eventMinute"
+                                name="minute"
+                            />
+                        </label>
+                        <label>
+                            <span>Тайм</span>
+                            <select
+                                [(ngModel)]="selectedHalf"
+                                name="half"
+                                required
+                            >
+                                <option [ngValue]="null" disabled>
+                                    Выберите тайм
+                                </option>
+                                <option [ngValue]="1">Первый тайм</option>
+                                <option [ngValue]="2">Второй тайм</option>
                             </select>
                         </label>
-                    }
-                    @if (selectedEventType === 'goal') {
                         <label>
-                            <span>Ассистент</span>
-                            <select [(ngModel)]="selectedAssistPlayerId" name="assistPlayerId">
-                                <option [ngValue]="null">Без ассистента</option>
-                                @for (player of selectedTeamPlayers; track player.id) {
-                                    @if (player.id !== selectedPlayerId) {
+                            <span>Событие</span>
+                            <select
+                                [(ngModel)]="selectedEventType"
+                                name="eventType"
+                                (ngModelChange)="onEventTypeChange()"
+                            >
+                                <option [ngValue]="null" disabled>
+                                    Выберите событие
+                                </option>
+                                <option value="goal">Гол</option>
+                                <option value="yellow_card">
+                                    Жёлтая карточка
+                                </option>
+                                <option value="red_card">
+                                    Красная карточка
+                                </option>
+                                <option value="red_ball">Красный мяч</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span>Команда</span>
+                            <select
+                                [(ngModel)]="selectedTeamId"
+                                name="teamId"
+                                required
+                                (ngModelChange)="onTeamChange()"
+                            >
+                                <option [ngValue]="null" disabled>
+                                    Выберите команду
+                                </option>
+                                <option [ngValue]="data.match.homeTeam.id">
+                                    {{ data.match.homeTeam.name }}
+                                </option>
+                                <option [ngValue]="data.match.awayTeam.id">
+                                    {{ data.match.awayTeam.name }}
+                                </option>
+                            </select>
+                        </label>
+                        @if (selectedEventType !== "red_ball") {
+                            <label>
+                                <span>Автор события</span>
+                                <select
+                                    [(ngModel)]="selectedPlayerId"
+                                    name="playerId"
+                                    required
+                                >
+                                    <option [ngValue]="null" disabled>
+                                        Выберите игрока
+                                    </option>
+                                    @for (
+                                        player of selectedTeamPlayers;
+                                        track player.id
+                                    ) {
                                         <option [ngValue]="player.id">
-                                            {{ player.lastName }} {{ player.firstName }} {{ player.middleName || '' }}
+                                            {{ player.lastName }}
+                                            {{ player.firstName }}
+                                            {{ player.middleName || "" }}
                                         </option>
                                     }
-                                }
-                            </select>
-                        </label>
-                    }
-                    <button type="submit" [disabled]="isSavingEvent">
-                        {{ isSavingEvent ? 'Сохраняем...' : 'Добавить событие' }}
-                    </button>
-                </form>
+                                </select>
+                            </label>
+                        }
+                        @if (selectedEventType === "goal") {
+                            <label>
+                                <span>Ассистент</span>
+                                <select
+                                    [(ngModel)]="selectedAssistPlayerId"
+                                    name="assistPlayerId"
+                                >
+                                    <option [ngValue]="null">
+                                        Без ассистента
+                                    </option>
+                                    @for (
+                                        player of selectedTeamPlayers;
+                                        track player.id
+                                    ) {
+                                        @if (player.id !== selectedPlayerId) {
+                                            <option [ngValue]="player.id">
+                                                {{ player.lastName }}
+                                                {{ player.firstName }}
+                                                {{ player.middleName || "" }}
+                                            </option>
+                                        }
+                                    }
+                                </select>
+                            </label>
+                        }
+                        <button type="submit" [disabled]="isSavingEvent">
+                            {{
+                                isSavingEvent
+                                    ? "Сохраняем..."
+                                    : "Добавить событие"
+                            }}
+                        </button>
+                    </form>
                 }
 
-                @if (eventError) { <p class="event-error">{{ eventError }}</p> }
+                @if (eventError) {
+                    <p class="event-error">{{ eventError }}</p>
+                }
 
                 <div class="event-list">
                     @for (event of events; track event.id) {
@@ -114,12 +196,16 @@
                             <strong>{{ event.minute }}′</strong>
                             <span>{{ eventLabels[event.eventType] }}</span>
                             <small>
-                                {{ event.half }} тайм · {{ getTeamName(event.teamId) }}
+                                {{ event.half }} тайм ·
+                                {{ getTeamName(event.teamId) }}
                                 @if (event.playerId) {
                                     · {{ getPlayerNameById(event.playerId) }}
                                 }
                                 @if (event.assistPlayerId) {
-                                    · ассист {{ getPlayerNameById(event.assistPlayerId) }}
+                                    · ассист
+                                    {{
+                                        getPlayerNameById(event.assistPlayerId)
+                                    }}
                                 }
                             </small>
                             @if (!isProtocolSigned) {
@@ -129,7 +215,11 @@
                                     [disabled]="deletingEventId !== null"
                                     (click)="deleteEvent(event)"
                                 >
-                                    {{ deletingEventId === event.id ? 'Удаляем...' : 'Удалить' }}
+                                    {{
+                                        deletingEventId === event.id
+                                            ? "Удаляем..."
+                                            : "Удалить"
+                                    }}
                                 </button>
                             }
                         </article>
@@ -139,14 +229,104 @@
                 </div>
 
                 @if (!isProtocolSigned) {
-                    <button
-                        class="sign-protocol-button"
-                        type="button"
-                        [disabled]="isSigningProtocol || isSavingEvent"
-                        (click)="signProtocol()"
-                    >
-                        {{ isSigningProtocol ? 'Подписываем...' : 'Подписать протокол' }}
-                    </button>
+                    <div class="protocol-actions">
+                        <button
+                            class="sign-protocol-button"
+                            type="button"
+                            [disabled]="
+                                isSigningProtocol ||
+                                isSavingEvent ||
+                                isSavingTechnicalLoss
+                            "
+                            (click)="signProtocol()"
+                        >
+                            {{
+                                isSigningProtocol
+                                    ? "Подписываем..."
+                                    : "Подписать протокол"
+                            }}
+                        </button>
+                        <button
+                            class="technical-loss-button"
+                            type="button"
+                            [disabled]="
+                                isSigningProtocol ||
+                                isSavingEvent ||
+                                isSavingTechnicalLoss
+                            "
+                            (click)="toggleTechnicalLossForm()"
+                        >
+                            {{
+                                isTechnicalLossFormVisible
+                                    ? "Отменить"
+                                    : "Техническое поражение"
+                            }}
+                        </button>
+                    </div>
+
+                    @if (isTechnicalLossFormVisible) {
+                        <form
+                            class="technical-loss-form"
+                            (ngSubmit)="assignTechnicalLoss()"
+                        >
+                            <h3>Техническое поражение</h3>
+                            <p>
+                                Выберите проигравшую команду и укажите причину
+                                решения.
+                            </p>
+                            <label>
+                                <span>Команда</span>
+                                <select
+                                    [(ngModel)]="selectedTechnicalLoserTeamId"
+                                    name="technicalLoserTeamId"
+                                    required
+                                >
+                                    <option [ngValue]="null" disabled>
+                                        Выберите команду
+                                    </option>
+                                    <option [ngValue]="data.match.homeTeam.id">
+                                        {{ data.match.homeTeam.name }}
+                                    </option>
+                                    <option [ngValue]="data.match.awayTeam.id">
+                                        {{ data.match.awayTeam.name }}
+                                    </option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>Причина технического поражения</span>
+                                <textarea
+                                    [(ngModel)]="technicalResultReason"
+                                    name="technicalResultReason"
+                                    required
+                                    maxlength="1000"
+                                    rows="4"
+                                    placeholder="Например: команда не явилась на матч"
+                                ></textarea>
+                                <small
+                                    >{{
+                                        technicalResultReason.length
+                                    }}/1000</small
+                                >
+                            </label>
+
+                            @if (technicalResultError) {
+                                <p class="event-error">
+                                    {{ technicalResultError }}
+                                </p>
+                            }
+
+                            <button
+                                type="submit"
+                                [disabled]="isSavingTechnicalLoss"
+                            >
+                                {{
+                                    isSavingTechnicalLoss
+                                        ? "Сохраняем..."
+                                        : "Подтвердить техническое поражение"
+                                }}
+                            </button>
+                        </form>
+                    }
                 }
             </section>
         }

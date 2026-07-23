@@ -36,6 +36,15 @@ export interface SignedManualProtocol {
     status: 'finished';
     homeScore: number;
     awayScore: number;
+    winnerTeamId?: number;
+    resolutionType?: 'regular_time' | 'technical';
+    technicalResultReason?: string;
+}
+
+export interface SignTechnicalLossRequest {
+    resolutionType: 'technical';
+    winnerTeamId: number;
+    technicalResultReason: string;
 }
 
 @Injectable({
@@ -51,7 +60,10 @@ export class MatchRosterApi {
         );
     }
 
-    approveRoster(matchId: number, teamId: number): Observable<MatchRosterCheck> {
+    approveRoster(
+        matchId: number,
+        teamId: number,
+    ): Observable<MatchRosterCheck> {
         return this.http.post<MatchRosterCheck>(
             `${this.apiUrl}/match-service/matches/${matchId}/rosters/${teamId}/approve`,
             {},
@@ -87,6 +99,16 @@ export class MatchRosterApi {
         return this.http.post<SignedManualProtocol>(
             `${this.apiUrl}/match-service/matches/${matchId}/manual-protocol/sign`,
             {},
+        );
+    }
+
+    signTechnicalLoss(
+        matchId: number,
+        dto: SignTechnicalLossRequest,
+    ): Observable<SignedManualProtocol> {
+        return this.http.post<SignedManualProtocol>(
+            `${this.apiUrl}/match-service/matches/${matchId}/manual-protocol/sign`,
+            dto,
         );
     }
 }

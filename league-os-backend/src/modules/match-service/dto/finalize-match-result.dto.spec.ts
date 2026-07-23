@@ -34,4 +34,31 @@ describe('FinalizeMatchResultDto', () => {
       expect.arrayContaining(['regularTime', 'resolutionType']),
     );
   });
+
+  it('requires a reason for a technical result', async () => {
+    const dto = plainToInstance(FinalizeMatchResultDto, {
+      regularTime: { home: 3, away: 0 },
+      resolutionType: MatchResolutionType.TECHNICAL,
+      winnerTeamId: 10,
+      technicalResultReason: '   ',
+    });
+
+    const errors = await validate(dto);
+
+    expect(errors.map((error) => error.property)).toContain(
+      'technicalResultReason',
+    );
+  });
+
+  it('trims and validates a technical result reason', async () => {
+    const dto = plainToInstance(FinalizeMatchResultDto, {
+      regularTime: { home: 3, away: 0 },
+      resolutionType: MatchResolutionType.TECHNICAL,
+      winnerTeamId: 10,
+      technicalResultReason: '  Команда не явилась на матч  ',
+    });
+
+    expect(await validate(dto)).toHaveLength(0);
+    expect(dto.technicalResultReason).toBe('Команда не явилась на матч');
+  });
 });

@@ -17,6 +17,13 @@ export interface MatchRosterCheckMatch {
     status: 'scheduled' | 'live' | 'finished' | 'cancelled';
     homeScore: number;
     awayScore: number;
+    resolutionType?:
+        | 'regular_time'
+        | 'extra_time'
+        | 'penalties'
+        | 'technical'
+        | 'walkover';
+    technicalResultReason?: string;
     matchDatetime?: string;
     venueName?: string;
     homeTeam: MatchRosterTeam;

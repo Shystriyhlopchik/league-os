@@ -1,5 +1,6 @@
 import { PlayerPosition } from '../../players/enums/player-position.enum';
 import { MatchStatus } from '../../matches/enums/match-status.enum';
+import { MatchResolutionType } from '../../matches/enums/match-resolution-type.enum';
 
 export class MatchRosterTeamDto {
   id: number;
@@ -14,6 +15,8 @@ export class MatchRosterCheckDto {
     status: MatchStatus;
     homeScore: number;
     awayScore: number;
+    resolutionType?: MatchResolutionType;
+    technicalResultReason?: string;
     matchDatetime?: Date;
     venueName?: string;
     homeTeam: MatchRosterTeamDto;

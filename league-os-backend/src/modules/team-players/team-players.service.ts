@@ -157,6 +157,39 @@ export class TeamPlayersService {
     return this.findTeamPlayerWithPlayer(teamPlayer.id);
   }
 
+  async removeFromTeam(
+    teamId: number,
+    teamPlayerId: number,
+    currentUserId: number,
+  ): Promise<{ id: number; isActive: false; leftAt: string }> {
+    await this.ensureTeamExists(teamId);
+    await this.ensureCanManageTeam(teamId, currentUserId);
+
+    const teamPlayer = await this.teamPlayersRepository.findOne({
+      where: {
+        id: teamPlayerId,
+        teamId,
+        isActive: true,
+      },
+    });
+
+    if (!teamPlayer) {
+      throw new NotFoundException('Игрок команды не найден');
+    }
+
+    teamPlayer.isActive = false;
+    teamPlayer.isCaptain = false;
+    teamPlayer.leftAt = this.getCurrentDate();
+
+    await this.teamPlayersRepository.save(teamPlayer);
+
+    return {
+      id: teamPlayer.id,
+      isActive: false,
+      leftAt: teamPlayer.leftAt,
+    };
+  }
+
   private async ensureCanManageTeam(
     teamId: number,
     currentUserId: number,

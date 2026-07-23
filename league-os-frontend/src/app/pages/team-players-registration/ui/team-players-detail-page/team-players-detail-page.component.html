@@ -212,6 +212,14 @@
             В этой команде пока нет игроков.
         </div>
     } @else {
+        @if (store.deleteError()) {
+            <div
+                class="team-players-detail__state team-players-detail__state--error team-players-detail__delete-error"
+            >
+                {{ store.deleteError() }}
+            </div>
+        }
+
         <div class="team-players-table">
             <div class="team-players-table__head">
                 <div>№</div>
@@ -269,9 +277,22 @@
                         <button
                             class="team-players-table__edit-button"
                             type="button"
+                            [disabled]="store.deletingPlayerId() !== null"
                             (click)="editPlayer(teamPlayer)"
                         >
                             Редактировать
+                        </button>
+                        <button
+                            class="team-players-table__delete-button"
+                            type="button"
+                            [disabled]="store.deletingPlayerId() !== null"
+                            (click)="removePlayer(teamPlayer)"
+                        >
+                            {{
+                                store.deletingPlayerId() === teamPlayer.id
+                                    ? 'Удаляем...'
+                                    : 'Удалить'
+                            }}
                         </button>
                     </div>
                 </div>

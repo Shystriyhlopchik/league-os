@@ -45,6 +45,7 @@
                                 '/images/teams/default-team-logo.png'
                             "
                             [alt]="item.team.name"
+                            [attr.title]="item.team.name"
                             (error)="
                                 useFallbackImage(
                                     $event,

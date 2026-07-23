@@ -47,6 +47,20 @@ describe('PlayerLeadersCardComponent', () => {
         expect(fixture.nativeElement.textContent).toContain('Дима Степанов');
     });
 
+    it('shows the team name as a tooltip on its logo', () => {
+        fixture.componentRef.setInput('leaders', leaders);
+        fixture.detectChanges();
+
+        const tooltips = Array.from(
+            fixture.nativeElement.querySelectorAll(
+                '.leaders-card__team-logo',
+            ),
+            (element: Element) => element.getAttribute('title'),
+        );
+
+        expect(tooltips).toEqual(['Сутра', 'Файр', 'Сарбаки']);
+    });
+
     it('renders the combined and average metric titles', () => {
         fixture.componentRef.setInput('metric', 'goalContributions');
         fixture.detectChanges();

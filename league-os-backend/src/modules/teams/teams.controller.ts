@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -101,6 +102,20 @@ export class TeamsController {
       dto,
       req.user.id,
       photo,
+    );
+  }
+
+  @Delete(':teamId/players/:teamPlayerId')
+  @UseGuards(JwtAuthGuard)
+  removePlayerFromTeam(
+    @Param('teamId', ParseIntPipe) teamId: number,
+    @Param('teamPlayerId', ParseIntPipe) teamPlayerId: number,
+    @Req() req: any,
+  ) {
+    return this.teamPlayersService.removeFromTeam(
+      teamId,
+      teamPlayerId,
+      req.user.id,
     );
   }
 }

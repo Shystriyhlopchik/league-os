@@ -4,7 +4,7 @@ export interface MatchServiceMatchDto {
     id: number;
     tournamentId: number;
     round?: string;
-    matchDatetime?: Date;
+    matchDatetime?: string;
     status: MatchStatus;
 
     homeTeam: {
