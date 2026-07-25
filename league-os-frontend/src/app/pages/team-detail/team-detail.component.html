@@ -1,0 +1,106 @@
+<section class="team-page">
+    <a class="team-page__back" routerLink="/team">
+        <span aria-hidden="true">←</span>
+        Все команды
+    </a>
+
+    @if (isLoading()) {
+        <p class="team-page__state" role="status">Загрузка команды...</p>
+    } @else if (error()) {
+        <div class="team-page__state team-page__state--error" role="alert">
+            <p>{{ error() }}</p>
+            <button type="button" (click)="loadTeam()">Повторить</button>
+        </div>
+    } @else {
+        @if (team(); as currentTeam) {
+            <header class="team-hero">
+                <div class="team-hero__logo-wrap">
+                    <img
+                        class="team-hero__logo"
+                        [src]="
+                            imageUrl(currentTeam.logoUrl) ||
+                            '/images/teams/default-team-logo.png'
+                        "
+                        [alt]="'Логотип команды ' + currentTeam.name"
+                        (error)="useFallbackLogo($event)"
+                    />
+                </div>
+
+                <div class="team-hero__content">
+                    <p class="team-hero__eyebrow">Футбольная команда</p>
+                    <h1 class="team-hero__title">{{ currentTeam.name }}</h1>
+                    @if (currentTeam.description) {
+                        <p class="team-hero__description">
+                            {{ currentTeam.description }}
+                        </p>
+                    }
+                </div>
+
+                <dl class="team-facts">
+                    <div class="team-facts__item">
+                        <dt>Год основания</dt>
+                        <dd>{{ currentTeam.foundedYear || "Не указан" }}</dd>
+                    </div>
+                    <div class="team-facts__item">
+                        <dt>Локация</dt>
+                        <dd>{{ location() }}</dd>
+                    </div>
+                    <div class="team-facts__item">
+                        <dt>Игроков в составе</dt>
+                        <dd>{{ activePlayers().length }}</dd>
+                    </div>
+                </dl>
+            </header>
+
+            <section class="roster" aria-labelledby="roster-title">
+                <div class="roster__heading">
+                    <p class="roster__eyebrow">Основной состав</p>
+                    <h2 id="roster-title">Команда</h2>
+                </div>
+
+                @if (activePlayers().length) {
+                    <ul class="roster__grid">
+                        @for (
+                            teamPlayer of activePlayers();
+                            track teamPlayer.id
+                        ) {
+                            <li class="player-card">
+                                <div class="player-card__photo-wrap">
+                                    <img
+                                        class="player-card__photo"
+                                        [src]="
+                                            imageUrl(
+                                                teamPlayer.player.photoUrl
+                                            ) ||
+                                            '/images/organization-team/not-photo.png'
+                                        "
+                                        [alt]="playerName(teamPlayer)"
+                                        (error)="useFallbackPlayerPhoto($event)"
+                                    />
+                                    @if (teamPlayer.shirtNumber) {
+                                        <span class="player-card__number">
+                                            {{ teamPlayer.shirtNumber }}
+                                        </span>
+                                    }
+                                </div>
+                                <div class="player-card__content">
+                                    <h3>{{ playerName(teamPlayer) }}</h3>
+                                    <p>{{ playerPosition(teamPlayer) }}</p>
+                                    @if (teamPlayer.isCaptain) {
+                                        <span class="player-card__captain">
+                                            Капитан
+                                        </span>
+                                    }
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                } @else {
+                    <p class="roster__empty">
+                        Состав команды пока не опубликован.
+                    </p>
+                }
+            </section>
+        }
+    }
+</section>

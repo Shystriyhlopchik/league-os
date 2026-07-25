@@ -6,30 +6,34 @@
     } @else if (error()) {
         <div class="teams-page__state teams-page__state--error" role="alert">
             <p>{{ error() }}</p>
-            <button type="button" (click)="loadTeams()">
-                Повторить
-            </button>
+            <button type="button" (click)="loadTeams()">Повторить</button>
         </div>
     } @else if (isEmpty()) {
-        <p class="teams-page__state">
-            Участники турнира пока не опубликованы.
-        </p>
+        <p class="teams-page__state">Участники турнира пока не опубликованы.</p>
     } @else {
         <ul class="teams-page__grid">
             @for (team of teams(); track team.id) {
                 <li class="team-card">
-                    <div class="team-card__logo-wrap">
-                        <img
-                            class="team-card__logo"
-                            [src]="
-                                team.logoUrl ||
-                                '/images/teams/default-team-logo.png'
-                            "
-                            [alt]="'Логотип команды ' + team.name"
-                            (error)="useFallbackLogo($event)"
-                        />
-                    </div>
-                    <span class="team-card__name">{{ team.name }}</span>
+                    <a
+                        class="team-card__link"
+                        [routerLink]="['/team', team.id]"
+                        [attr.aria-label]="
+                            'Открыть страницу команды ' + team.name
+                        "
+                    >
+                        <span class="team-card__logo-wrap">
+                            <img
+                                class="team-card__logo"
+                                [src]="
+                                    team.logoUrl ||
+                                    '/images/teams/default-team-logo.png'
+                                "
+                                [alt]="'Логотип команды ' + team.name"
+                                (error)="useFallbackLogo($event)"
+                            />
+                        </span>
+                        <span class="team-card__name">{{ team.name }}</span>
+                    </a>
                 </li>
             }
         </ul>

@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
 import { TeamsApi } from '../../entities/team/api/teams.api';
@@ -22,6 +23,7 @@ describe('TeamComponent', () => {
         await TestBed.configureTestingModule({
             imports: [TeamComponent],
             providers: [
+                provideRouter([]),
                 { provide: TeamsApi, useValue: teamsApi },
                 { provide: TournamentsApi, useValue: tournamentsApi },
             ],

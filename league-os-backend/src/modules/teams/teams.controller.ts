@@ -35,6 +35,11 @@ export class TeamsController {
     return this.teamsService.findMany();
   }
 
+  @Get(':teamId')
+  findOne(@Param('teamId', ParseIntPipe) teamId: number) {
+    return this.teamsService.findPublicById(teamId);
+  }
+
   @Get(':teamId/players')
   findPlayersByTeam(@Param('teamId', ParseIntPipe) teamId: number) {
     return this.teamPlayersService.findByTeam(teamId);

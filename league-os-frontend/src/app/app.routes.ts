@@ -33,6 +33,13 @@ export const routes: Routes = [
             import('./pages/team/team.component').then((m) => m.TeamComponent),
     },
     {
+        path: 'team/:teamId',
+        loadComponent: () =>
+            import('./pages/team-detail/team-detail.component').then(
+                (m) => m.TeamDetailComponent,
+            ),
+    },
+    {
         path: 'news/:slug',
         loadComponent: () =>
             import('./pages/news-detail/news-detail.component').then(

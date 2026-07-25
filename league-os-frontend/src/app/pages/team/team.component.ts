@@ -9,6 +9,7 @@ import {
 import { EMPTY, Subscription } from 'rxjs';
 import { catchError, finalize, switchMap, tap } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
 
 import { TeamsApi } from '../../entities/team/api/teams.api';
 import { Team } from '../../entities/team/model/team.types';
@@ -18,6 +19,7 @@ type TeamCard = Pick<Team, 'id' | 'name' | 'slug' | 'logoUrl'>;
 
 @Component({
     selector: 'app-team',
+    imports: [RouterLink],
     templateUrl: './team.component.html',
     styleUrl: './team.component.scss',
 })

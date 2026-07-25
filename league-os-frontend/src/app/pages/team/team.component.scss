@@ -1,7 +1,7 @@
 :host {
     display: block;
     min-height: calc(100vh - 217px);
-    background: #16191A;
+    background: #16191a;
     color: #ffffff;
 }
 
@@ -16,7 +16,7 @@
 
 .teams-page__title {
     font-family: Play, Arial, sans-serif;
-    color: #F61129;
+    color: #f61129;
 
     margin: 16px 0 40px;
     font-size: 32px;
@@ -71,11 +71,30 @@
 
 .team-card {
     min-width: 0;
+}
+
+.team-card__link {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 14px;
+    color: inherit;
+    text-decoration: none;
     text-align: center;
+    transition:
+        color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.team-card__link:hover,
+.team-card__link:focus-visible {
+    color: #f61129;
+    transform: translateY(-4px);
+}
+
+.team-card__link:focus-visible {
+    outline: 2px solid #f61129;
+    outline-offset: 8px;
 }
 
 .team-card__logo-wrap {
@@ -91,6 +110,7 @@
     height: 96px;
     display: block;
     object-fit: contain;
+    transition: filter 0.2s ease;
 }
 
 .team-card__name {

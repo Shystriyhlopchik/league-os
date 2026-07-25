@@ -15,6 +15,10 @@ export class TeamsApi {
         return this.http.get<Team[]>(`${environment.apiUrl}/teams`);
     }
 
+    getTeam(teamId: number): Observable<Team> {
+        return this.http.get<Team>(`${environment.apiUrl}/teams/${teamId}`);
+    }
+
     getTournamentTeams(tournamentId: number): Observable<Team[]> {
         return this.http.get<Team[]>(
             `${environment.apiUrl}/tournaments/${tournamentId}/teams`,
