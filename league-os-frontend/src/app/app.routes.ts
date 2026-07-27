@@ -40,6 +40,13 @@ export const routes: Routes = [
             ),
     },
     {
+        path: 'players',
+        loadComponent: () =>
+            import('./pages/players/players-page.component').then(
+                (m) => m.PlayersPageComponent,
+            ),
+    },
+    {
         path: 'news/:slug',
         loadComponent: () =>
             import('./pages/news-detail/news-detail.component').then(
