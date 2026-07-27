@@ -7,6 +7,9 @@
         <app-advertising-banner />
         <h2>Новости</h2>
         <app-news-preview [limit]="6" />
+        @if (activeTournament(); as tournament) {
+            <app-top-players-ovr [tournamentId]="tournament.id" />
+        }
         <div class="home__static-header">
             <h2>Статистика</h2>
             @if (groups().length) {

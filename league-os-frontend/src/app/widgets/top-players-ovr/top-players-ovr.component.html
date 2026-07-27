@@ -1,0 +1,74 @@
+<section class="top-players" aria-labelledby="top-players-title">
+    <header class="top-players__header">
+        <div>
+            <p>Рейтинг активного турнира</p>
+            <h2 id="top-players-title">ТОП 10 игроков по OVR</h2>
+        </div>
+        <a routerLink="/players">Все игроки</a>
+    </header>
+
+    @if (isLoading()) {
+        <p class="top-players__state" role="status">
+            Загружаем рейтинг игроков...
+        </p>
+    } @else if (hasError()) {
+        <p class="top-players__state top-players__state--error" role="alert">
+            Не удалось загрузить рейтинг игроков
+        </p>
+    } @else if (!players().length) {
+        <p class="top-players__state">Для рейтинга пока недостаточно данных.</p>
+    } @else {
+        <ol class="top-players__list">
+            @for (
+                player of players();
+                track player.playerId;
+                let place = $index
+            ) {
+                <li
+                    class="top-player"
+                    [class.top-player--podium]="place < 3"
+                >
+                    <span class="top-player__place">{{ place + 1 }}</span>
+
+                    <span class="top-player__photo">
+                        @if (
+                            player.photoUrl &&
+                            !failedPhotoIds().has(player.playerId)
+                        ) {
+                            <img
+                                [src]="getMediaUrl(player.photoUrl)"
+                                [alt]="player.name"
+                                (error)="markPhotoAsFailed(player.playerId)"
+                            />
+                        } @else {
+                            {{ getInitials(player.name) }}
+                        }
+                    </span>
+
+                    <span class="top-player__identity">
+                        <strong>{{ player.name }}</strong>
+                        <span>
+                            {{ player.team.name }} · {{ player.position }}
+                        </span>
+                    </span>
+
+                    <span class="top-player__stats">
+                        <span>
+                            {{ player.stats.goals }} Г ·
+                            {{ player.stats.assists }} А
+                        </span>
+                        <small>Игр: {{ player.stats.matches }}</small>
+                    </span>
+
+                    <span
+                        class="top-player__ovr"
+                        title="Общий рейтинг относительно игроков той же позиции"
+                    >
+                        <strong>{{ player.ratings.ovr }}</strong>
+                        <small>OVR</small>
+                    </span>
+                </li>
+            }
+        </ol>
+    }
+</section>
