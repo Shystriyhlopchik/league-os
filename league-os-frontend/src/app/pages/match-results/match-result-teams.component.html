@@ -1,7 +1,7 @@
 <div class="team-choice-page">
     <app-page-header
-        title="Формирование заявок"
-        description="Выберите команду, для которой необходимо сформировать заявку"
+        [title]="pageTitle"
+        [description]="pageDescription"
         (back)="goBack()"
     />
 
@@ -21,21 +21,33 @@
                 [description]="data.match.venueName || 'Место не указано'"
             />
 
-            @if (!isProtocolSigned) {
+            @if (canEditProtocol) {
                 <section class="team-choice">
                     <button
                         type="button"
                         (click)="openTeam(data.match.homeTeam.id)"
                     >
                         <strong>{{ data.match.homeTeam.name }}</strong>
-                        <span>Сформировать заявку</span>
+                        <span>
+                            {{
+                                isCorrectionMode
+                                    ? "Изменить участников"
+                                    : "Сформировать заявку"
+                            }}
+                        </span>
                     </button>
                     <button
                         type="button"
                         (click)="openTeam(data.match.awayTeam.id)"
                     >
                         <strong>{{ data.match.awayTeam.name }}</strong>
-                        <span>Сформировать заявку</span>
+                        <span>
+                            {{
+                                isCorrectionMode
+                                    ? "Изменить участников"
+                                    : "Сформировать заявку"
+                            }}
+                        </span>
                     </button>
                 </section>
             }
@@ -47,7 +59,7 @@
                     <strong>{{ homeScore }} : {{ awayScore }}</strong>
                     <span>{{ data.match.awayTeam.name }}</span>
                 </div>
-                @if (isProtocolSigned) {
+                @if (isProtocolSigned && !isCorrectionMode) {
                     <p class="protocol-signed">
                         Протокол подписан. Матч завершён, редактирование
                         недоступно.
@@ -61,7 +73,13 @@
                         </div>
                     }
                 }
-                @if (!isProtocolSigned) {
+                @if (isCorrectionMode) {
+                    <p class="protocol-signed">
+                        Режим административной корректировки. Изменения событий
+                        сохраняются сразу.
+                    </p>
+                }
+                @if (canEditProtocol) {
                     <form class="event-form" (ngSubmit)="addEvent()">
                         <label>
                             <span>Минута</span>
@@ -100,8 +118,19 @@
                                 </option>
                                 <option value="goal">Гол</option>
                                 <option value="own_goal">Автогол</option>
+                                @if (isCorrectionMode) {
+                                    <option value="penalty_goal">
+                                        Гол с пенальти
+                                    </option>
+                                    <option value="penalty_missed">
+                                        Незабитый пенальти
+                                    </option>
+                                }
                                 <option value="yellow_card">
                                     Жёлтая карточка
+                                </option>
+                                <option value="second_yellow_card">
+                                    Вторая жёлтая карточка
                                 </option>
                                 <option value="red_card">
                                     Красная карточка
@@ -209,7 +238,7 @@
                                     }}
                                 }
                             </small>
-                            @if (!isProtocolSigned) {
+                            @if (canEditProtocol) {
                                 <button
                                     class="event-delete-button"
                                     type="button"
@@ -229,7 +258,7 @@
                     }
                 </div>
 
-                @if (!isProtocolSigned) {
+                @if (!isProtocolSigned && !isCorrectionMode) {
                     <div class="protocol-actions">
                         <button
                             class="sign-protocol-button"

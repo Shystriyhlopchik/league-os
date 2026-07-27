@@ -86,6 +86,17 @@ const LEGACY_MATCH_RULES: MatchRulesV1 = {
 
 @Injectable()
 export class MatchServiceService {
+  private readonly correctableEventTypes = new Set<MatchEventType>([
+    MatchEventType.GOAL,
+    MatchEventType.OWN_GOAL,
+    MatchEventType.PENALTY_GOAL,
+    MatchEventType.PENALTY_MISSED,
+    MatchEventType.YELLOW_CARD,
+    MatchEventType.SECOND_YELLOW_CARD,
+    MatchEventType.RED_CARD,
+    MatchEventType.RED_BALL,
+  ]);
+
   constructor(
     @InjectRepository(MatchEntity)
     private readonly matchRepository: Repository<MatchEntity>,
@@ -204,6 +215,300 @@ export class MatchServiceService {
     });
 
     return matches.map((match) => this.toDto(match));
+  }
+
+  async findFinishedMatches(): Promise<MatchServiceMatchDto[]> {
+    const matches = await this.matchRepository.find({
+      where: {
+        status: MatchStatus.FINISHED,
+      },
+      relations: {
+        homeTeam: true,
+        awayTeam: true,
+        venue: true,
+        tournament: true,
+      },
+      order: {
+        matchDatetime: 'DESC',
+        id: 'DESC',
+      },
+    });
+
+    return matches.map((match) => this.toDto(match));
+  }
+
+  async findFinishedMatchEvents(
+    matchId: number,
+  ): Promise<MatchEventEntity[]> {
+    await this.findFinishedMatch(matchId);
+
+    return this.matchEventRepository.find({
+      where: {
+        matchId,
+        isCancelled: false,
+        eventType: In([...this.correctableEventTypes]),
+      },
+      order: { half: 'ASC', minute: 'ASC', id: 'ASC' },
+    });
+  }
+
+  async createFinishedMatchEvent(
+    matchId: number,
+    dto: CreateManualMatchEventDto,
+  ): Promise<MatchEventEntity> {
+    if (!this.correctableEventTypes.has(dto.eventType)) {
+      throw new BadRequestException('Недопустимый тип события');
+    }
+
+    const match = await this.findFinishedMatch(matchId);
+    this.assertTeamParticipates(match, dto.teamId);
+    this.assertFinishedScoringCorrectionAllowed(match, dto.eventType);
+    await this.assertCorrectionEventParticipants(matchId, dto);
+
+    const savedEvent = await this.dataSource.transaction(async (manager) => {
+      const eventRepository = manager.getRepository(MatchEventEntity);
+      const matchRepository = manager.getRepository(MatchEntity);
+      const transactionalMatch = await matchRepository.findOne({
+        where: { id: matchId, status: MatchStatus.FINISHED },
+      });
+
+      if (!transactionalMatch) {
+        throw new NotFoundException('Завершённый матч не найден');
+      }
+
+      const event = await eventRepository.save(
+        eventRepository.create({
+          matchId,
+          teamId: dto.teamId,
+          eventType: dto.eventType,
+          minute: dto.minute,
+          half: dto.half,
+          playerId: dto.playerId,
+          assistPlayerId: dto.assistPlayerId,
+          isCancelled: false,
+        }),
+      );
+
+      if (this.isScoringEvent(event.eventType)) {
+        await this.recalculateCorrectedMatchScore(
+          transactionalMatch,
+          manager,
+        );
+      }
+
+      return event;
+    });
+
+    if (savedEvent.playerId) {
+      await this.playerTournamentStatsService.applyCardEvent({
+        match,
+        teamId: savedEvent.teamId,
+        playerId: savedEvent.playerId,
+        eventType: savedEvent.eventType,
+      });
+    }
+
+    return savedEvent;
+  }
+
+  async cancelFinishedMatchEvent(
+    matchId: number,
+    eventId: number,
+  ): Promise<{ id: number; isCancelled: true }> {
+    const match = await this.findFinishedMatch(matchId);
+    const cancelledEvent = await this.dataSource.transaction(
+      async (manager) => {
+        const eventRepository = manager.getRepository(MatchEventEntity);
+        const matchRepository = manager.getRepository(MatchEntity);
+        const event = await eventRepository.findOne({
+          where: { id: eventId, matchId, isCancelled: false },
+        });
+
+        if (!event || !this.correctableEventTypes.has(event.eventType)) {
+          throw new NotFoundException('Событие матча не найдено');
+        }
+
+        this.assertFinishedScoringCorrectionAllowed(match, event.eventType);
+        event.isCancelled = true;
+        await eventRepository.save(event);
+
+        if (this.isScoringEvent(event.eventType)) {
+          const transactionalMatch = await matchRepository.findOne({
+            where: { id: matchId, status: MatchStatus.FINISHED },
+          });
+          if (!transactionalMatch) {
+            throw new NotFoundException('Завершённый матч не найден');
+          }
+          await this.recalculateCorrectedMatchScore(
+            transactionalMatch,
+            manager,
+          );
+        }
+
+        return event;
+      },
+    );
+
+    if (cancelledEvent.playerId) {
+      await this.playerTournamentStatsService.revertCardEvent({
+        match,
+        teamId: cancelledEvent.teamId,
+        playerId: cancelledEvent.playerId,
+        eventType: cancelledEvent.eventType,
+      });
+    }
+
+    return { id: cancelledEvent.id, isCancelled: true };
+  }
+
+  async getFinishedMatchRegistration(matchId: number, teamId: number) {
+    const match = await this.findFinishedMatch(matchId, teamId);
+    const roster = await this.matchRosterRepository.findOne({
+      where: { matchId, teamId },
+    });
+    const [currentPlayers, selectedPlayers] = await Promise.all([
+      this.findTeamRoster(match, teamId),
+      roster ? this.findSubmittedTeamRoster(match, roster) : Promise.resolve([]),
+    ]);
+    const candidatesByTeamPlayerId = new Map<number, MatchRosterPlayerDto>();
+
+    for (const player of [...currentPlayers, ...selectedPlayers]) {
+      if (player.teamPlayerId) {
+        candidatesByTeamPlayerId.set(player.teamPlayerId, player);
+      }
+    }
+
+    const selectedTeamPlayerIds = new Set(
+      selectedPlayers.map((player) => player.teamPlayerId),
+    );
+    const team = teamId === match.homeTeamId ? match.homeTeam : match.awayTeam;
+
+    return {
+      match: this.toDto(match),
+      team: {
+        id: team.id,
+        name: team.name,
+        logoUrl: team.logoUrl,
+      },
+      isApproved: true,
+      players: [...candidatesByTeamPlayerId.values()].map((player) => ({
+        ...player,
+        eligibilityStatus: 'allowed' as const,
+        eligibilityReason: 'none' as const,
+        isSelected: selectedTeamPlayerIds.has(player.teamPlayerId),
+      })),
+    };
+  }
+
+  async saveFinishedMatchRegistration(
+    matchId: number,
+    teamId: number,
+    teamPlayerIds: number[],
+  ) {
+    const match = await this.findFinishedMatch(matchId, teamId);
+    if (teamPlayerIds.length < 5) {
+      throw new BadRequestException(
+        'В протоколе каждой команды должно быть минимум 5 игроков',
+      );
+    }
+
+    const registration = await this.getFinishedMatchRegistration(
+      matchId,
+      teamId,
+    );
+    const candidatesByTeamPlayerId = new Map(
+      registration.players.map((player) => [player.teamPlayerId, player]),
+    );
+    const selectedPlayers = teamPlayerIds.map((id) =>
+      candidatesByTeamPlayerId.get(id),
+    );
+
+    if (selectedPlayers.some((player) => !player)) {
+      throw new BadRequestException(
+        'В протоколе есть игрок, который не относится к выбранной команде',
+      );
+    }
+
+    const uniquePlayerIds = new Set(
+      selectedPlayers.map((player) => player!.id),
+    );
+    if (uniquePlayerIds.size !== selectedPlayers.length) {
+      throw new BadRequestException('Игрок не может быть добавлен дважды');
+    }
+
+    const roster = await this.matchRosterRepository.findOne({
+      where: { matchId, teamId },
+    });
+    const currentRosterPlayers = roster
+      ? await this.matchRosterPlayerRepository.find({
+          where: { matchRosterId: roster.id },
+        })
+      : [];
+    const removedPlayerIds = currentRosterPlayers
+      .filter((player) => !uniquePlayerIds.has(player.playerId))
+      .map((player) => player.playerId);
+
+    if (removedPlayerIds.length) {
+      const events = await this.matchEventRepository.find({
+        where: { matchId, isCancelled: false },
+      });
+      const referencedPlayerId = removedPlayerIds.find((playerId) =>
+        events.some(
+          (event) =>
+            event.playerId === playerId ||
+            event.assistPlayerId === playerId ||
+            event.secondaryPlayerId === playerId,
+        ),
+      );
+      if (referencedPlayerId) {
+        throw new BadRequestException(
+          'Сначала удалите события исключаемого игрока из протокола',
+        );
+      }
+    }
+
+    await this.dataSource.transaction(async (manager) => {
+      const rosterRepository = manager.getRepository(MatchRosterEntity);
+      const rosterPlayerRepository = manager.getRepository(
+        MatchRosterPlayerEntity,
+      );
+      let savedRoster = await rosterRepository.findOne({
+        where: { matchId, teamId },
+      });
+
+      if (!savedRoster) {
+        savedRoster = await rosterRepository.save(
+          rosterRepository.create({
+            matchId,
+            teamId,
+            isSubmitted: true,
+            isApproved: true,
+          }),
+        );
+      }
+
+      await rosterPlayerRepository.delete({
+        matchRosterId: savedRoster.id,
+      });
+      await rosterPlayerRepository.save(
+        selectedPlayers.map((player) =>
+          rosterPlayerRepository.create({
+            matchRosterId: savedRoster!.id,
+            playerId: player!.id,
+            teamPlayerId: player!.teamPlayerId,
+            shirtNumber: player!.shirtNumber,
+            position: player!.position,
+            isCaptain: player!.isCaptain,
+            wasAllowed: true,
+          }),
+        ),
+      );
+      savedRoster.isSubmitted = true;
+      savedRoster.isApproved = true;
+      await rosterRepository.save(savedRoster);
+    });
+
+    return this.getFinishedMatchRegistration(match.id, teamId);
   }
 
   async findManualEvents(matchId: number): Promise<MatchEventEntity[]> {
@@ -775,6 +1080,8 @@ export class MatchServiceService {
       round: match.round,
       matchDatetime: formatLocalDateTime(match.matchDatetime) ?? undefined,
       status: match.status,
+      homeScore: match.homeScore,
+      awayScore: match.awayScore,
 
       homeTeam: {
         id: match.homeTeam.id,
@@ -797,6 +1104,149 @@ export class MatchServiceService {
           }
         : undefined,
     };
+  }
+
+  private async findFinishedMatch(
+    matchId: number,
+    teamId?: number,
+  ): Promise<MatchEntity> {
+    const match = await this.matchRepository.findOne({
+      where: { id: matchId, status: MatchStatus.FINISHED },
+      relations: {
+        homeTeam: true,
+        awayTeam: true,
+        venue: true,
+        tournament: true,
+      },
+    });
+
+    if (!match) {
+      throw new NotFoundException('Завершённый матч не найден');
+    }
+    if (teamId !== undefined) {
+      this.assertTeamParticipates(match, teamId);
+    }
+
+    return match;
+  }
+
+  private assertTeamParticipates(match: MatchEntity, teamId: number): void {
+    if (match.homeTeamId !== teamId && match.awayTeamId !== teamId) {
+      throw new BadRequestException('Команда не участвует в этом матче');
+    }
+  }
+
+  private async assertCorrectionEventParticipants(
+    matchId: number,
+    dto: CreateManualMatchEventDto,
+  ): Promise<void> {
+    if (dto.eventType !== MatchEventType.RED_BALL && !dto.playerId) {
+      throw new BadRequestException('Необходимо указать автора события');
+    }
+    if (
+      dto.assistPlayerId &&
+      dto.eventType !== MatchEventType.GOAL &&
+      dto.eventType !== MatchEventType.PENALTY_GOAL
+    ) {
+      throw new BadRequestException(
+        'Ассистент может быть указан только для гола',
+      );
+    }
+    if (dto.playerId && dto.playerId === dto.assistPlayerId) {
+      throw new BadRequestException('Автор и ассистент не могут совпадать');
+    }
+
+    const participantIds = [dto.playerId, dto.assistPlayerId].filter(
+      (id): id is number => Boolean(id),
+    );
+    if (!participantIds.length) return;
+
+    const roster = await this.matchRosterRepository.findOne({
+      where: { matchId, teamId: dto.teamId },
+    });
+    if (!roster) {
+      throw new BadRequestException('Состав команды на матч не найден');
+    }
+
+    const rosterPlayersCount = await this.matchRosterPlayerRepository.count({
+      where: {
+        matchRosterId: roster.id,
+        playerId: In(participantIds),
+      },
+    });
+    if (rosterPlayersCount !== participantIds.length) {
+      throw new BadRequestException(
+        'Автор события должен входить в протокол участников матча',
+      );
+    }
+  }
+
+  private assertFinishedScoringCorrectionAllowed(
+    match: MatchEntity,
+    eventType: MatchEventType,
+  ): void {
+    if (
+      this.isScoringEvent(eventType) &&
+      match.resolutionType &&
+      match.resolutionType !== MatchResolutionType.REGULAR_TIME
+    ) {
+      throw new BadRequestException(
+        'Счёт матчей с дополнительным временем, пенальти или техническим результатом нельзя менять через обычные события',
+      );
+    }
+  }
+
+  private isScoringEvent(eventType: MatchEventType): boolean {
+    return [
+      MatchEventType.GOAL,
+      MatchEventType.OWN_GOAL,
+      MatchEventType.PENALTY_GOAL,
+    ].includes(eventType);
+  }
+
+  private async recalculateCorrectedMatchScore(
+    match: MatchEntity,
+    manager: EntityManager,
+  ): Promise<void> {
+    const events = await manager.getRepository(MatchEventEntity).find({
+      where: {
+        matchId: match.id,
+        eventType: In([
+          MatchEventType.GOAL,
+          MatchEventType.OWN_GOAL,
+          MatchEventType.PENALTY_GOAL,
+        ]),
+        isCancelled: false,
+      },
+    });
+    let home = 0;
+    let away = 0;
+
+    for (const event of events) {
+      const value = event.goalValue || 1;
+      const isOwnGoal = event.eventType === MatchEventType.OWN_GOAL;
+      const scoresForHome = isOwnGoal
+        ? event.teamId === match.awayTeamId
+        : event.teamId === match.homeTeamId;
+      scoresForHome ? (home += value) : (away += value);
+    }
+
+    const previousWinnerTeamId = match.winnerTeamId;
+    await this.applyOfficialResult(
+      match,
+      { home, away },
+      { resolutionType: MatchResolutionType.REGULAR_TIME },
+      manager,
+    );
+    if (
+      match.bracketSnapshotId &&
+      previousWinnerTeamId !== match.winnerTeamId
+    ) {
+      throw new BadRequestException(
+        'Нельзя изменить победителя уже продвинутого матча плей-офф',
+      );
+    }
+    await manager.getRepository(MatchEntity).save(match);
   }
 
   private async findTeamRoster(

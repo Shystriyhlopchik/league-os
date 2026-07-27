@@ -6,6 +6,8 @@ export interface MatchServiceMatch {
     round?: string;
     matchDatetime?: string;
     status: MatchStatus;
+    homeScore: number;
+    awayScore: number;
     homeTeam: MatchServiceTeam;
     awayTeam: MatchServiceTeam;
     venue?: MatchServiceVenue;

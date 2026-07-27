@@ -15,6 +15,7 @@ import { UsersModule } from '../users/users.module';
 import { TournamentsModule } from '../tournaments/tournaments.module';
 import { MatchResultResolver } from '../matches/match-result.resolver';
 import { PlayerSuspensionsModule } from '../player-suspensions/player-suspensions.module';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 @Module({
   imports: [
@@ -34,6 +35,6 @@ import { PlayerSuspensionsModule } from '../player-suspensions/player-suspension
     TournamentsModule,
   ],
   controllers: [MatchServiceController],
-  providers: [MatchServiceService, MatchResultResolver],
+  providers: [MatchServiceService, MatchResultResolver, RolesGuard],
 })
 export class MatchServiceModule {}

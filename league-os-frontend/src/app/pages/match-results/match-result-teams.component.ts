@@ -24,6 +24,15 @@ export class MatchResultTeamsComponent {
     readonly store = inject(MatchRosterCheckStore);
     private readonly rosterApi = inject(MatchRosterApi);
     readonly matchId = Number(this.route.snapshot.paramMap.get('matchId'));
+    readonly isCorrectionMode = this.router.url.startsWith(
+        '/dashboard/editing-protocol/',
+    );
+    readonly pageTitle = this.isCorrectionMode
+        ? 'Редактирование протокола'
+        : 'Формирование заявок';
+    readonly pageDescription = this.isCorrectionMode
+        ? 'Скорректируйте участников или события завершённого матча'
+        : 'Выберите команду, для которой необходимо сформировать заявку';
 
     events: ManualMatchEvent[] = [];
     selectedTeamId: number | null = null;
@@ -45,7 +54,10 @@ export class MatchResultTeamsComponent {
     readonly eventLabels: Record<ManualMatchEventType, string> = {
         goal: 'Гол',
         own_goal: 'Автогол',
+        penalty_goal: 'Гол с пенальти',
+        penalty_missed: 'Незабитый пенальти',
         yellow_card: 'Жёлтая карточка',
+        second_yellow_card: 'Вторая жёлтая карточка',
         red_card: 'Красная карточка',
         red_ball: 'Красный мяч',
     };
@@ -56,12 +68,18 @@ export class MatchResultTeamsComponent {
     }
 
     goBack(): void {
-        this.router.navigate(['/dashboard/match-results']);
+        this.router.navigate([
+            this.isCorrectionMode
+                ? '/dashboard/editing-protocol'
+                : '/dashboard/match-results',
+        ]);
     }
 
     openTeam(teamId: number): void {
         this.router.navigate([
-            '/dashboard/match-results',
+            this.isCorrectionMode
+                ? '/dashboard/editing-protocol'
+                : '/dashboard/match-results',
             this.matchId,
             'teams',
             teamId,
@@ -84,8 +102,7 @@ export class MatchResultTeamsComponent {
 
         this.isSavingEvent = true;
         this.eventError = '';
-        this.rosterApi
-            .createManualEvent(this.matchId, {
+        const dto = {
                 teamId: this.selectedTeamId,
                 eventType: this.selectedEventType,
                 minute: this.eventMinute,
@@ -95,14 +112,21 @@ export class MatchResultTeamsComponent {
                     this.selectedEventType === 'goal'
                         ? (this.selectedAssistPlayerId ?? undefined)
                         : undefined,
-            })
-            .subscribe({
+            };
+        const request = this.isCorrectionMode
+            ? this.rosterApi.createFinishedMatchEvent(this.matchId, dto)
+            : this.rosterApi.createManualEvent(this.matchId, dto);
+
+        request.subscribe({
                 next: (event) => {
                     this.events = [...this.events, event].sort(
                         (a, b) => a.half - b.half || a.minute - b.minute,
                     );
                     this.isSavingEvent = false;
                     this.resetEventForm();
+                    if (this.isCorrectionMode) {
+                        this.store.load(this.matchId);
+                    }
                 },
                 error: (error) => {
                     this.eventError =
@@ -114,7 +138,7 @@ export class MatchResultTeamsComponent {
 
     deleteEvent(event: ManualMatchEvent): void {
         if (
-            this.isProtocolSigned ||
+            !this.canEditProtocol ||
             this.deletingEventId !== null ||
             !confirm(`Удалить событие на ${event.minute}-й минуте?`)
         ) {
@@ -123,12 +147,19 @@ export class MatchResultTeamsComponent {
 
         this.deletingEventId = event.id;
         this.eventError = '';
-        this.rosterApi.cancelManualEvent(this.matchId, event.id).subscribe({
+        const request = this.isCorrectionMode
+            ? this.rosterApi.cancelFinishedMatchEvent(this.matchId, event.id)
+            : this.rosterApi.cancelManualEvent(this.matchId, event.id);
+
+        request.subscribe({
             next: () => {
                 this.events = this.events.filter(
                     (item) => item.id !== event.id,
                 );
                 this.deletingEventId = null;
+                if (this.isCorrectionMode) {
+                    this.store.load(this.matchId);
+                }
             },
             error: (error) => {
                 this.eventError =
@@ -157,34 +188,40 @@ export class MatchResultTeamsComponent {
         return this.store.data()?.match.status === 'finished';
     }
 
+    get canEditProtocol(): boolean {
+        return this.isCorrectionMode || !this.isProtocolSigned;
+    }
+
     get homeScore(): number {
-        if (this.isProtocolSigned)
+        if (this.isProtocolSigned && !this.isCorrectionMode)
             return this.store.data()?.match.homeScore ?? 0;
         const match = this.store.data()?.match;
         if (!match) return 0;
 
         return this.events.filter(
             (event) =>
-                (event.eventType === 'goal' &&
+                ((event.eventType === 'goal' ||
+                    event.eventType === 'penalty_goal') &&
                     event.teamId === match.homeTeam.id) ||
                 (event.eventType === 'own_goal' &&
                     event.teamId === match.awayTeam.id),
-        ).length;
+        ).reduce((total, event) => total + (event.goalValue || 1), 0);
     }
 
     get awayScore(): number {
-        if (this.isProtocolSigned)
+        if (this.isProtocolSigned && !this.isCorrectionMode)
             return this.store.data()?.match.awayScore ?? 0;
         const match = this.store.data()?.match;
         if (!match) return 0;
 
         return this.events.filter(
             (event) =>
-                (event.eventType === 'goal' &&
+                ((event.eventType === 'goal' ||
+                    event.eventType === 'penalty_goal') &&
                     event.teamId === match.awayTeam.id) ||
                 (event.eventType === 'own_goal' &&
                     event.teamId === match.homeTeam.id),
-        ).length;
+        ).reduce((total, event) => total + (event.goalValue || 1), 0);
     }
 
     signProtocol(): void {
@@ -337,7 +374,11 @@ export class MatchResultTeamsComponent {
     }
 
     private loadEvents(): void {
-        this.rosterApi.getManualEvents(this.matchId).subscribe({
+        const request = this.isCorrectionMode
+            ? this.rosterApi.getFinishedMatchEvents(this.matchId)
+            : this.rosterApi.getManualEvents(this.matchId);
+
+        request.subscribe({
             next: (events) => (this.events = events),
             error: () => (this.eventError = 'Не удалось загрузить события'),
         });

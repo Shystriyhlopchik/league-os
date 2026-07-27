@@ -1,7 +1,7 @@
 <div class="registration-page">
     <app-page-header
-        title="Формирование заявки"
-        description="Выберите игроков команды для участия в матче"
+        [title]="pageTitle"
+        [description]="pageDescription"
         (back)="goBack()"
     />
 
@@ -28,9 +28,16 @@
             </div>
         </section>
 
-        @if (registration.isApproved) {
+        @if (registration.isApproved && !isCorrectionMode) {
             <div class="approved-message">
                 Заявка утверждена и передана судье. Редактирование недоступно.
+            </div>
+        }
+        @if (isCorrectionMode) {
+            <div class="approved-message">
+                Изменения применяются к протоколу завершённого матча.
+                Игрока с зарегистрированными событиями сначала необходимо
+                удалить из событий.
             </div>
         }
 
@@ -44,7 +51,7 @@
                     <input
                         type="checkbox"
                         [checked]="store.selectedIds().has(player.teamPlayerId)"
-                        [disabled]="registration.isApproved"
+                        [disabled]="registration.isApproved && !isCorrectionMode"
                         (change)="onPlayerToggle(player, $event)"
                     />
 
@@ -108,19 +115,32 @@
             <button
                 class="form-actions__save"
                 type="button"
-                [disabled]="registration.isApproved || store.isSaving() || store.isApproving()"
+                [disabled]="
+                    (registration.isApproved && !isCorrectionMode) ||
+                    store.selectedCount() < 5 ||
+                    store.isSaving() ||
+                    store.isApproving()
+                "
                 (click)="save()"
             >
-                {{ store.isSaving() ? 'Сохраняем...' : 'Сохранить' }}
+                {{
+                    store.isSaving()
+                        ? "Сохраняем..."
+                        : isCorrectionMode
+                          ? "Сохранить протокол участников"
+                          : "Сохранить"
+                }}
             </button>
-            <button
-                class="form-actions__approve"
-                type="button"
-                [disabled]="registration.isApproved || store.selectedCount() < 5 || store.isSaving() || store.isApproving()"
-                (click)="approve()"
-            >
-                {{ store.isApproving() ? 'Утверждаем...' : 'Утвердить заявку' }}
-            </button>
+            @if (!isCorrectionMode) {
+                <button
+                    class="form-actions__approve"
+                    type="button"
+                    [disabled]="registration.isApproved || store.selectedCount() < 5 || store.isSaving() || store.isApproving()"
+                    (click)="approve()"
+                >
+                    {{ store.isApproving() ? 'Утверждаем...' : 'Утвердить заявку' }}
+                </button>
+            }
         </div>
       } @else if (store.error()) {
         <p class="state-text state-text--error">{{ store.error() }}</p>

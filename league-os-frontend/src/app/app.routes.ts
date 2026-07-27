@@ -151,6 +151,30 @@ export const routes: Routes = [
                     ),
             },
             {
+                path: 'editing-protocol',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
+                loadComponent: () =>
+                    import('./pages/editing-protocol/editing-protocol-page.component').then(
+                        (m) => m.EditingProtocolPageComponent,
+                    ),
+            },
+            {
+                path: 'editing-protocol/:matchId/teams/:teamId',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
+                loadComponent: () =>
+                    import('./pages/match-registrations/ui/match-registration-detail-page/match-registration-detail-page.component').then(
+                        (m) => m.MatchRegistrationDetailPageComponent,
+                    ),
+            },
+            {
+                path: 'editing-protocol/:matchId',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
+                loadComponent: () =>
+                    import('./pages/match-results/match-result-teams.component').then(
+                        (m) => m.MatchResultTeamsComponent,
+                    ),
+            },
+            {
                 path: 'match-results/:matchId/teams/:teamId',
                 canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin, UserRole.Referee])],
                 loadComponent: () =>

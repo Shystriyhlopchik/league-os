@@ -21,6 +21,15 @@ export class MatchRegistrationDetailPageComponent implements OnInit {
     readonly matchId = Number(this.route.snapshot.paramMap.get('matchId'));
     readonly teamId = Number(this.route.snapshot.paramMap.get('teamId'));
     readonly isRefereeFlow = this.router.url.startsWith('/dashboard/match-results/');
+    readonly isCorrectionMode = this.router.url.startsWith(
+        '/dashboard/editing-protocol/',
+    );
+    readonly pageTitle = this.isCorrectionMode
+        ? 'Корректировка протокола участников'
+        : 'Формирование заявки';
+    readonly pageDescription = this.isCorrectionMode
+        ? 'Уточните фактический состав команды в завершённом матче'
+        : 'Выберите игроков команды для участия в матче';
 
     readonly availablePlayers = computed(() =>
         (this.store.registration()?.players ?? []).filter(
@@ -35,12 +44,23 @@ export class MatchRegistrationDetailPageComponent implements OnInit {
     );
 
     ngOnInit(): void {
-        this.store.load(this.matchId, this.teamId);
+        this.store.load(
+            this.matchId,
+            this.teamId,
+            this.isCorrectionMode,
+        );
     }
 
     goBack(): void {
         if (this.isRefereeFlow) {
             this.router.navigate(['/dashboard/match-results', this.matchId]);
+            return;
+        }
+        if (this.isCorrectionMode) {
+            this.router.navigate([
+                '/dashboard/editing-protocol',
+                this.matchId,
+            ]);
             return;
         }
 
@@ -53,7 +73,11 @@ export class MatchRegistrationDetailPageComponent implements OnInit {
     }
 
     save(): void {
-        this.store.save(this.matchId, this.teamId);
+        this.store.save(
+            this.matchId,
+            this.teamId,
+            this.isCorrectionMode,
+        );
     }
 
     approve(): void {

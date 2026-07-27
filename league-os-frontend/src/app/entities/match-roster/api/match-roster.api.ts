@@ -8,7 +8,10 @@ import { HttpClient } from '@angular/common/http';
 export type ManualMatchEventType =
     | 'goal'
     | 'own_goal'
+    | 'penalty_goal'
+    | 'penalty_missed'
     | 'yellow_card'
+    | 'second_yellow_card'
     | 'red_card'
     | 'red_ball';
 
@@ -21,6 +24,7 @@ export interface ManualMatchEvent {
     half: 1 | 2;
     playerId?: number;
     assistPlayerId?: number;
+    goalValue?: number;
 }
 
 export interface CreateManualMatchEvent {
@@ -93,6 +97,31 @@ export class MatchRosterApi {
     ): Observable<{ id: number; isCancelled: true }> {
         return this.http.delete<{ id: number; isCancelled: true }>(
             `${this.apiUrl}/match-service/matches/${matchId}/manual-events/${eventId}`,
+        );
+    }
+
+    getFinishedMatchEvents(matchId: number): Observable<ManualMatchEvent[]> {
+        return this.http.get<ManualMatchEvent[]>(
+            `${this.apiUrl}/match-service/finished-matches/${matchId}/events`,
+        );
+    }
+
+    createFinishedMatchEvent(
+        matchId: number,
+        dto: CreateManualMatchEvent,
+    ): Observable<ManualMatchEvent> {
+        return this.http.post<ManualMatchEvent>(
+            `${this.apiUrl}/match-service/finished-matches/${matchId}/events`,
+            dto,
+        );
+    }
+
+    cancelFinishedMatchEvent(
+        matchId: number,
+        eventId: number,
+    ): Observable<{ id: number; isCancelled: true }> {
+        return this.http.delete<{ id: number; isCancelled: true }>(
+            `${this.apiUrl}/match-service/finished-matches/${matchId}/events/${eventId}`,
         );
     }
 

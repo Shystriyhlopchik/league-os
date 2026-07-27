@@ -78,6 +78,13 @@ export class DashboardPageComponent {
             roles: [UserRole.Admin, UserRole.SuperAdmin],
             variant: '#2ECC71',
         },
+        {
+            title: 'Редактирование протокола',
+            description: 'Редактирование уже подписанных протоколов',
+            route: '/dashboard/editing-protocol',
+            roles: [UserRole.Admin, UserRole.SuperAdmin],
+            variant: '#2ECC71',
+        },
     ];
 
     readonly featureFlags = toSignal(this.featureFlagsApi.get(), {

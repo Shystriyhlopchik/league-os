@@ -32,6 +32,12 @@ export class MatchServiceApi {
         );
     }
 
+    getFinishedMatches(): Observable<MatchServiceMatch[]> {
+        return this.http.get<MatchServiceMatch[]>(
+            `${this.apiUrl}/match-service/finished-matches`,
+        );
+    }
+
     getRegistrationMatches(): Observable<MatchServiceMatch[]> {
         return this.http.get<MatchServiceMatch[]>(
             `${this.apiUrl}/match-service/registration-matches`,
@@ -62,6 +68,26 @@ export class MatchServiceApi {
         return this.http.post<MatchRegistration>(
             `${this.apiUrl}/match-service/registration-matches/${matchId}/teams/${teamId}/roster/approve`,
             {},
+        );
+    }
+
+    getFinishedMatchRegistration(
+        matchId: number,
+        teamId: number,
+    ): Observable<MatchRegistration> {
+        return this.http.get<MatchRegistration>(
+            `${this.apiUrl}/match-service/finished-matches/${matchId}/teams/${teamId}/roster`,
+        );
+    }
+
+    saveFinishedMatchRegistration(
+        matchId: number,
+        teamId: number,
+        teamPlayerIds: number[],
+    ): Observable<MatchRegistration> {
+        return this.http.put<MatchRegistration>(
+            `${this.apiUrl}/match-service/finished-matches/${matchId}/teams/${teamId}/roster`,
+            { teamPlayerIds },
         );
     }
 

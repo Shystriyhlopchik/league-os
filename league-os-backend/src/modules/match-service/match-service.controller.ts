@@ -19,9 +19,12 @@ import { SyncMatchServiceEventsDto } from './dto/sync-match-service-events.dto';
 import { StartEventRecordingDto } from './dto/start-event-recording.dto';
 import { ActivateRedBallDto } from './dto/match-red-ball-activation.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { SaveMatchRegistrationDto } from './dto/save-match-registration.dto';
 import { CreateManualMatchEventDto } from './dto/create-manual-match-event.dto';
 import { FinalizeMatchResultDto } from './dto/finalize-match-result.dto';
+import { RoleCode } from '../users/enums/role-code.enum';
 
 @Controller('match-service')
 export class MatchServiceController {
@@ -35,6 +38,67 @@ export class MatchServiceController {
   @Get('overdue-matches')
   findOverdueMatches(): Promise<MatchServiceMatchDto[]> {
     return this.matchService.findOverdueMatches();
+  }
+
+  @Get('finished-matches')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.Admin, RoleCode.SuperAdmin)
+  findFinishedMatches(): Promise<MatchServiceMatchDto[]> {
+    return this.matchService.findFinishedMatches();
+  }
+
+  @Get('finished-matches/:matchId/events')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.Admin, RoleCode.SuperAdmin)
+  findFinishedMatchEvents(
+    @Param('matchId', ParseIntPipe) matchId: number,
+  ) {
+    return this.matchService.findFinishedMatchEvents(matchId);
+  }
+
+  @Post('finished-matches/:matchId/events')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.Admin, RoleCode.SuperAdmin)
+  createFinishedMatchEvent(
+    @Param('matchId', ParseIntPipe) matchId: number,
+    @Body() dto: CreateManualMatchEventDto,
+  ) {
+    return this.matchService.createFinishedMatchEvent(matchId, dto);
+  }
+
+  @Delete('finished-matches/:matchId/events/:eventId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.Admin, RoleCode.SuperAdmin)
+  cancelFinishedMatchEvent(
+    @Param('matchId', ParseIntPipe) matchId: number,
+    @Param('eventId', ParseIntPipe) eventId: number,
+  ) {
+    return this.matchService.cancelFinishedMatchEvent(matchId, eventId);
+  }
+
+  @Get('finished-matches/:matchId/teams/:teamId/roster')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.Admin, RoleCode.SuperAdmin)
+  getFinishedMatchRegistration(
+    @Param('matchId', ParseIntPipe) matchId: number,
+    @Param('teamId', ParseIntPipe) teamId: number,
+  ) {
+    return this.matchService.getFinishedMatchRegistration(matchId, teamId);
+  }
+
+  @Put('finished-matches/:matchId/teams/:teamId/roster')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.Admin, RoleCode.SuperAdmin)
+  saveFinishedMatchRegistration(
+    @Param('matchId', ParseIntPipe) matchId: number,
+    @Param('teamId', ParseIntPipe) teamId: number,
+    @Body() dto: SaveMatchRegistrationDto,
+  ) {
+    return this.matchService.saveFinishedMatchRegistration(
+      matchId,
+      teamId,
+      dto.teamPlayerIds,
+    );
   }
 
   @Get('matches/:matchId/manual-events')
