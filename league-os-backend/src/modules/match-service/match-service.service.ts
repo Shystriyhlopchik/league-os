@@ -883,9 +883,15 @@ export class MatchServiceService {
     teamId: number,
     teamPlayerIds: number[],
     currentUserId: number,
+    allowSubmittedRosterChanges = false,
   ) {
     const match = await this.findRegistrationMatch(matchId, teamId);
     await this.ensureCanManageRegistrationTeam(teamId, currentUserId);
+
+    if (new Set(teamPlayerIds).size !== teamPlayerIds.length) {
+      throw new BadRequestException('Игрок не может быть добавлен дважды');
+    }
+
     const availablePlayers = await this.findTeamRoster(match, teamId);
     const playersByTeamPlayerId = new Map(
       availablePlayers.map((player) => [player.teamPlayerId, player]),
@@ -919,7 +925,7 @@ export class MatchServiceService {
         where: { matchId, teamId },
       });
 
-      if (roster?.isSubmitted) {
+      if (roster?.isSubmitted && !allowSubmittedRosterChanges) {
         throw new BadRequestException(
           'Утверждённую заявку нельзя редактировать',
         );
@@ -951,6 +957,37 @@ export class MatchServiceService {
     });
 
     return this.getMatchRegistration(matchId, teamId, currentUserId);
+  }
+
+  async saveMatchRegistrationByOfficial(
+    matchId: number,
+    teamId: number,
+    teamPlayerIds: number[],
+    currentUserId: number,
+  ) {
+    if (teamPlayerIds.length < 5) {
+      throw new BadRequestException(
+        'В составе команды должно быть минимум 5 игроков',
+      );
+    }
+
+    const roster = await this.matchRosterRepository.findOne({
+      where: { matchId, teamId },
+    });
+
+    if (!roster?.isSubmitted) {
+      throw new BadRequestException(
+        'Капитан ещё не утвердил заявку команды',
+      );
+    }
+
+    return this.saveMatchRegistration(
+      matchId,
+      teamId,
+      teamPlayerIds,
+      currentUserId,
+      true,
+    );
   }
 
   async approveMatchRegistration(

@@ -166,6 +166,23 @@ export class MatchServiceController {
     );
   }
 
+  @Put('match-results/:matchId/teams/:teamId/roster')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.Referee, RoleCode.Admin, RoleCode.SuperAdmin)
+  saveMatchRegistrationByOfficial(
+    @Param('matchId', ParseIntPipe) matchId: number,
+    @Param('teamId', ParseIntPipe) teamId: number,
+    @Body() dto: SaveMatchRegistrationDto,
+    @Req() req: any,
+  ) {
+    return this.matchService.saveMatchRegistrationByOfficial(
+      matchId,
+      teamId,
+      dto.teamPlayerIds,
+      req.user.id,
+    );
+  }
+
   @Post('registration-matches/:matchId/teams/:teamId/roster/approve')
   @UseGuards(JwtAuthGuard)
   approveMatchRegistration(

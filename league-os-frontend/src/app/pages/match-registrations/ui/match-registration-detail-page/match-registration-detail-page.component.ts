@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
@@ -24,11 +24,16 @@ export class MatchRegistrationDetailPageComponent implements OnInit {
     readonly isCorrectionMode = this.router.url.startsWith(
         '/dashboard/editing-protocol/',
     );
+    readonly isEditing = signal(false);
     readonly pageTitle = this.isCorrectionMode
         ? 'Корректировка протокола участников'
+        : this.isRefereeFlow
+          ? 'Состав команды'
         : 'Формирование заявки';
     readonly pageDescription = this.isCorrectionMode
         ? 'Уточните фактический состав команды в завершённом матче'
+        : this.isRefereeFlow
+          ? 'Проверьте состав, который капитан выбрал на матч'
         : 'Выберите игроков команды для участия в матче';
 
     readonly availablePlayers = computed(() =>
@@ -77,7 +82,20 @@ export class MatchRegistrationDetailPageComponent implements OnInit {
             this.matchId,
             this.teamId,
             this.isCorrectionMode,
+            this.isRefereeFlow,
+            this.isRefereeFlow
+                ? () => this.isEditing.set(false)
+                : undefined,
         );
+    }
+
+    startEditing(): void {
+        this.isEditing.set(true);
+    }
+
+    cancelEditing(): void {
+        this.isEditing.set(false);
+        this.store.load(this.matchId, this.teamId);
     }
 
     approve(): void {

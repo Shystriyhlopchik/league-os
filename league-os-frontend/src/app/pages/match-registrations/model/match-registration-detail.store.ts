@@ -51,7 +51,13 @@ export class MatchRegistrationDetailStore {
         this.message.set(null);
     }
 
-    save(matchId: number, teamId: number, correctionMode = false): void {
+    save(
+        matchId: number,
+        teamId: number,
+        correctionMode = false,
+        officialMode = false,
+        onSuccess?: () => void,
+    ): void {
         this.isSaving.set(true);
         this.error.set(null);
         this.message.set(null);
@@ -62,6 +68,12 @@ export class MatchRegistrationDetailStore {
                   teamId,
                   [...this.selectedIds()],
               )
+            : officialMode
+              ? this.api.saveMatchRegistrationByOfficial(
+                    matchId,
+                    teamId,
+                    [...this.selectedIds()],
+                )
             : this.api.saveMatchRegistration(matchId, teamId, [
                   ...this.selectedIds(),
               ]);
@@ -73,8 +85,11 @@ export class MatchRegistrationDetailStore {
                     this.message.set(
                         correctionMode
                             ? 'Протокол участников сохранён'
+                            : officialMode
+                              ? 'Состав команды обновлён'
                             : 'Заявка сохранена',
                     );
+                    onSuccess?.();
                 }),
                 catchError((error) => {
                     this.error.set(

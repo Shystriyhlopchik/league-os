@@ -139,7 +139,9 @@
     }
 
     &__save { color: #fff; border: 1px solid #566; background: transparent; }
-    &__approve { color: #071010; border: 0; background: #28df7a; }
+    &__cancel { color: #c5cece; border: 1px solid #566; background: transparent; }
+    &__approve,
+    &__edit { color: #071010; border: 0; background: #28df7a; }
 }
 
 @media (max-width: 760px) {

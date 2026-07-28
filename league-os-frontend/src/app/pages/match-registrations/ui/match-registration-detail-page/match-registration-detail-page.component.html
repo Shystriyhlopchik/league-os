@@ -30,7 +30,13 @@
 
         @if (registration.isApproved && !isCorrectionMode) {
             <div class="approved-message">
-                Заявка утверждена и передана судье. Редактирование недоступно.
+                @if (isRefereeFlow) {
+                    Состав утверждён капитаном. При необходимости судья может
+                    добавить забытого игрока или скорректировать список.
+                } @else {
+                    Заявка утверждена и передана судье. Редактирование
+                    недоступно.
+                }
             </div>
         }
         @if (isCorrectionMode) {
@@ -51,7 +57,11 @@
                     <input
                         type="checkbox"
                         [checked]="store.selectedIds().has(player.teamPlayerId)"
-                        [disabled]="registration.isApproved && !isCorrectionMode"
+                        [disabled]="
+                            registration.isApproved &&
+                            !isCorrectionMode &&
+                            !(isRefereeFlow && isEditing())
+                        "
                         (change)="onPlayerToggle(player, $event)"
                     />
 
@@ -112,34 +122,58 @@
         }
 
         <div class="form-actions">
-            <button
-                class="form-actions__save"
-                type="button"
-                [disabled]="
-                    (registration.isApproved && !isCorrectionMode) ||
-                    store.selectedCount() < 5 ||
-                    store.isSaving() ||
-                    store.isApproving()
-                "
-                (click)="save()"
-            >
-                {{
-                    store.isSaving()
-                        ? "Сохраняем..."
-                        : isCorrectionMode
-                          ? "Сохранить протокол участников"
-                          : "Сохранить"
-                }}
-            </button>
-            @if (!isCorrectionMode) {
+            @if (isRefereeFlow && registration.isApproved && !isEditing()) {
                 <button
-                    class="form-actions__approve"
+                    class="form-actions__edit"
                     type="button"
-                    [disabled]="registration.isApproved || store.selectedCount() < 5 || store.isSaving() || store.isApproving()"
-                    (click)="approve()"
+                    (click)="startEditing()"
                 >
-                    {{ store.isApproving() ? 'Утверждаем...' : 'Утвердить заявку' }}
+                    Редактировать
                 </button>
+            } @else {
+                @if (isRefereeFlow && isEditing()) {
+                    <button
+                        class="form-actions__cancel"
+                        type="button"
+                        [disabled]="store.isSaving()"
+                        (click)="cancelEditing()"
+                    >
+                        Отмена
+                    </button>
+                }
+                <button
+                    class="form-actions__save"
+                    type="button"
+                    [disabled]="
+                        (registration.isApproved &&
+                            !isCorrectionMode &&
+                            !(isRefereeFlow && isEditing())) ||
+                        store.selectedCount() < 5 ||
+                        store.isSaving() ||
+                        store.isApproving()
+                    "
+                    (click)="save()"
+                >
+                    {{
+                        store.isSaving()
+                            ? "Сохраняем..."
+                            : isCorrectionMode
+                              ? "Сохранить протокол участников"
+                              : isRefereeFlow
+                                ? "Сохранить состав"
+                                : "Сохранить"
+                    }}
+                </button>
+                @if (!isCorrectionMode && !isRefereeFlow) {
+                    <button
+                        class="form-actions__approve"
+                        type="button"
+                        [disabled]="registration.isApproved || store.selectedCount() < 5 || store.isSaving() || store.isApproving()"
+                        (click)="approve()"
+                    >
+                        {{ store.isApproving() ? 'Утверждаем...' : 'Утвердить заявку' }}
+                    </button>
+                }
             }
         </div>
       } @else if (store.error()) {
