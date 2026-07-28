@@ -86,7 +86,7 @@ export class MatchRegistrationDetailStore {
                         correctionMode
                             ? 'Протокол участников сохранён'
                             : officialMode
-                              ? 'Состав команды обновлён'
+                              ? 'Состав команды сохранён и утверждён'
                             : 'Заявка сохранена',
                     );
                     onSuccess?.();

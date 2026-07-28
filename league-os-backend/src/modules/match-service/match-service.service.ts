@@ -884,6 +884,7 @@ export class MatchServiceService {
     teamPlayerIds: number[],
     currentUserId: number,
     allowSubmittedRosterChanges = false,
+    submitAndApproveRoster = false,
   ) {
     const match = await this.findRegistrationMatch(matchId, teamId);
     await this.ensureCanManageRegistrationTeam(teamId, currentUserId);
@@ -954,6 +955,19 @@ export class MatchServiceService {
           ),
         );
       }
+
+      if (submitAndApproveRoster) {
+        if (!roster.isSubmitted) {
+          roster.isSubmitted = true;
+          roster.submittedAt = new Date();
+          roster.submittedByUserId = currentUserId;
+        }
+
+        roster.isApproved = true;
+        roster.approvedAt = new Date();
+        roster.approvedByUserId = currentUserId;
+        await rosterRepository.save(roster);
+      }
     });
 
     return this.getMatchRegistration(matchId, teamId, currentUserId);
@@ -971,21 +985,12 @@ export class MatchServiceService {
       );
     }
 
-    const roster = await this.matchRosterRepository.findOne({
-      where: { matchId, teamId },
-    });
-
-    if (!roster?.isSubmitted) {
-      throw new BadRequestException(
-        'Капитан ещё не утвердил заявку команды',
-      );
-    }
-
     return this.saveMatchRegistration(
       matchId,
       teamId,
       teamPlayerIds,
       currentUserId,
+      true,
       true,
     );
   }
