@@ -1,5 +1,48 @@
+<!-- Старый рекламный баннер
 <section class="advertising-banner" aria-label="Рекламный баннер">
     <a class="advertising-banner__link" routerLink="/cooperation">
         <span class="advertising-banner__text">место для вашей рекламы</span>
     </a>
+</section>
+-->
+
+<section
+    class="advertising-ticker"
+    [class.advertising-ticker--birthday]="hasBirthdays()"
+    aria-label="Игроки лиги"
+>
+    @if (isLoading()) {
+        <p class="advertising-ticker__state">Загружаем игроков...</p>
+    } @else if (hasError()) {
+        <p class="advertising-ticker__state">
+            Не удалось загрузить список игроков
+        </p>
+    } @else if (!tickerItems().length) {
+        <p class="advertising-ticker__state">
+            В системе пока нет активных игроков
+        </p>
+    } @else {
+        <span class="advertising-ticker__accessible-text">
+            {{ accessibleText() }}
+        </span>
+
+        <div
+            class="advertising-ticker__viewport"
+            [style.--ticker-duration]="tickerDuration()"
+            aria-hidden="true"
+        >
+            <div class="advertising-ticker__track">
+                <div class="advertising-ticker__group">
+                    @for (item of tickerItems(); track $index) {
+                        <span>{{ item }}</span>
+                    }
+                </div>
+                <div class="advertising-ticker__group">
+                    @for (item of tickerItems(); track $index) {
+                        <span>{{ item }}</span>
+                    }
+                </div>
+            </div>
+        </div>
+    }
 </section>

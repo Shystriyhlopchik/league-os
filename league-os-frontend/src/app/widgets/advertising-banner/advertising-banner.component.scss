@@ -1,3 +1,4 @@
+/* Старые стили рекламного баннера
 :host {
     display: block;
     background-color: #16191A;
@@ -90,5 +91,116 @@
 
     .advertising-banner__text {
         font-size: clamp(12px, 3vw, 24px);
+    }
+}
+*/
+
+:host {
+    display: block;
+    padding: 16px 0;
+    overflow: hidden;
+    background: #16191a;
+}
+
+.advertising-ticker {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    border-top: 1px solid rgba(246, 17, 41, 0.55);
+    border-bottom: 1px solid rgba(246, 17, 41, 0.55);
+    background:
+        linear-gradient(90deg, rgba(246, 17, 41, 0.12), transparent 28% 72%, rgba(246, 17, 41, 0.12)),
+        #080b0a;
+    color: #fff;
+}
+
+.advertising-ticker--birthday {
+    border-color: rgba(255, 205, 86, 0.8);
+    background:
+        linear-gradient(90deg, rgba(246, 17, 41, 0.2), transparent 30% 70%, rgba(246, 17, 41, 0.2)),
+        #211808;
+    color: #ffdc76;
+}
+
+.advertising-ticker__viewport {
+    width: 100%;
+    overflow: hidden;
+}
+
+.advertising-ticker__track {
+    width: max-content;
+    display: flex;
+    animation: advertising-ticker-scroll var(--ticker-duration, 30s) linear infinite;
+    will-change: transform;
+}
+
+.advertising-ticker__group {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.advertising-ticker__group span {
+    position: relative;
+    padding: 13px 64px 13px 0;
+    font-family: "Russo One", "Arial Narrow", Arial, sans-serif;
+    font-size: clamp(16px, 2.2vw, 25px);
+    line-height: 1;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.advertising-ticker__group span::after {
+    position: absolute;
+    top: 50%;
+    right: 26px;
+    width: 8px;
+    height: 8px;
+    content: "";
+    background: #f61129;
+    transform: translateY(-50%) rotate(45deg);
+}
+
+.advertising-ticker__accessible-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.advertising-ticker__state {
+    margin: 0;
+    padding: 13px 16px;
+    color: #c7cecf;
+    font-family: "Russo One", "Arial Narrow", Arial, sans-serif;
+    font-size: 14px;
+    text-align: center;
+}
+
+@keyframes advertising-ticker-scroll {
+    from {
+        transform: translateX(0);
+    }
+
+    to {
+        transform: translateX(-50%);
+    }
+}
+
+@media (min-width: 768px) {
+    .advertising-ticker__group span {
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .advertising-ticker__track {
+        animation: none;
     }
 }

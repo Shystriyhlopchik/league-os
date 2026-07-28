@@ -16,6 +16,10 @@ import {
   PlayerCardRatingsDto,
   TournamentPlayerCardsDto,
 } from './dto/player-card.dto';
+import {
+  PlayerTickerDto,
+  PlayerTickerItemDto,
+} from './dto/player-ticker.dto';
 import { PlayerEntity } from './entities/player.entity';
 import { PlayerPosition } from './enums/player-position.enum';
 import { PreferredFoot } from './enums/preferred-foot.enum';
@@ -107,6 +111,8 @@ const POSITION_WEIGHTS: Record<
 @Injectable()
 export class PlayersService {
   constructor(
+    @InjectRepository(PlayerEntity)
+    private readonly playerRepository: Repository<PlayerEntity>,
     @InjectRepository(TournamentEntity)
     private readonly tournamentRepository: Repository<TournamentEntity>,
     @InjectRepository(MatchEntity)
@@ -118,6 +124,34 @@ export class PlayersService {
     @InjectRepository(PlayerTournamentStatEntity)
     private readonly playerTournamentStatRepository: Repository<PlayerTournamentStatEntity>,
   ) {}
+
+  async getTicker(): Promise<PlayerTickerDto> {
+    const players = await this.playerRepository.find({
+      where: { isActive: true },
+      order: {
+        lastName: 'ASC',
+        firstName: 'ASC',
+        id: 'ASC',
+      },
+    });
+    const today = this.getMoscowDateParts();
+    const toTickerItem = (player: PlayerEntity): PlayerTickerItemDto => ({
+      id: player.id,
+      name: [player.lastName, player.firstName].filter(Boolean).join(' '),
+    });
+
+    return {
+      date: `${today.year}-${today.month}-${today.day}`,
+      players: players.map(toTickerItem),
+      birthdays: players
+        .filter((player) => {
+          if (!player.birthDate) return false;
+          const [, month, day] = player.birthDate.split('-');
+          return month === today.month && day === today.day;
+        })
+        .map(toTickerItem),
+    };
+  }
 
   async getTournamentCards(
     tournamentId: number,
@@ -674,5 +708,26 @@ export class PlayersService {
     if (preferredFoot === PreferredFoot.RIGHT) return 'Правая нога';
     if (preferredFoot === PreferredFoot.BOTH) return 'Обе ноги';
     return 'Нога не указана';
+  }
+
+  private getMoscowDateParts(): {
+    year: string;
+    month: string;
+    day: string;
+  } {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Moscow',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(new Date());
+    const getPart = (type: Intl.DateTimeFormatPartTypes) =>
+      parts.find((part) => part.type === type)?.value ?? '';
+
+    return {
+      year: getPart('year'),
+      month: getPart('month'),
+      day: getPart('day'),
+    };
   }
 }
