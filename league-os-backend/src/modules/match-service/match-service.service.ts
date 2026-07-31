@@ -790,6 +790,9 @@ export class MatchServiceService {
         tournamentId,
         matchId,
       );
+      await this.playerTournamentStatsService.serveSuspensionsForMatch(
+        matchId,
+      );
     }
     return result;
   }

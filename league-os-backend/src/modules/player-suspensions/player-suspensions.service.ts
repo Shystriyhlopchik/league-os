@@ -202,6 +202,7 @@ export class PlayerSuspensionsService {
       playerIds,
       context,
     );
+    await this.reconcileSuspensionsBeforeMatch(match, suspensions);
     const stageIds = this.yellowCardStageIds(context);
     const result = new Map<number, PlayerDisciplineEligibility>();
 
@@ -232,6 +233,89 @@ export class PlayerSuspensionsService {
     );
 
     return result;
+  }
+
+  private async reconcileSuspensionsBeforeMatch(
+    match: MatchEntity,
+    suspensions: PlayerSuspensionEntity[],
+  ): Promise<void> {
+    if (!match.matchDatetime || !suspensions.length) return;
+
+    const changed: PlayerSuspensionEntity[] = [];
+    const sourceMatches = await this.matchRepository.find({
+      where: {
+        id: In(
+          suspensions
+            .map((suspension) => suspension.sourceMatchId)
+            .filter((id): id is number => Boolean(id)),
+        ),
+      },
+    });
+    const sourceMatchById = new Map(
+      sourceMatches.map((sourceMatch) => [sourceMatch.id, sourceMatch]),
+    );
+
+    for (const suspension of suspensions) {
+      if (
+        suspension.status !== PlayerSuspensionStatus.ACTIVE ||
+        !suspension.sourceMatchId
+      ) {
+        continue;
+      }
+
+      const sourceMatch = sourceMatchById.get(suspension.sourceMatchId);
+      if (!sourceMatch?.matchDatetime) continue;
+
+      const query = this.matchRepository
+        .createQueryBuilder('completedMatch')
+        .where('completedMatch.tournament_id = :tournamentId', {
+          tournamentId: suspension.tournamentId,
+        })
+        .andWhere(
+          '(completedMatch.home_team_id = :teamId OR completedMatch.away_team_id = :teamId)',
+          { teamId: suspension.teamId },
+        )
+        .andWhere('completedMatch.result_official_at IS NOT NULL')
+        .andWhere(
+          '(completedMatch.match_datetime > :sourceDatetime OR (completedMatch.match_datetime = :sourceDatetime AND completedMatch.id > :sourceMatchId))',
+          {
+            sourceDatetime: sourceMatch.matchDatetime,
+            sourceMatchId: sourceMatch.id,
+          },
+        )
+        .andWhere(
+          '(completedMatch.match_datetime < :targetDatetime OR (completedMatch.match_datetime = :targetDatetime AND completedMatch.id < :targetMatchId))',
+          {
+            targetDatetime: match.matchDatetime,
+            targetMatchId: match.id,
+          },
+        );
+
+      if (suspension.stageId) {
+        query.andWhere('completedMatch.stage_id = :stageId', {
+          stageId: suspension.stageId,
+        });
+      }
+
+      const completedMatches = await query.getCount();
+      const matchesServed = Math.min(
+        suspension.matchesRequired,
+        Math.max(suspension.matchesServed, completedMatches),
+      );
+
+      if (matchesServed === suspension.matchesServed) continue;
+
+      suspension.matchesServed = matchesServed;
+      if (matchesServed >= suspension.matchesRequired) {
+        suspension.status = PlayerSuspensionStatus.SERVED;
+        suspension.servedAt = new Date();
+      }
+      changed.push(suspension);
+    }
+
+    if (changed.length) {
+      await this.suspensionRepository.save(changed);
+    }
   }
 
   async revertCardEvent(params: {
