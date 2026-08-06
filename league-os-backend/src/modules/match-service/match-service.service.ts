@@ -701,8 +701,8 @@ export class MatchServiceService {
           ...dto,
           regularTime:
             dto.winnerTeamId === match.homeTeamId
-              ? { home: 3, away: 0 }
-              : { home: 0, away: 3 },
+              ? { home: 5, away: 0 }
+              : { home: 0, away: 5 },
           technicalResultReason: reason,
         };
       }
