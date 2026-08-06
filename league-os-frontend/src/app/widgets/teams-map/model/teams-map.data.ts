@@ -57,7 +57,7 @@ export const TEAMS_MAP_MARKERS: TeamsMapMarker[] = [
     {
         id: 2,
         name: 'ЧЭТК',
-        slug: 'chetk',
+        slug: '12',
         logoUrl: 'images/teams/CHETK.png',
         x: 43,
         y: 38,
@@ -66,7 +66,7 @@ export const TEAMS_MAP_MARKERS: TeamsMapMarker[] = [
     {
         id: 3,
         name: 'FIRE',
-        slug: 'fire',
+        slug: '9',
         logoUrl: 'images/teams/fire.png',
         x: 53,
         y: 34,
@@ -75,7 +75,7 @@ export const TEAMS_MAP_MARKERS: TeamsMapMarker[] = [
     {
         id: 4,
         name: 'Новые Лапсары',
-        slug: 'new_lapsary',
+        slug: '10',
         logoUrl: 'images/teams/new-lapsary.webp',
         x: 28,
         y: 78,
@@ -84,7 +84,7 @@ export const TEAMS_MAP_MARKERS: TeamsMapMarker[] = [
     {
         id: 5,
         name: 'Коробка',
-        slug: 'box',
+        slug: '16',
         logoUrl: 'images/teams/box.webp',
         x: 31,
         y: 12,
@@ -93,7 +93,7 @@ export const TEAMS_MAP_MARKERS: TeamsMapMarker[] = [
     {
         id: 6,
         name: 'ХБК',
-        slug: 'HBK',
+        slug: '14',
         logoUrl: 'images/teams/HBK.webp',
         x: 46,
         y: 15,
@@ -102,7 +102,7 @@ export const TEAMS_MAP_MARKERS: TeamsMapMarker[] = [
     {
         id: 7,
         name: 'ЖБК 9',
-        slug: 'ZBK9',
+        slug: '1',
         logoUrl: 'images/teams/ZBK9.webp',
         x: 48,
         y: 40,
@@ -111,7 +111,7 @@ export const TEAMS_MAP_MARKERS: TeamsMapMarker[] = [
     {
         id: 8,
         name: 'Торпедо',
-        slug: 'ZBK9',
+        slug: '7',
         logoUrl: 'images/teams/torpedo.webp',
         x: 47,
         y: 25,
@@ -120,7 +120,7 @@ export const TEAMS_MAP_MARKERS: TeamsMapMarker[] = [
     {
         id: 9,
         name: 'Дизель',
-        slug: 'diesel',
+        slug: '4',
         logoUrl: 'images/teams/diesel.svg',
         x: 55,
         y: 55,
@@ -129,7 +129,7 @@ export const TEAMS_MAP_MARKERS: TeamsMapMarker[] = [
     {
         id: 10,
         name: 'ЧАЗ-Альгешево',
-        slug: 'algeshevo',
+        slug: '5',
         logoUrl: 'images/teams/chaz.svg',
         x: 45,
         y: 83,
@@ -138,7 +138,7 @@ export const TEAMS_MAP_MARKERS: TeamsMapMarker[] = [
     {
         id: 11,
         name: 'Водоканал',
-        slug: 'vodokanal',
+        slug: '15',
         logoUrl: 'images/teams/Vodokanal.png',
         x: 53,
         y: 45,
@@ -147,7 +147,7 @@ export const TEAMS_MAP_MARKERS: TeamsMapMarker[] = [
     {
         id: 12,
         name: 'Полено',
-        slug: 'poleno',
+        slug: '3',
         logoUrl: 'images/teams/Poleno.png',
         x: 48,
         y: 55,
