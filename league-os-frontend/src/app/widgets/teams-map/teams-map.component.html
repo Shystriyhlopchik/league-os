@@ -9,7 +9,7 @@
         @for (team of teams; track team.id) {
             <a
                 class="teams-map__team"
-                [routerLink]="['/teams', team.slug]"
+                [routerLink]="['/team', team.slug]"
                 [style.left.%]="team.x"
                 [style.top.%]="team.y"
                 [style.--pulse-delay]="team.delay + 's'"

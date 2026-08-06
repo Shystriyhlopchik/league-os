@@ -48,7 +48,7 @@ export const TEAMS_MAP_MARKERS: TeamsMapMarker[] = [
     {
         id: 1,
         name: 'Арман',
-        slug: 'Arman',
+        slug: '2',
         logoUrl: 'images/teams/Arman_logo.png',
         x: 32,
         y: 96,
@@ -142,6 +142,15 @@ export const TEAMS_MAP_MARKERS: TeamsMapMarker[] = [
         logoUrl: 'images/teams/Vodokanal.png',
         x: 53,
         y: 45,
+        delay: 2.5,
+    },
+    {
+        id: 12,
+        name: 'Полено',
+        slug: 'poleno',
+        logoUrl: 'images/teams/Poleno.png',
+        x: 48,
+        y: 55,
         delay: 2.5,
     },
 ];
