@@ -1,0 +1,463 @@
+<section class="standings-page">
+    <header class="standings-page__header">
+        <div>
+            <span class="standings-page__eyebrow">Турнирная таблица</span>
+            <h1>Таблица</h1>
+        </div>
+        @if (view(); as tournamentView) {
+            <p>{{ tournamentView.tournament.name }}</p>
+        }
+    </header>
+
+    @if (loading()) {
+        <div class="page-state" role="status">
+            <span class="page-state__spinner" aria-hidden="true"></span>
+            Загружаем таблицу…
+        </div>
+    } @else if (error()) {
+        <div class="page-state page-state--error" role="alert">
+            <p>{{ error() }}</p>
+            <button type="button" (click)="loadStandings()">Повторить</button>
+        </div>
+    } @else {
+        @if (view(); as tournamentView) {
+            @if (tournamentView.stages.length) {
+                <nav class="stage-tabs" aria-label="Этап турнира">
+                    @for (
+                        stage of tournamentView.stages;
+                        track stageKey(stage)
+                    ) {
+                        <button
+                            type="button"
+                            [class.stage-tabs__button--active]="
+                                stageKey(stage) === selectedStageKey()
+                            "
+                            [attr.aria-pressed]="
+                                stageKey(stage) === selectedStageKey()
+                            "
+                            (click)="selectStage(stage)"
+                        >
+                            {{ stageLabel(stage) }}
+                        </button>
+                    }
+                </nav>
+
+                @if (currentStage(); as stage) {
+                    @if (stage.type === "knockout") {
+                        <section class="standings-section playoff-section">
+                            <div class="section-heading">
+                                <div>
+                                    <span>Этап турнира</span>
+                                    <h2>Плей-офф</h2>
+                                </div>
+                                @if (!stage.bracket.confirmed) {
+                                    <small>Предварительная сетка</small>
+                                }
+                            </div>
+
+                            @if (stage.bracket.matches.length) {
+                                <app-knockout-bracket
+                                    [matches]="stage.bracket.matches"
+                                />
+                            } @else {
+                                <p class="empty-state">
+                                    Сетка появится после завершения группового
+                                    этапа.
+                                </p>
+                            }
+                        </section>
+                    } @else {
+                        @if (stage.groups.length > 1) {
+                            <div class="group-tabs" aria-label="Выбор группы">
+                                @for (group of stage.groups; track group.id) {
+                                    <button
+                                        type="button"
+                                        [class.group-tabs__button--active]="
+                                            group.id === currentGroup()?.id
+                                        "
+                                        (click)="selectGroup(group.id)"
+                                    >
+                                        {{ group.name }}
+                                    </button>
+                                }
+                            </div>
+                        }
+
+                        <section class="standings-section">
+                            <div class="section-heading">
+                                <div>
+                                    <span>Групповой этап</span>
+                                    <h2>
+                                        {{ currentGroup()?.name ?? stage.name }}
+                                    </h2>
+                                </div>
+                                <small>Обновляется после каждого матча</small>
+                            </div>
+
+                            @if (currentRows(); as rows) {
+                                @if (rows.length) {
+                                    <div class="table-scroll">
+                                        <table class="full-table">
+                                            <thead>
+                                                <tr>
+                                                    <th
+                                                        class="full-table__position"
+                                                    >
+                                                        №
+                                                    </th>
+                                                    <th
+                                                        class="full-table__team"
+                                                    >
+                                                        Команда
+                                                    </th>
+                                                    <th title="Игры">И</th>
+                                                    <th title="Победы">В</th>
+                                                    <th title="Ничьи">Н</th>
+                                                    <th title="Поражения">П</th>
+                                                    <th title="Забитые мячи">
+                                                        ЗМ
+                                                    </th>
+                                                    <th
+                                                        title="Пропущенные мячи"
+                                                    >
+                                                        ПМ
+                                                    </th>
+                                                    <th title="Разница мячей">
+                                                        РМ
+                                                    </th>
+                                                    <th
+                                                        class="full-table__points"
+                                                        title="Очки"
+                                                    >
+                                                        О
+                                                    </th>
+                                                    <th
+                                                        class="full-table__form"
+                                                    >
+                                                        Серия
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @for (
+                                                    row of rows;
+                                                    track row.team.id
+                                                ) {
+                                                    <tr
+                                                        [class.full-table__row--qualified]="
+                                                            row.qualificationStatus ===
+                                                            'qualified'
+                                                        "
+                                                        [class.full-table__row--best]="
+                                                            row.qualificationStatus ===
+                                                            'best_placed'
+                                                        "
+                                                    >
+                                                        <td
+                                                            class="full-table__position"
+                                                        >
+                                                            <span
+                                                                class="position-marker"
+                                                                [class.position-marker--qualified]="
+                                                                    row.qualificationStatus ===
+                                                                    'qualified'
+                                                                "
+                                                                [class.position-marker--best]="
+                                                                    row.qualificationStatus ===
+                                                                    'best_placed'
+                                                                "
+                                                                [attr.title]="
+                                                                    qualificationLabel(
+                                                                        row.qualificationStatus
+                                                                    )
+                                                                "
+                                                            ></span>
+                                                            {{ row.position }}
+                                                        </td>
+                                                        <td
+                                                            class="full-table__team"
+                                                        >
+                                                            <div
+                                                                class="team-cell"
+                                                            >
+                                                                <img
+                                                                    [src]="
+                                                                        row.team
+                                                                            .logoUrl ??
+                                                                        defaultTeamLogo
+                                                                    "
+                                                                    [alt]="
+                                                                        row.team
+                                                                            .name
+                                                                    "
+                                                                />
+                                                                <span>{{
+                                                                    row.team
+                                                                        .name
+                                                                }}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            {{ row.played }}
+                                                        </td>
+                                                        <td>{{ row.wins }}</td>
+                                                        <td>{{ row.draws }}</td>
+                                                        <td>
+                                                            {{ row.losses }}
+                                                        </td>
+                                                        <td>
+                                                            {{ row.goalsFor }}
+                                                        </td>
+                                                        <td>
+                                                            {{
+                                                                row.goalsAgainst
+                                                            }}
+                                                        </td>
+                                                        <td>
+                                                            {{
+                                                                row.goalDifference >
+                                                                0
+                                                                    ? "+"
+                                                                    : ""
+                                                            }}{{
+                                                                row.goalDifference
+                                                            }}
+                                                        </td>
+                                                        <td
+                                                            class="full-table__points"
+                                                        >
+                                                            {{ row.points }}
+                                                        </td>
+                                                        <td
+                                                            class="full-table__form"
+                                                        >
+                                                            <div
+                                                                class="form-series"
+                                                            >
+                                                                @for (
+                                                                    result of form(
+                                                                        row.team
+                                                                            .id
+                                                                    );
+                                                                    track $index
+                                                                ) {
+                                                                    <span
+                                                                        class="form-series__result"
+                                                                        [class.form-series__result--win]="
+                                                                            result ===
+                                                                            'win'
+                                                                        "
+                                                                        [class.form-series__result--draw]="
+                                                                            result ===
+                                                                            'draw'
+                                                                        "
+                                                                        [class.form-series__result--loss]="
+                                                                            result ===
+                                                                            'loss'
+                                                                        "
+                                                                        [attr.title]="
+                                                                            formLabel(
+                                                                                result
+                                                                            )
+                                                                        "
+                                                                        [attr.aria-label]="
+                                                                            formLabel(
+                                                                                result
+                                                                            )
+                                                                        "
+                                                                    ></span>
+                                                                } @empty {
+                                                                    <span
+                                                                        class="form-series__empty"
+                                                                        >—</span
+                                                                    >
+                                                                }
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div
+                                        class="legend"
+                                        aria-label="Обозначения таблицы"
+                                    >
+                                        <span
+                                            ><i
+                                                class="legend__marker legend__marker--green"
+                                            ></i>
+                                            Выход в плей-офф</span
+                                        >
+                                        <span
+                                            ><i
+                                                class="legend__marker legend__marker--yellow"
+                                            ></i>
+                                            Лучшая вторая команда</span
+                                        >
+                                        <span
+                                            ><i
+                                                class="form-series__result form-series__result--win"
+                                            ></i>
+                                            Победа</span
+                                        >
+                                        <span
+                                            ><i
+                                                class="form-series__result form-series__result--draw"
+                                            ></i>
+                                            Ничья</span
+                                        >
+                                        <span
+                                            ><i
+                                                class="form-series__result form-series__result--loss"
+                                            ></i>
+                                            Поражение</span
+                                        >
+                                    </div>
+                                } @else {
+                                    <p class="empty-state">
+                                        В группе пока нет команд.
+                                    </p>
+                                }
+                            }
+                        </section>
+
+                        <section class="standings-section best-seconds">
+                            <div class="section-heading">
+                                <div>
+                                    <span>Сравнение между группами</span>
+                                    <h2>Таблица лучших вторых команд</h2>
+                                </div>
+                            </div>
+
+                            <p class="ranking-description">
+                                В рейтинг попадают команды, занявшие вторые места
+                                в своих группах. Критерии применяются по порядку:
+                                при равенстве первого показателя сравнивается
+                                следующий.
+                            </p>
+                            @for (
+                                ranking of bestSecondRankings();
+                                track ranking.id
+                            ) {
+                                <p class="ranking-criteria">
+                                    Критерии:
+                                    @for (
+                                        criterion of ranking.criteria;
+                                        track criterion;
+                                        let last = $last
+                                    ) {
+                                        {{ criterionLabel(criterion)
+                                        }}{{ last ? "" : " → " }}
+                                    }
+                                </p>
+                                <div class="table-scroll">
+                                    <table
+                                        class="full-table full-table--cross-group"
+                                    >
+                                        <thead>
+                                            <tr>
+                                                <th>№</th>
+                                                <th class="full-table__team">
+                                                    Команда
+                                                </th>
+                                                <th>Группа</th>
+                                                <th>И</th>
+                                                <th>В</th>
+                                                <th>Н</th>
+                                                <th>П</th>
+                                                <th title="Забитые мячи">ЗМ</th>
+                                                <th title="Пропущенные мячи">
+                                                    ПМ
+                                                </th>
+                                                <th>РМ</th>
+                                                <th class="full-table__points">
+                                                    О
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @for (
+                                                row of ranking.rows;
+                                                track row.team.id
+                                            ) {
+                                                <tr
+                                                    [class.full-table__row--best]="
+                                                        row.qualificationStatus ===
+                                                        'best_placed'
+                                                    "
+                                                >
+                                                    <td>
+                                                        {{
+                                                            row.crossGroupPosition
+                                                        }}
+                                                    </td>
+                                                    <td
+                                                        class="full-table__team"
+                                                    >
+                                                        <div class="team-cell">
+                                                            <img
+                                                                [src]="
+                                                                    row.team
+                                                                        .logoUrl ??
+                                                                    defaultTeamLogo
+                                                                "
+                                                                [alt]="
+                                                                    row.team
+                                                                        .name
+                                                                "
+                                                            />
+                                                            <span>{{
+                                                                row.team.name
+                                                            }}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        {{
+                                                            row.sourceGroup.name
+                                                        }}
+                                                    </td>
+                                                    <td>{{ row.played }}</td>
+                                                    <td>{{ row.wins }}</td>
+                                                    <td>{{ row.draws }}</td>
+                                                    <td>{{ row.losses }}</td>
+                                                    <td>{{ row.goalsFor }}</td>
+                                                    <td>
+                                                        {{ row.goalsAgainst }}
+                                                    </td>
+                                                    <td>
+                                                        {{
+                                                            row.goalDifference >
+                                                            0
+                                                                ? "+"
+                                                                : ""
+                                                        }}{{
+                                                            row.goalDifference
+                                                        }}
+                                                    </td>
+                                                    <td
+                                                        class="full-table__points"
+                                                    >
+                                                        {{ row.points }}
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            } @empty {
+                                <p class="empty-state">
+                                    Рейтинг вторых команд появится после первых
+                                    сыгранных матчей.
+                                </p>
+                            }
+                        </section>
+                    }
+                }
+            } @else {
+                <p class="empty-state">Этапы турнира пока не опубликованы.</p>
+            }
+        }
+    }
+</section>

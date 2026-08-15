@@ -35,6 +35,13 @@
             </a>
             <a
                 class="header__nav-link"
+                routerLink="/statistics"
+                (click)="closeMenu()"
+            >
+                Таблица
+            </a>
+            <a
+                class="header__nav-link"
                 routerLink="/news"
                 (click)="closeMenu()"
             >
@@ -47,9 +54,9 @@
             >
                 Регламент соревнований
             </a>
-<!--            <a class="header__nav-link" routerLink="/" (click)="closeMenu()">-->
-<!--                О лиге-->
-<!--            </a>-->
+            <!--            <a class="header__nav-link" routerLink="/" (click)="closeMenu()">-->
+            <!--                О лиге-->
+            <!--            </a>-->
         </nav>
 
         <div class="header__actions">
@@ -65,28 +72,28 @@
                         alt=""
                     />
                 </a>
-<!--                <a-->
-<!--                    class="header__social-link"-->
-<!--                    href="https://t.me/ArmanLiga"-->
-<!--                    aria-label="Telegram"-->
-<!--                >-->
-<!--                    <img-->
-<!--                        class="header__social-icon"-->
-<!--                        src="images/telegram.png"-->
-<!--                        alt=""-->
-<!--                    />-->
-<!--                </a>-->
-<!--                <a-->
-<!--                    class="header__social-link"-->
-<!--                    href="https://max.ru/join/2pBzTFTbrv1mc6L4flPIxiKCrurt3P3SUVxCU7BeIfc"-->
-<!--                    aria-label="Instagram"-->
-<!--                >-->
-<!--                    <img-->
-<!--                        class="header__social-icon header__social-icon&#45;&#45;sm"-->
-<!--                        src="images/Max_logo_black.svg"-->
-<!--                        alt=""-->
-<!--                    />-->
-<!--                </a>-->
+                <!--                <a-->
+                <!--                    class="header__social-link"-->
+                <!--                    href="https://t.me/ArmanLiga"-->
+                <!--                    aria-label="Telegram"-->
+                <!--                >-->
+                <!--                    <img-->
+                <!--                        class="header__social-icon"-->
+                <!--                        src="images/telegram.png"-->
+                <!--                        alt=""-->
+                <!--                    />-->
+                <!--                </a>-->
+                <!--                <a-->
+                <!--                    class="header__social-link"-->
+                <!--                    href="https://max.ru/join/2pBzTFTbrv1mc6L4flPIxiKCrurt3P3SUVxCU7BeIfc"-->
+                <!--                    aria-label="Instagram"-->
+                <!--                >-->
+                <!--                    <img-->
+                <!--                        class="header__social-icon header__social-icon&#45;&#45;sm"-->
+                <!--                        src="images/Max_logo_black.svg"-->
+                <!--                        alt=""-->
+                <!--                    />-->
+                <!--                </a>-->
             </div>
 
             <a
@@ -146,6 +153,13 @@
                 (click)="closeMenu()"
             >
                 Матчи
+            </a>
+            <a
+                class="header__nav-link"
+                routerLink="/statistics"
+                (click)="closeMenu()"
+            >
+                Таблица
             </a>
             <a
                 class="header__nav-link"
