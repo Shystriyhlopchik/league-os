@@ -76,6 +76,30 @@ describe('MatchesPageComponent', () => {
         ]);
     });
 
+    it('filters matches by the selected team', () => {
+        tournamentsApi.getActiveTournament.and.returnValue(
+            of({ id: 7, name: 'Дворовая лига' } as never),
+        );
+        matchApi.getByTournament.and.returnValue(
+            of([
+                match(31, '2026-07-21T18:30:00'),
+                match(32, '2026-07-23T18:30:00', 3, 4),
+            ]),
+        );
+
+        fixture = TestBed.createComponent(MatchesPageComponent);
+        fixture.detectChanges();
+
+        expect(fixture.componentInstance.teamOptions().length).toBe(5);
+        fixture.componentInstance.selectedTeamId.set(1);
+        fixture.detectChanges();
+
+        expect(
+            fixture.nativeElement.querySelectorAll('app-match-card').length,
+        ).toBe(1);
+        expect(fixture.nativeElement.textContent).toContain('Матчей: 1');
+    });
+
     it('shows an error state when matches cannot be loaded', () => {
         tournamentsApi.getActiveTournament.and.returnValue(
             of({ id: 7, name: 'Дворовая лига' } as never),
@@ -93,7 +117,12 @@ describe('MatchesPageComponent', () => {
     });
 });
 
-function match(id: number, matchDateTime: string) {
+function match(
+    id: number,
+    matchDateTime: string,
+    homeTeamId = 1,
+    awayTeamId = 2,
+) {
     return {
         id,
         tournamentId: 7,
@@ -101,15 +130,15 @@ function match(id: number, matchDateTime: string) {
         status: 'scheduled',
         matchDateTime,
         homeTeam: {
-            id: 1,
-            name: 'ЖБК-9',
-            shortName: 'ЖБК-9',
+            id: homeTeamId,
+            name: `Команда ${homeTeamId}`,
+            shortName: `Команда ${homeTeamId}`,
             logoUrl: null,
         },
         awayTeam: {
-            id: 2,
-            name: 'Цезарь',
-            shortName: 'Цезарь',
+            id: awayTeamId,
+            name: `Команда ${awayTeamId}`,
+            shortName: `Команда ${awayTeamId}`,
             logoUrl: null,
         },
         score: { home: 0, away: 0 },

@@ -11,10 +11,12 @@ export function mapMatchToCardVm(match: Match): MatchCardVm {
         status: match.status,
         matchDateTime: match.matchDateTime,
 
+        homeTeamId: match.homeTeam.id,
         homeTeamName: match.homeTeam.shortName || match.homeTeam.name,
         homeTeamLogoUrl: match.homeTeam.logoUrl ?? DEFAULT_TEAM_LOGO,
         homeTeamScore: match.score.home,
 
+        awayTeamId: match.awayTeam.id,
         awayTeamName: match.awayTeam.shortName || match.awayTeam.name,
         awayTeamLogoUrl: match.awayTeam.logoUrl ?? DEFAULT_TEAM_LOGO,
         awayTeamScore: match.score.away,

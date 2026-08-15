@@ -1,31 +1,48 @@
 <section class="matches-page">
     <header class="matches-page__header">
         <h1 class="matches-page__title">{{ title() }}</h1>
-        @if (!isLoading() && !error() && matches().length) {
+        @if (!isLoading() && !error() && filteredMatches().length) {
             <p class="matches-page__count">
-                Всего матчей: {{ matches().length }}
+                Матчей: {{ filteredMatches().length }}
             </p>
         }
     </header>
 
+    @if (!isLoading() && !error() && matches().length) {
+        <div class="matches-page__filters">
+            <app-select
+                [options]="teamOptions()"
+                [value]="selectedTeamId()"
+                [label]="'Команда'"
+                [ariaLabel]="'Фильтр матчей по команде'"
+                (valueChange)="selectedTeamId.set($event ?? allTeamsId)"
+            />
+        </div>
+    }
+
     @if (isLoading()) {
         <p class="matches-page__state" role="status">Загрузка матчей...</p>
     } @else if (error()) {
-        <div class="matches-page__state matches-page__state--error" role="alert">
+        <div
+            class="matches-page__state matches-page__state--error"
+            role="alert"
+        >
             <p>{{ error() }}</p>
-            <button type="button" (click)="loadMatches()">
-                Повторить
-            </button>
+            <button type="button" (click)="loadMatches()">Повторить</button>
         </div>
-    } @else if (isEmpty()) {
+    } @else if (isCalendarEmpty()) {
         <p class="matches-page__state">
             Календарь турнира пока не опубликован.
         </p>
+    } @else if (isFilterEmpty()) {
+        <p class="matches-page__state">Матчи выбранной команды не найдены.</p>
     } @else {
         <div class="matches-page__dates">
             @for (group of dateGroups(); track group.key) {
                 <section class="matches-date">
-                    <app-section-title>{{ group.date | date: "d MMMM, EEEE" }}</app-section-title>
+                    <app-section-title>{{
+                        group.date | date: "d MMMM, EEEE"
+                    }}</app-section-title>
 
                     <div class="matches-date__grid">
                         @for (match of group.matches; track match.id) {

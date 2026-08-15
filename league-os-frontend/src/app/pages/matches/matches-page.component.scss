@@ -24,7 +24,7 @@
 
 .matches-page__title {
     margin: 0;
-    color: #F61129;
+    color: #f61129;
     font-family: "Play", Arial, sans-serif;
     font-size: 32px;
     font-weight: 700;
@@ -37,6 +37,11 @@
     margin: 0;
     color: rgba(255, 255, 255, 0.65);
     font-size: 18px;
+}
+
+.matches-page__filters {
+    width: min(100%, 340px);
+    margin-bottom: 34px;
 }
 
 .matches-page__dates {
@@ -110,6 +115,11 @@ app-match-card {
         display: grid;
         gap: 12px;
         margin-bottom: 32px;
+    }
+
+    .matches-page__filters {
+        width: 100%;
+        margin-bottom: 28px;
     }
 
     .matches-page__title {

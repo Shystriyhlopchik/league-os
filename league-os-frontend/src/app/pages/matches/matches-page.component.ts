@@ -18,6 +18,8 @@ import { mapMatchToCardVm } from '../../entities/match/model/match.mapper';
 import { MatchCardComponent } from '../../entities/match/ui/match-card/match-card.component';
 import { TournamentsApi } from '../../entities/tournaments/api/tournaments.api';
 import { SectionTitleComponent } from '../../shared/ui/section-title/section-title.component';
+import { SelectComponent } from '../../shared/ui/select/select.component';
+import { SelectOption } from '../../shared/ui/select/select-option.model';
 
 interface MatchDateGroup {
     key: string;
@@ -27,11 +29,18 @@ interface MatchDateGroup {
 
 @Component({
     selector: 'app-matches-page',
-    imports: [DatePipe, MatchCardComponent, SectionTitleComponent],
+    imports: [
+        DatePipe,
+        MatchCardComponent,
+        SectionTitleComponent,
+        SelectComponent,
+    ],
     templateUrl: './matches-page.component.html',
     styleUrl: './matches-page.component.scss',
 })
 export class MatchesPageComponent implements OnInit {
+    readonly allTeamsId = 0;
+
     private readonly matchApi = inject(MatchApi);
     private readonly tournamentsApi = inject(TournamentsApi);
     private readonly router = inject(Router);
@@ -42,20 +51,62 @@ export class MatchesPageComponent implements OnInit {
     readonly tournamentName = signal<string | null>(null);
     readonly isLoading = signal(false);
     readonly error = signal<string | null>(null);
+    readonly selectedTeamId = signal(this.allTeamsId);
 
     readonly title = computed(() => {
         const tournamentName = this.tournamentName();
         return tournamentName ? `Матчи турнира «${tournamentName}»` : 'Матчи';
     });
 
-    readonly isEmpty = computed(
+    readonly teamOptions = computed<SelectOption<number>[]>(() => {
+        const teams = new Map<number, string>();
+
+        for (const match of this.matches()) {
+            teams.set(match.homeTeamId, match.homeTeamName);
+            teams.set(match.awayTeamId, match.awayTeamName);
+        }
+
+        const teamOptions = Array.from(teams, ([value, label]) => ({
+            value,
+            label,
+        })).sort((left, right) =>
+            left.label.localeCompare(right.label, 'ru', {
+                sensitivity: 'base',
+            }),
+        );
+
+        return [
+            { value: this.allTeamsId, label: 'Все команды' },
+            ...teamOptions,
+        ];
+    });
+
+    readonly filteredMatches = computed(() => {
+        const teamId = this.selectedTeamId();
+        if (teamId === this.allTeamsId) return this.matches();
+
+        return this.matches().filter(
+            (match) =>
+                match.homeTeamId === teamId || match.awayTeamId === teamId,
+        );
+    });
+
+    readonly isCalendarEmpty = computed(
         () => !this.isLoading() && !this.error() && this.matches().length === 0,
+    );
+
+    readonly isFilterEmpty = computed(
+        () =>
+            !this.isLoading() &&
+            !this.error() &&
+            this.matches().length > 0 &&
+            this.filteredMatches().length === 0,
     );
 
     readonly dateGroups = computed<MatchDateGroup[]>(() => {
         const groups = new Map<string, MatchCardVm[]>();
 
-        for (const match of this.matches()) {
+        for (const match of this.filteredMatches()) {
             const key = this.toDateKey(match.matchDateTime);
             const matches = groups.get(key) ?? [];
             matches.push(match);
@@ -94,7 +145,20 @@ export class MatchesPageComponent implements OnInit {
                     return this.matchApi.getByTournament(tournament.id);
                 }),
                 tap((matches) => {
-                    this.matches.set(matches.map(mapMatchToCardVm));
+                    const mappedMatches = matches.map(mapMatchToCardVm);
+                    this.matches.set(mappedMatches);
+
+                    const selectedTeamId = this.selectedTeamId();
+                    if (
+                        selectedTeamId !== this.allTeamsId &&
+                        !mappedMatches.some(
+                            (match) =>
+                                match.homeTeamId === selectedTeamId ||
+                                match.awayTeamId === selectedTeamId,
+                        )
+                    ) {
+                        this.selectedTeamId.set(this.allTeamsId);
+                    }
                 }),
                 catchError(() => {
                     this.matches.set([]);
