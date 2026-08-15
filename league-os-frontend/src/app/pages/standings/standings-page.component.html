@@ -235,7 +235,7 @@
                                                                 class="form-series"
                                                             >
                                                                 @for (
-                                                                    result of form(
+                                                                    matchResult of form(
                                                                         row.team
                                                                             .id
                                                                     );
@@ -244,26 +244,22 @@
                                                                     <span
                                                                         class="form-series__result"
                                                                         [class.form-series__result--win]="
-                                                                            result ===
+                                                                            matchResult.result ===
                                                                             'win'
                                                                         "
                                                                         [class.form-series__result--draw]="
-                                                                            result ===
+                                                                            matchResult.result ===
                                                                             'draw'
                                                                         "
                                                                         [class.form-series__result--loss]="
-                                                                            result ===
+                                                                            matchResult.result ===
                                                                             'loss'
                                                                         "
                                                                         [attr.title]="
-                                                                            formLabel(
-                                                                                result
-                                                                            )
+                                                                            matchResult.tooltip
                                                                         "
                                                                         [attr.aria-label]="
-                                                                            formLabel(
-                                                                                result
-                                                                            )
+                                                                            matchResult.tooltip
                                                                         "
                                                                     ></span>
                                                                 } @empty {
@@ -332,10 +328,10 @@
                             </div>
 
                             <p class="ranking-description">
-                                В рейтинг попадают команды, занявшие вторые места
-                                в своих группах. Критерии применяются по порядку:
-                                при равенстве первого показателя сравнивается
-                                следующий.
+                                В рейтинг попадают команды, занявшие вторые
+                                места в своих группах. Критерии применяются по
+                                порядку: при равенстве первого показателя
+                                сравнивается следующий.
                             </p>
                             @for (
                                 ranking of bestSecondRankings();

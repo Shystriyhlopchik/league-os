@@ -106,9 +106,25 @@ describe('StandingsPageComponent', () => {
                                     id: 1,
                                     status: 'finished',
                                     matchDateTime: '2026-08-01T18:00:00',
-                                    homeTeam: { id: 5 },
-                                    awayTeam: { id: 6 },
+                                    homeTeam: { id: 5, name: 'Арман' },
+                                    awayTeam: { id: 6, name: 'Команда 6' },
                                     score: { home: 2, away: 0 },
+                                },
+                                {
+                                    id: 2,
+                                    status: 'finished',
+                                    matchDateTime: '2026-08-02T18:00:00',
+                                    homeTeam: { id: 5, name: 'Арман' },
+                                    awayTeam: { id: 7, name: 'Команда 7' },
+                                    score: { home: 1, away: 1 },
+                                },
+                                {
+                                    id: 3,
+                                    status: 'finished',
+                                    matchDateTime: '2026-08-03T18:00:00',
+                                    homeTeam: { id: 5, name: 'Арман' },
+                                    awayTeam: { id: 8, name: 'Команда 8' },
+                                    score: { home: 0, away: 1 },
                                 },
                             ]),
                     },
@@ -136,6 +152,16 @@ describe('StandingsPageComponent', () => {
             fixture.nativeElement.querySelectorAll('.form-series__result--win')
                 .length,
         ).toBeGreaterThan(0);
+
+        const formResults: HTMLElement[] = Array.from(
+            fixture.nativeElement.querySelectorAll(
+                'tbody .form-series .form-series__result',
+            ),
+        );
+        expect(formResults[0].classList).toContain('form-series__result--win');
+        expect(formResults[0].title).toBe('Арман — Команда 6 · 2:0 · Победа');
+        expect(formResults[1].classList).toContain('form-series__result--draw');
+        expect(formResults[2].classList).toContain('form-series__result--loss');
     });
 
     it('switches to the play-off stage', () => {

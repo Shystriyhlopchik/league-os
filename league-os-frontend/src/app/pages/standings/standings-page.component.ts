@@ -23,6 +23,11 @@ import { FeatureFlagsApi } from '../../shared/api/feature-flags.api';
 
 export type FormResult = 'win' | 'draw' | 'loss';
 
+interface FormMatchResult {
+    result: FormResult;
+    tooltip: string;
+}
+
 @Component({
     selector: 'app-standings-page',
     imports: [KnockoutBracketComponent],
@@ -164,7 +169,7 @@ export class StandingsPageComponent implements OnInit {
         return stage.name;
     }
 
-    form(teamId: number): readonly FormResult[] {
+    form(teamId: number): readonly FormMatchResult[] {
         return this.formByTeam().get(teamId) ?? [];
     }
 
@@ -208,8 +213,10 @@ export class StandingsPageComponent implements OnInit {
         this.selectedGroupId.set(stage?.groups[0]?.id ?? null);
     }
 
-    private buildForm(matches: readonly Match[]): Map<number, FormResult[]> {
-        const form = new Map<number, FormResult[]>();
+    private buildForm(
+        matches: readonly Match[],
+    ): Map<number, FormMatchResult[]> {
+        const form = new Map<number, FormMatchResult[]>();
         const finishedMatches = [...matches]
             .filter(
                 (match) =>
@@ -226,33 +233,38 @@ export class StandingsPageComponent implements OnInit {
         for (const match of finishedMatches) {
             const homeScore = match.score.home!;
             const awayScore = match.score.away!;
-            this.addFormResult(
-                form,
-                match.homeTeam.id,
+            const homeResult: FormResult =
                 homeScore === awayScore
                     ? 'draw'
                     : homeScore > awayScore
                       ? 'win'
-                      : 'loss',
-            );
-            this.addFormResult(
-                form,
-                match.awayTeam.id,
+                      : 'loss';
+            const awayResult: FormResult =
                 homeScore === awayScore
                     ? 'draw'
                     : awayScore > homeScore
                       ? 'win'
-                      : 'loss',
-            );
+                      : 'loss';
+            const matchLabel = `${match.homeTeam.shortName || match.homeTeam.name} — ${match.awayTeam.shortName || match.awayTeam.name} · ${homeScore}:${awayScore}`;
+
+            this.addFormResult(form, match.homeTeam.id, {
+                result: homeResult,
+                tooltip: `${matchLabel} · ${this.formLabel(homeResult)}`,
+            });
+            this.addFormResult(form, match.awayTeam.id, {
+                result: awayResult,
+                tooltip: `${matchLabel} · ${this.formLabel(awayResult)}`,
+            });
         }
 
+        form.forEach((results) => results.reverse());
         return form;
     }
 
     private addFormResult(
-        form: Map<number, FormResult[]>,
+        form: Map<number, FormMatchResult[]>,
         teamId: number,
-        result: FormResult,
+        result: FormMatchResult,
     ): void {
         const results = form.get(teamId) ?? [];
         if (results.length < 5) {
