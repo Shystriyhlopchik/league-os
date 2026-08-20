@@ -812,7 +812,6 @@ export class MatchServiceService {
       .leftJoinAndSelect('match.venue', 'venue')
       .innerJoinAndSelect('match.tournament', 'tournament')
       .where('match.status = :status', { status: MatchStatus.SCHEDULED })
-      .andWhere('match.match_datetime >= :now', { now: new Date() })
       .orderBy('match.match_datetime', 'ASC')
       .addOrderBy('match.id', 'ASC');
 
@@ -873,7 +872,8 @@ export class MatchServiceService {
         name: team.name,
         logoUrl: team.logoUrl,
       },
-      isApproved: roster?.isSubmitted ?? false,
+      isSubmitted: roster?.isSubmitted ?? false,
+      isApproved: roster?.isApproved ?? false,
       players: players.map((player) => ({
         ...player,
         isSelected: selectedTeamPlayerIds.has(player.teamPlayerId),
@@ -886,7 +886,7 @@ export class MatchServiceService {
     teamId: number,
     teamPlayerIds: number[],
     currentUserId: number,
-    allowSubmittedRosterChanges = false,
+    allowApprovedRosterChanges = false,
     submitAndApproveRoster = false,
   ) {
     const match = await this.findRegistrationMatch(matchId, teamId);
@@ -929,9 +929,9 @@ export class MatchServiceService {
         where: { matchId, teamId },
       });
 
-      if (roster?.isSubmitted && !allowSubmittedRosterChanges) {
+      if (roster?.isApproved && !allowApprovedRosterChanges) {
         throw new BadRequestException(
-          'Утверждённую заявку нельзя редактировать',
+          'Подтверждённую судьёй заявку нельзя редактировать',
         );
       }
 

@@ -34,15 +34,26 @@
                     Состав утверждён. При необходимости судья может добавить
                     забытого игрока или скорректировать список.
                 } @else {
-                    Заявка утверждена и передана судье. Редактирование
-                    недоступно.
+                    Заявка подтверждена судьёй. Редактирование недоступно.
                 }
             </div>
         }
-        @if (isRefereeFlow && !registration.isApproved) {
+        @if (!isRefereeFlow && registration.isSubmitted && !registration.isApproved) {
+            <div class="approved-message">
+                Заявка передана судье. До подтверждения судьёй состав можно
+                изменять.
+            </div>
+        }
+        @if (isRefereeFlow && !registration.isSubmitted) {
             <div class="approved-message">
                 Капитан не оформил заявку на матч. Выберите минимум 5 игроков
                 — состав будет сохранён и утверждён от имени судьи.
+            </div>
+        }
+        @if (isRefereeFlow && registration.isSubmitted && !registration.isApproved) {
+            <div class="approved-message">
+                Капитан передал заявку. Проверьте состав и подтвердите его
+                сохранением.
             </div>
         }
         @if (isCorrectionMode) {
@@ -174,10 +185,16 @@
                     <button
                         class="form-actions__approve"
                         type="button"
-                        [disabled]="registration.isApproved || store.selectedCount() < 5 || store.isSaving() || store.isApproving()"
+                        [disabled]="registration.isSubmitted || registration.isApproved || store.selectedCount() < 5 || store.isSaving() || store.isApproving()"
                         (click)="approve()"
                     >
-                        {{ store.isApproving() ? 'Утверждаем...' : 'Утвердить заявку' }}
+                        {{
+                            store.isApproving()
+                                ? 'Отправляем...'
+                                : registration.isSubmitted
+                                  ? 'Заявка отправлена судье'
+                                  : 'Отправить заявку судье'
+                        }}
                     </button>
                 }
             }

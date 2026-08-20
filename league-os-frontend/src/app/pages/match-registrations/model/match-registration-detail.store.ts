@@ -116,7 +116,7 @@ export class MatchRegistrationDetailStore {
                 ),
                 tap((registration) => {
                     this.applyRegistration(registration);
-                    this.message.set('Заявка утверждена и отправлена судье');
+                    this.message.set('Заявка отправлена судье');
                 }),
                 catchError((error) => {
                     this.error.set(

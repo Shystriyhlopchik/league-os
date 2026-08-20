@@ -54,6 +54,7 @@ export interface MatchRegistrationPlayer {
 export interface MatchRegistration {
     match: MatchServiceMatch;
     team: MatchServiceTeam;
+    isSubmitted: boolean;
     isApproved: boolean;
     players: MatchRegistrationPlayer[];
 }
