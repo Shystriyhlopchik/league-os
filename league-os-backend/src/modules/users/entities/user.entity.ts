@@ -50,6 +50,9 @@ export class UserEntity extends BaseEntity {
   })
   isActive: boolean;
 
+  @Column({ default: 0 })
+  authVersion: number;
+
   @ManyToMany(() => RoleEntity)
   @JoinTable({
     name: 'user_roles',

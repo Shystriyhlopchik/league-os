@@ -38,11 +38,11 @@ export class RegisterFormComponent {
         }),
         email: new FormControl('', {
             nonNullable: true,
-            validators: [Validators.email],
+            validators: [Validators.required, Validators.email],
         }),
         password: new FormControl('', {
             nonNullable: true,
-            validators: [Validators.required, Validators.minLength(6)],
+            validators: [Validators.required, Validators.minLength(8)],
         }),
         passwordConfirmation: new FormControl('', {
             nonNullable: true,
@@ -67,7 +67,7 @@ export class RegisterFormComponent {
 
         this.store.register({
             username: value.username.trim(),
-            email: value.email.trim() || null,
+            email: value.email.trim(),
             password: value.password,
             firstName: value.firstName.trim(),
             lastName: value.lastName.trim(),

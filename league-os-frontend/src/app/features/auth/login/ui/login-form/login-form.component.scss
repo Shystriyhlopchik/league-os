@@ -38,12 +38,12 @@
 }
 
 .login-form__icon--mail {
-    mask-image: url('/images/icons/mail.svg');
+    mask-image: url("/images/icons/mail.svg");
 }
 
 .login-form__icon--key {
     background-color: #ff5c69;
-    mask-image: url('/images/icons/key.svg');
+    mask-image: url("/images/icons/key.svg");
 }
 
 .login-form__content {
@@ -59,7 +59,7 @@
 
     color: rgba(255, 255, 255, 0.48);
     font-size: 10px;
-    font-family: Montserrat, 'Inter', sans-serif;
+    font-family: Montserrat, "Inter", sans-serif;
     line-height: 1.2;
     font-weight: 800;
     text-transform: uppercase;
@@ -141,6 +141,9 @@
 }
 
 .login-form__forgot {
+    align-self: flex-end;
+    margin-top: 12px;
+
     color: #47e88b;
     font-size: 12px;
     line-height: 1.2;
@@ -150,7 +153,7 @@
 
 .login-form__submit {
     height: 52px;
-    margin-top: 40px;
+    margin-top: 28px;
     margin-bottom: 18px;
 
     color: #06100b;

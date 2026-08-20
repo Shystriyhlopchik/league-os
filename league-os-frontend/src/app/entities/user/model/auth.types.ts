@@ -5,13 +5,26 @@ export interface LoginDto {
     password: string;
 }
 
+export interface ForgotPasswordDto {
+    email: string;
+}
+
+export interface ResetPasswordDto {
+    token: string;
+    password: string;
+}
+
+export interface AuthMessageResponse {
+    message: string;
+}
+
 export interface RegisterDto {
     username: string;
     password: string;
     firstName: string;
     lastName: string;
     middleName?: string | null;
-    email?: string | null;
+    email: string;
 }
 
 export interface PlayerLinkCandidate {
