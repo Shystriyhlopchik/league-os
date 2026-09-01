@@ -29,6 +29,7 @@ import { TournamentRulesModule } from './modules/tournament-rules/tournament-rul
 import { TournamentMembersModule } from './modules/tournament-members/tournament-members.module';
 import { TournamentStageParticipantsModule } from './modules/tournament-stage-participants/tournament-stage-participants.module';
 import { FeatureFlagsModule } from './common/feature-flags/feature-flags.module';
+import { TeamRankingsModule } from './modules/team-rankings/team-rankings.module';
 
 @Module({
   imports: [
@@ -75,6 +76,7 @@ import { FeatureFlagsModule } from './common/feature-flags/feature-flags.module'
     TournamentRulesModule,
     TournamentMembersModule,
     TournamentStageParticipantsModule,
+    TeamRankingsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

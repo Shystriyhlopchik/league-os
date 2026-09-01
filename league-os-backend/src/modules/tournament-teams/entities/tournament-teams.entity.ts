@@ -5,6 +5,7 @@ import { TeamEntity } from '../../teams/entities/team.entity';
 import { TournamentTeamStatus } from '../enums/tournament-team-status.enum';
 import { BaseEntity } from '../../../common/base/base.entity';
 import { TournamentStageParticipantEntity } from '../../tournament-stage-participants/entities/tournament-stage-participant.entity';
+import { TeamRatingResult } from '../enums/team-rating-result.enum';
 
 @Entity('tournament_teams')
 export class TournamentTeamEntity extends BaseEntity {
@@ -34,6 +35,15 @@ export class TournamentTeamEntity extends BaseEntity {
     default: TournamentTeamStatus.ACTIVE,
   })
   status: TournamentTeamStatus;
+
+  @Column({
+    name: 'rating_result',
+    type: 'enum',
+    enum: TeamRatingResult,
+    enumName: 'team_rating_result_enum',
+    nullable: true,
+  })
+  ratingResult?: TeamRatingResult;
 
   @OneToMany(
     () => TournamentStageParticipantEntity,

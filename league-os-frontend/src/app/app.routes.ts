@@ -105,6 +105,13 @@ export const routes: Routes = [
             ),
     },
     {
+        path: 'ranking',
+        loadComponent: () =>
+            import('./pages/team-ranking/team-ranking-page.component').then(
+                (m) => m.TeamRankingPageComponent,
+            ),
+    },
+    {
         path: 'matches/:matchId/protocol',
         loadComponent: () =>
             import(
