@@ -305,7 +305,7 @@ export class PlayoffLaunchService {
     await this.qualificationService.confirm(
       tournamentId,
       qualificationPreview.id,
-      {},
+      { replaceCurrent: true },
       userId,
     );
     const bracketPreview = await this.bracketService.preview(

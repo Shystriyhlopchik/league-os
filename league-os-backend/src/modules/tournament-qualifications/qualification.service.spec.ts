@@ -81,8 +81,9 @@ describe('QualificationService snapshot diff', () => {
     const matchRepository = {
       exists: jest.fn(() => Promise.resolve(false)),
     } as unknown as Repository<MatchEntity>;
+    const entryFind = jest.fn(() => Promise.resolve(snapshot.entries));
     const entryRepository = {
-      find: jest.fn(() => Promise.resolve(snapshot.entries)),
+      find: entryFind,
     } as unknown as Repository<QualificationSnapshotEntryEntity>;
     const manager = {
       getRepository: jest.fn((entity: unknown) => {
@@ -137,7 +138,7 @@ describe('QualificationService snapshot diff', () => {
       expect.any(Function),
     );
     expect(snapshotFindOne.mock.calls[0][0]).not.toHaveProperty('relations');
-    expect(entryRepository.find).toHaveBeenCalledWith({
+    expect(entryFind).toHaveBeenCalledWith({
       where: { snapshotId: 40 },
       order: { selectionOrder: 'ASC' },
     });

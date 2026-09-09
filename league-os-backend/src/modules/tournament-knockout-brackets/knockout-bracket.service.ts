@@ -12,6 +12,7 @@ import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
 import { MatchEntity } from '../matches/entities/match.entity';
 import { MatchStatus } from '../matches/enums/match-status.enum';
 import { QualificationSnapshotEntity } from '../tournament-qualifications/entities/qualification-snapshot.entity';
+import { QualificationSnapshotEntryEntity } from '../tournament-qualifications/entities/qualification-snapshot-entry.entity';
 import { QualificationSnapshotStatus } from '../tournament-qualifications/enums/qualification-snapshot-status.enum';
 import { TournamentRuleVersionEntity } from '../tournament-rules/entities/tournament-rule-version.entity';
 import type {
@@ -430,6 +431,9 @@ export class KnockoutBracketService {
     const qualificationSnapshots = manager.getRepository(
       QualificationSnapshotEntity,
     );
+    const qualificationEntries = manager.getRepository(
+      QualificationSnapshotEntryEntity,
+    );
     const versions = manager.getRepository(TournamentRuleVersionEntity);
     const stage = await stages.findOne({
       where: { id: stageId, tournamentId },
@@ -448,7 +452,6 @@ export class KnockoutBracketService {
         status: QualificationSnapshotStatus.CONFIRMED,
         isCurrent: true,
       },
-      relations: { entries: { tournamentTeam: true } },
       lock: { mode: 'pessimistic_read' },
     });
     if (!qualificationSnapshot) {
@@ -456,6 +459,11 @@ export class KnockoutBracketService {
         'Confirm qualification before previewing the knockout bracket',
       );
     }
+    qualificationSnapshot.entries = await qualificationEntries.find({
+      where: { snapshotId: qualificationSnapshot.id },
+      relations: { tournamentTeam: true },
+      order: { selectionOrder: 'ASC' },
+    });
     const ruleVersion = await versions.findOne({
       where: { id: qualificationSnapshot.ruleVersionId, tournamentId },
     });

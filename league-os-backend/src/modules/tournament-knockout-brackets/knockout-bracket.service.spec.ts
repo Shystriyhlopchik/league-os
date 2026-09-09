@@ -125,12 +125,14 @@ describe('KnockoutBracketService', () => {
       status: KnockoutBracketSnapshotStatus.CONFIRMED,
       plans: [],
     } as unknown as KnockoutBracketSnapshotEntity;
+    const snapshotFindOne = jest.fn(() => Promise.resolve(snapshot));
     const snapshotRepository = {
-      findOne: jest.fn(() => Promise.resolve(snapshot)),
+      findOne: snapshotFindOne,
     } as unknown as Repository<KnockoutBracketSnapshotEntity>;
     const matchSave = jest.fn();
+    const planFind = jest.fn(() => Promise.resolve(snapshot.plans));
     const planRepository = {
-      find: jest.fn(() => Promise.resolve(snapshot.plans)),
+      find: planFind,
     } as unknown as Repository<KnockoutBracketPlanEntity>;
     const manager = {
       getRepository: jest.fn((entity: unknown) => {
@@ -161,11 +163,11 @@ describe('KnockoutBracketService', () => {
 
     expect(confirmed).toBe(snapshot);
     expect(matchSave).not.toHaveBeenCalled();
-    expect(snapshotRepository.findOne).toHaveBeenCalledWith({
+    expect(snapshotFindOne).toHaveBeenCalledWith({
       where: { id: 60, tournamentId: 10 },
       lock: { mode: 'pessimistic_write' },
     });
-    expect(planRepository.find).toHaveBeenCalledWith({
+    expect(planFind).toHaveBeenCalledWith({
       where: { snapshotId: 60 },
       order: { order: 'ASC' },
     });
