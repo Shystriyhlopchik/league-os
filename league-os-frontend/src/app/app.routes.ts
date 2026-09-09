@@ -262,6 +262,17 @@ export const routes: Routes = [
                     ).then((m) => m.TournamentBuilderPageComponent),
             },
             {
+                path: 'playoff-launch',
+                canActivate: [
+                    tournamentBuilderFeatureGuard,
+                    roleGuard([UserRole.SuperAdmin, UserRole.Admin]),
+                ],
+                loadComponent: () =>
+                    import(
+                        './pages/playoff-launch/playoff-launch-page.component'
+                    ).then((m) => m.PlayoffLaunchPageComponent),
+            },
+            {
                 path: 'new-news',
                 canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
                 loadComponent: () =>

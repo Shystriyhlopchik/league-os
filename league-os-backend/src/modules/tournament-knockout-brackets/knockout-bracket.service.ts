@@ -1,12 +1,13 @@
 import { createHash } from 'node:crypto';
 
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Not, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
 
 import { MatchEntity } from '../matches/entities/match.entity';
 import { MatchStatus } from '../matches/enums/match-status.enum';
@@ -29,6 +30,7 @@ import type {
   KnockoutQualifierInput,
   KnockoutSeedingInput,
 } from './types/knockout-bracket.type';
+import { VenueEntity } from '../venues/entities/venue.entity';
 
 interface BracketSourceContext {
   stage: TournamentStageEntity;
@@ -194,7 +196,13 @@ export class KnockoutBracketService {
       const orderedPlans = [...snapshot.plans].sort(
         (left, right) => left.order - right.order,
       );
+      const scheduleByPosition = await this.validateSchedule(
+        manager,
+        orderedPlans.map((plan) => plan.bracketPosition),
+        dto.schedule,
+      );
       for (const plan of orderedPlans) {
+        const schedule = scheduleByPosition.get(plan.bracketPosition);
         const match = await matches.save(
           matches.create({
             tournamentId,
@@ -209,6 +217,10 @@ export class KnockoutBracketService {
             awayTeamId: this.resolvedTeamId(plan.awaySource),
             homeParticipantSource: plan.homeSource,
             awayParticipantSource: plan.awaySource,
+            matchDatetime: schedule
+              ? new Date(schedule.matchDatetime)
+              : undefined,
+            venueId: schedule?.venueId,
             status: MatchStatus.SCHEDULED,
           }),
         );
@@ -222,6 +234,50 @@ export class KnockoutBracketService {
       snapshot.plans = orderedPlans;
       return snapshots.save(snapshot);
     });
+  }
+
+  private async validateSchedule(
+    manager: EntityManager,
+    bracketPositions: string[],
+    schedule: ConfirmKnockoutBracketDto['schedule'],
+  ): Promise<
+    Map<string, NonNullable<ConfirmKnockoutBracketDto['schedule']>[number]>
+  > {
+    const byPosition = new Map<
+      string,
+      NonNullable<ConfirmKnockoutBracketDto['schedule']>[number]
+    >();
+    if (!schedule) return byPosition;
+
+    schedule.forEach((item) => {
+      if (byPosition.has(item.bracketPosition)) {
+        throw new BadRequestException(
+          `Duplicate schedule for ${item.bracketPosition}`,
+        );
+      }
+      byPosition.set(item.bracketPosition, item);
+    });
+    if (
+      byPosition.size !== bracketPositions.length ||
+      bracketPositions.some((position) => !byPosition.has(position)) ||
+      [...byPosition.keys()].some(
+        (position) => !bracketPositions.includes(position),
+      )
+    ) {
+      throw new BadRequestException(
+        'A date, time and venue are required for every knockout match',
+      );
+    }
+
+    const venueIds = [...new Set(schedule.map((item) => item.venueId))];
+    const venueCount = await manager.getRepository(VenueEntity).countBy({
+      id: In(venueIds),
+      isActive: true,
+    });
+    if (venueCount !== venueIds.length) {
+      throw new BadRequestException('Schedule contains an unavailable venue');
+    }
+    return byPosition;
   }
 
   async getCurrent(

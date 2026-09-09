@@ -54,6 +54,8 @@ import { RoleCode } from '../users/enums/role-code.enum';
 import { FeatureFlag } from '../../common/feature-flags/feature-flag.enum';
 import { FeatureFlagGuard } from '../../common/feature-flags/feature-flag.guard';
 import { RequireFeature } from '../../common/feature-flags/require-feature.decorator';
+import { LaunchPlayoffDto } from './dto/launch-playoff.dto';
+import { PlayoffLaunchService } from './playoff-launch.service';
 
 @Controller('tournaments')
 export class TournamentsController {
@@ -64,7 +66,42 @@ export class TournamentsController {
     private readonly qualificationService: QualificationService,
     private readonly knockoutBracketService: KnockoutBracketService,
     private readonly playerSuspensionsService: PlayerSuspensionsService,
+    private readonly playoffLaunchService: PlayoffLaunchService,
   ) {}
+
+  @Get(':tournamentId/playoff-launch')
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
+  @RequireTournamentAccess(TournamentAccessAction.READ)
+  getPlayoffLaunchState(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+  ) {
+    return this.playoffLaunchService.getState(tournamentId);
+  }
+
+  @Post(':tournamentId/playoff-launch/prepare')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  preparePlayoffLaunch(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+  ) {
+    return this.playoffLaunchService.prepare(tournamentId);
+  }
+
+  @Post(':tournamentId/playoff-launch')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  launchPlayoff(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Body() dto: LaunchPlayoffDto,
+    @Req() request: AuthenticatedTournamentRequest,
+  ) {
+    return this.playoffLaunchService.launch(tournamentId, dto, request.user.id);
+  }
 
   @Post(':tournamentId/discipline/suspensions/:suspensionId/extend')
   @HttpCode(HttpStatus.OK)

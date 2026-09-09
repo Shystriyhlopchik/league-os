@@ -26,6 +26,7 @@ import { KnockoutBracketService } from '../tournament-knockout-brackets/knockout
 import { PlayerSuspensionsService } from '../player-suspensions/player-suspensions.service';
 import { FeatureFlagGuard } from '../../common/feature-flags/feature-flag.guard';
 import { FeatureFlagsService } from '../../common/feature-flags/feature-flags.service';
+import { PlayoffLaunchService } from './playoff-launch.service';
 
 describe('Tournament lifecycle HTTP integration', () => {
   let app: INestApplication;
@@ -117,6 +118,7 @@ describe('Tournament lifecycle HTTP integration', () => {
         { provide: QualificationService, useValue: qualification },
         { provide: KnockoutBracketService, useValue: knockoutBracket },
         { provide: PlayerSuspensionsService, useValue: playerSuspensions },
+        { provide: PlayoffLaunchService, useValue: {} },
         {
           provide: getRepositoryToken(TournamentEntity),
           useValue: tournaments,

@@ -68,62 +68,69 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
       },
     });
 
-    return matches.map((match) => ({
-      id: match.id,
-      tournamentId: match.tournamentId,
+    return matches
+      .filter(
+        (match) =>
+          Boolean(match.homeTeam) &&
+          Boolean(match.awayTeam) &&
+          Boolean(match.matchDatetime),
+      )
+      .map((match) => ({
+        id: match.id,
+        tournamentId: match.tournamentId,
 
-      round: match.round,
-      status: match.status,
-      matchDateTime: formatLocalDateTime(match.matchDatetime),
+        round: match.round,
+        status: match.status,
+        matchDateTime: formatLocalDateTime(match.matchDatetime),
 
-      tournament: {
-        id: match.tournament.id,
-        name: match.tournament.name,
-        logoUrl:
-          match.tournament.logoUrl ??
-          match.tournament.season.competition.logoUrl,
+        tournament: {
+          id: match.tournament.id,
+          name: match.tournament.name,
+          logoUrl:
+            match.tournament.logoUrl ??
+            match.tournament.season.competition.logoUrl,
 
-        season: {
-          id: match.tournament.season.id,
-          name: match.tournament.season.name,
-          year: match.tournament.season.year,
+          season: {
+            id: match.tournament.season.id,
+            name: match.tournament.season.name,
+            year: match.tournament.season.year,
+          },
+
+          competition: {
+            id: match.tournament.season.competition.id,
+            name: match.tournament.season.competition.name,
+            slug: match.tournament.season.competition.slug,
+            logoUrl: match.tournament.season.competition.logoUrl,
+            colorPrimary: match.tournament.season.competition.colorPrimary,
+          },
         },
 
-        competition: {
-          id: match.tournament.season.competition.id,
-          name: match.tournament.season.competition.name,
-          slug: match.tournament.season.competition.slug,
-          logoUrl: match.tournament.season.competition.logoUrl,
-          colorPrimary: match.tournament.season.competition.colorPrimary,
+        homeTeam: {
+          id: match.homeTeam.id,
+          name: match.homeTeam.name,
+          shortName: match.homeTeam.shortName,
+          logoUrl: match.homeTeam.logoUrl,
         },
-      },
 
-      homeTeam: {
-        id: match.homeTeam.id,
-        name: match.homeTeam.name,
-        shortName: match.homeTeam.shortName,
-        logoUrl: match.homeTeam.logoUrl,
-      },
+        awayTeam: {
+          id: match.awayTeam.id,
+          name: match.awayTeam.name,
+          shortName: match.awayTeam.shortName,
+          logoUrl: match.awayTeam.logoUrl,
+        },
 
-      awayTeam: {
-        id: match.awayTeam.id,
-        name: match.awayTeam.name,
-        shortName: match.awayTeam.shortName,
-        logoUrl: match.awayTeam.logoUrl,
-      },
+        score: {
+          home: match.homeScore,
+          away: match.awayScore,
+        },
 
-      score: {
-        home: match.homeScore,
-        away: match.awayScore,
-      },
-
-      venue: match.venue
-        ? {
-            id: match.venue.id,
-            name: match.venue.name,
-          }
-        : null,
-    }));
+        venue: match.venue
+          ? {
+              id: match.venue.id,
+              name: match.venue.name,
+            }
+          : null,
+      }));
   }
 
   async findBySeason(seasonId: number) {
@@ -150,61 +157,68 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
       },
     });
 
-    return matches.map((match) => ({
-      id: match.id,
-      tournamentId: match.tournamentId,
-      round: match.round,
-      status: match.status,
-      matchDateTime: formatLocalDateTime(match.matchDatetime),
+    return matches
+      .filter(
+        (match) =>
+          Boolean(match.homeTeam) &&
+          Boolean(match.awayTeam) &&
+          Boolean(match.matchDatetime),
+      )
+      .map((match) => ({
+        id: match.id,
+        tournamentId: match.tournamentId,
+        round: match.round,
+        status: match.status,
+        matchDateTime: formatLocalDateTime(match.matchDatetime),
 
-      tournament: {
-        id: match.tournament.id,
-        name: match.tournament.name,
-        logoUrl:
-          match.tournament.logoUrl ??
-          match.tournament.season.competition.logoUrl,
+        tournament: {
+          id: match.tournament.id,
+          name: match.tournament.name,
+          logoUrl:
+            match.tournament.logoUrl ??
+            match.tournament.season.competition.logoUrl,
 
-        season: {
-          id: match.tournament.season.id,
-          name: match.tournament.season.name,
-          year: match.tournament.season.year,
+          season: {
+            id: match.tournament.season.id,
+            name: match.tournament.season.name,
+            year: match.tournament.season.year,
+          },
+
+          competition: {
+            id: match.tournament.season.competition.id,
+            name: match.tournament.season.competition.name,
+            slug: match.tournament.season.competition.slug,
+            logoUrl: match.tournament.season.competition.logoUrl,
+            colorPrimary: match.tournament.season.competition.colorPrimary,
+          },
         },
 
-        competition: {
-          id: match.tournament.season.competition.id,
-          name: match.tournament.season.competition.name,
-          slug: match.tournament.season.competition.slug,
-          logoUrl: match.tournament.season.competition.logoUrl,
-          colorPrimary: match.tournament.season.competition.colorPrimary,
+        homeTeam: {
+          id: match.homeTeam.id,
+          name: match.homeTeam.name,
+          shortName: match.homeTeam.shortName,
+          logoUrl: match.homeTeam.logoUrl,
         },
-      },
 
-      homeTeam: {
-        id: match.homeTeam.id,
-        name: match.homeTeam.name,
-        shortName: match.homeTeam.shortName,
-        logoUrl: match.homeTeam.logoUrl,
-      },
+        awayTeam: {
+          id: match.awayTeam.id,
+          name: match.awayTeam.name,
+          shortName: match.awayTeam.shortName,
+          logoUrl: match.awayTeam.logoUrl,
+        },
 
-      awayTeam: {
-        id: match.awayTeam.id,
-        name: match.awayTeam.name,
-        shortName: match.awayTeam.shortName,
-        logoUrl: match.awayTeam.logoUrl,
-      },
+        score: {
+          home: match.homeScore,
+          away: match.awayScore,
+        },
 
-      score: {
-        home: match.homeScore,
-        away: match.awayScore,
-      },
-
-      venue: match.venue
-        ? {
-            id: match.venue.id,
-            name: match.venue.name,
-          }
-        : null,
-    }));
+        venue: match.venue
+          ? {
+              id: match.venue.id,
+              name: match.venue.name,
+            }
+          : null,
+      }));
   }
 
   async findProtocol(matchId: number) {

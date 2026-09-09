@@ -1,6 +1,8 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   ArrayMinSize,
+  ArrayUnique,
   IsArray,
   IsInt,
   IsOptional,
@@ -53,4 +55,13 @@ export class PreviewQualificationDto {
   @ValidateNested({ each: true })
   @Type(() => QualificationDrawResultDto)
   drawResults?: QualificationDrawResultDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(2)
+  @ArrayMaxSize(32)
+  @ArrayUnique()
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  selectedTournamentTeamIds?: number[];
 }

@@ -30,6 +30,7 @@ export interface QualificationResolutionInput {
     tournamentTeamId: number;
     rank: number;
   }>;
+  selectedTournamentTeamIds?: number[];
 }
 
 export interface QualificationEngineInput {

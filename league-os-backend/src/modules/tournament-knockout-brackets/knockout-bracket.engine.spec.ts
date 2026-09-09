@@ -140,6 +140,36 @@ describe('KnockoutBracketEngine', () => {
     expect(plans[0].awaySource.type).toBe('team');
   });
 
+  it('uses organizer pairs even when the published seeding is automatic', () => {
+    const plans = engine.generate(
+      bracketInput(
+        {
+          size: 4,
+          seeding: {
+            type: 'standard',
+            ranking: { criteria: ['points'] },
+          },
+        },
+        four,
+        {
+          manualPairs: [
+            { homeTournamentTeamId: 1, awayTournamentTeamId: 2 },
+            { homeTournamentTeamId: 4, awayTournamentTeamId: 3 },
+          ],
+        },
+      ),
+    );
+
+    expect(
+      plans
+        .slice(0, 2)
+        .map((plan) => [plan.resolvedHomeTeamId, plan.resolvedAwayTeamId]),
+    ).toEqual([
+      [1001, 1002],
+      [1004, 1003],
+    ]);
+  });
+
   it.each([
     [10, 2],
     [20, 1],

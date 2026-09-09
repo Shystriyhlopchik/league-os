@@ -46,8 +46,14 @@ export class KnockoutBracketEngine {
     drawRanks: Map<number, number>,
   ): SeededPair[] {
     const seeding = input.bracket.seeding;
+    if (input.seedingInput.manualPairs.length > 0) {
+      return this.manualPairs(
+        input,
+        'constraints' in seeding ? (seeding.constraints ?? []) : [],
+      );
+    }
     if (seeding.type === 'manual') {
-      return this.manualPairs(input, seeding);
+      return this.manualPairs(input, seeding.constraints ?? []);
     }
     if (seeding.type === 'random_draw') {
       if (input.seedingInput.randomSeed === undefined) {
@@ -78,7 +84,7 @@ export class KnockoutBracketEngine {
 
   private manualPairs(
     input: KnockoutBracketEngineInput,
-    seeding: Extract<SeedingRuleV1, { type: 'manual' }>,
+    constraints: PairingConstraintV1[],
   ): SeededPair[] {
     if (input.seedingInput.manualPairs.length !== input.bracket.size / 2) {
       throw new BadRequestException(
@@ -105,7 +111,7 @@ export class KnockoutBracketEngine {
           'Every qualified team must appear in exactly one manual pair',
         );
       }
-      this.assertPairAllowed(home, away, seeding.constraints ?? []);
+      this.assertPairAllowed(home, away, constraints);
       used.add(home.tournamentTeamId);
       used.add(away.tournamentTeamId);
       return { home, away, useTeamSource: true };

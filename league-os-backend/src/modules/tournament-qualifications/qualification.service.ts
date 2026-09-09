@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -41,6 +42,7 @@ interface QualificationContext {
   ruleVersion: TournamentRuleVersionEntity;
   transition: StageTransitionRuleV1;
   standings: QualificationStandingInput[];
+  qualifierCount: number;
   sourceHash: string;
 }
 
@@ -80,11 +82,7 @@ export class QualificationService {
         dto.ruleVersionId,
       );
       const resolutions = this.normalizeResolutions(dto);
-      const selections = this.engine.calculate({
-        rules: context.transition.qualification,
-        standings: context.standings,
-        resolutions,
-      });
+      const selections = this.calculateSelections(context, resolutions);
       const snapshots = manager.getRepository(QualificationSnapshotEntity);
       const entries = manager.getRepository(QualificationSnapshotEntryEntity);
       const latest = await snapshots.findOne({
@@ -112,6 +110,24 @@ export class QualificationService {
         ),
       );
       return snapshot;
+    });
+  }
+
+  async calculatePreview(
+    tournamentId: number,
+    fromStageId: number,
+    toStageId: number,
+    dto: PreviewQualificationDto = {},
+  ): Promise<QualificationSelection[]> {
+    return this.dataSource.transaction('REPEATABLE READ', async (manager) => {
+      const context = await this.loadContext(
+        manager,
+        tournamentId,
+        fromStageId,
+        toStageId,
+        dto.ruleVersionId,
+      );
+      return this.calculateSelections(context, this.normalizeResolutions(dto));
     });
   }
 
@@ -266,6 +282,8 @@ export class QualificationService {
         manualSelections:
           dto.manualSelections ?? confirmed.resolutionInput.manualSelections,
         drawResults: dto.drawResults ?? confirmed.resolutionInput.drawResults,
+        selectedTournamentTeamIds:
+          confirmed.resolutionInput.selectedTournamentTeamIds,
       },
       userId,
     );
@@ -476,6 +494,13 @@ export class QualificationService {
     if (!stageRules) {
       throw new ConflictException('Source group-stage rules are missing');
     }
+    const targetStageRules = ruleVersion.config.stages.find(
+      (stage) =>
+        stage.stageKey === actualToStage.key && stage.type === 'knockout',
+    );
+    if (!targetStageRules || targetStageRules.type !== 'knockout') {
+      throw new ConflictException('Target knockout-stage rules are missing');
+    }
     const comparisonStandings = normalizeCrossGroupStandings(
       standings,
       matchRows.map((match) => ({
@@ -495,6 +520,7 @@ export class QualificationService {
       ruleVersion,
       transition,
       standings: comparisonStandings,
+      qualifierCount: targetStageRules.bracket.size,
       sourceHash: this.sourceHash(
         ruleVersion.id,
         transition,
@@ -520,7 +546,10 @@ export class QualificationService {
   }
 
   private normalizeResolutions(
-    dto: Pick<PreviewQualificationDto, 'manualSelections' | 'drawResults'>,
+    dto: Pick<
+      PreviewQualificationDto,
+      'manualSelections' | 'drawResults' | 'selectedTournamentTeamIds'
+    >,
   ): QualificationResolutionInput {
     return {
       manualSelections: (dto.manualSelections ?? []).map((selection) => ({
@@ -528,7 +557,66 @@ export class QualificationService {
         tournamentTeamIds: [...selection.tournamentTeamIds],
       })),
       drawResults: (dto.drawResults ?? []).map((draw) => ({ ...draw })),
+      selectedTournamentTeamIds: dto.selectedTournamentTeamIds
+        ? [...dto.selectedTournamentTeamIds]
+        : undefined,
     };
+  }
+
+  private calculateSelections(
+    context: QualificationContext,
+    resolutions: QualificationResolutionInput,
+  ): QualificationSelection[] {
+    if (!resolutions.selectedTournamentTeamIds) {
+      return this.engine.calculate({
+        rules: context.transition.qualification,
+        standings: context.standings,
+        resolutions,
+      });
+    }
+
+    const selectedIds = resolutions.selectedTournamentTeamIds;
+    if (selectedIds.length !== context.qualifierCount) {
+      throw new ConflictException(
+        `Knockout stage requires exactly ${context.qualifierCount} selected teams`,
+      );
+    }
+    if (new Set(selectedIds).size !== selectedIds.length) {
+      throw new BadRequestException('Selected teams must be unique');
+    }
+
+    return selectedIds.map((tournamentTeamId, index) => {
+      const standing = context.standings.find(
+        (candidate) => candidate.tournamentTeamId === tournamentTeamId,
+      );
+      if (!standing) {
+        throw new BadRequestException(
+          `Selected team ${tournamentTeamId} is outside the group stage`,
+        );
+      }
+      return {
+        tournamentTeamId,
+        teamId: standing.teamId,
+        sourceGroupId: standing.groupId,
+        sourcePosition: standing.position,
+        qualificationRuleId: 'manual-playoff-selection',
+        selectionOrder: index + 1,
+        comparisonSnapshot: {
+          played: standing.played,
+          points: standing.points,
+          wins: standing.wins,
+          goal_difference: standing.goalDifference,
+          goals_for: standing.goalsFor,
+          goals_against: standing.goalsAgainst,
+          disciplinary_score: standing.disciplinaryScore,
+        },
+        reason: {
+          strategy: 'manual_selection' as const,
+          description: 'Selected manually by the tournament organizer',
+          comparisonAdjustment: standing.comparisonAdjustment,
+        },
+      };
+    });
   }
 
   private createEntry(

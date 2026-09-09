@@ -3,7 +3,7 @@ import { SessionStore } from '../../../../entities/user/model/session.store';
 import { DashboardAction } from '../../model/dashboard-action.model';
 import { Router, RouterLink } from '@angular/router';
 import { UserRole } from '../../../../entities/user/model/user-role.type';
-import {InfoCardComponent} from '../../../../shared/ui/info-card/info-card.component';
+import { InfoCardComponent } from '../../../../shared/ui/info-card/info-card.component';
 import { FeatureFlagsApi } from '../../../../shared/api/feature-flags.api';
 import { toSignal } from '@angular/core/rxjs-interop';
 
@@ -27,6 +27,15 @@ export class DashboardPageComponent {
             route: '/dashboard/tournaments/new',
             roles: [UserRole.Admin, UserRole.SuperAdmin],
             variant: '#72DF9C',
+            feature: 'tournamentBuilder',
+        },
+        {
+            title: 'Запуск плей-офф',
+            description:
+                'Проверка таблиц, выбор участников, формирование пар и публикация матчей',
+            route: '/dashboard/playoff-launch',
+            roles: [UserRole.Admin, UserRole.SuperAdmin],
+            variant: '#FFD91A',
             feature: 'tournamentBuilder',
         },
         {

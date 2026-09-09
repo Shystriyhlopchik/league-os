@@ -33,11 +33,15 @@ import { KnockoutBracketService } from '../tournament-knockout-brackets/knockout
 import { PlayerSuspensionsModule } from '../player-suspensions/player-suspensions.module';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { MatchRosterPlayerEntity } from '../match-rosters/entities/match-roster-player.entity';
+import { StandingsModule } from '../standings/standings.module';
+import { VenueEntity } from '../venues/entities/venue.entity';
+import { PlayoffLaunchService } from './playoff-launch.service';
 
 @Module({
   imports: [
     AuthModule,
     PlayerSuspensionsModule,
+    StandingsModule,
     TypeOrmModule.forFeature([
       TournamentEntity,
       MatchEntity,
@@ -55,6 +59,7 @@ import { MatchRosterPlayerEntity } from '../match-rosters/entities/match-roster-
       KnockoutBracketSnapshotEntity,
       KnockoutBracketPlanEntity,
       MatchRosterPlayerEntity,
+      VenueEntity,
     ]),
   ],
   controllers: [TournamentsController],
@@ -72,6 +77,7 @@ import { MatchRosterPlayerEntity } from '../match-rosters/entities/match-roster-
     QualificationService,
     KnockoutBracketEngine,
     KnockoutBracketService,
+    PlayoffLaunchService,
     RolesGuard,
   ],
   exports: [TournamentLifecycleService, KnockoutBracketService],

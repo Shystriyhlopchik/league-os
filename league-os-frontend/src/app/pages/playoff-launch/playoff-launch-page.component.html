@@ -1,0 +1,356 @@
+<main class="playoff-page">
+    <header class="playoff-page__header">
+        <a routerLink="/dashboard" class="playoff-page__back">← Кабинет</a>
+        <span class="playoff-page__eyebrow">Организатор</span>
+        <h1>Запуск плей-офф</h1>
+        <p>
+            Проверьте итоговые таблицы, выберите четыре команды и опубликуйте
+            расписание решающих матчей.
+        </p>
+    </header>
+
+    @if (loading()) {
+        <section class="panel panel--message">
+            Загружаем данные турнира…
+        </section>
+    } @else if (!state()) {
+        <section class="panel panel--error">{{ error() }}</section>
+    } @else {
+        @if (error()) {
+            <div class="alert alert--error">{{ error() }}</div>
+        }
+        @if (notice()) {
+            <div class="alert alert--success">{{ notice() }}</div>
+        }
+
+        <section class="panel summary">
+            <div>
+                <span class="step">Шаг 1</span>
+                <h2>Итоговые таблицы</h2>
+                <p>
+                    {{ state()!.tournament.name }} ·
+                    {{ state()!.groupStage.name }}
+                </p>
+            </div>
+            <div class="summary__status">
+                @if (state()!.groupStage.allMatchesFinished) {
+                    <span class="status status--ready"
+                        >Все матчи завершены</span
+                    >
+                } @else {
+                    <span class="status status--warning">
+                        Осталось матчей:
+                        {{ state()!.groupStage.unfinishedMatches }}
+                    </span>
+                }
+                <button
+                    type="button"
+                    class="button button--secondary"
+                    [disabled]="
+                        processing() ||
+                        !state()!.groupStage.allMatchesFinished ||
+                        state()!.launched
+                    "
+                    (click)="prepare()"
+                >
+                    {{
+                        state()!.groupStage.standingsReady
+                            ? "Пересчитать таблицы"
+                            : "Проверить таблицы"
+                    }}
+                </button>
+            </div>
+        </section>
+
+        <div class="tables-grid">
+            @for (group of state()!.groups; track group.id) {
+                <section class="panel table-card">
+                    <h3>{{ group.name }}</h3>
+                    <div class="table-scroll">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Команда</th>
+                                    <th>И</th>
+                                    <th>РМ</th>
+                                    <th>О</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (
+                                    row of group.standings;
+                                    track row.tournamentTeamId
+                                ) {
+                                    <tr>
+                                        <td>{{ row.position }}</td>
+                                        <td>{{ row.team.name }}</td>
+                                        <td>{{ row.played }}</td>
+                                        <td>
+                                            {{
+                                                row.goalDifference > 0
+                                                    ? "+"
+                                                    : ""
+                                            }}{{ row.goalDifference }}
+                                        </td>
+                                        <td>
+                                            <strong>{{ row.points }}</strong>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            }
+        </div>
+
+        @if (state()!.launched) {
+            <section class="panel published">
+                <span class="step">Опубликовано</span>
+                <h2>Плей-офф уже запущен</h2>
+                <div class="published__matches">
+                    @for (
+                        match of state()!.matches;
+                        track match.bracketPosition
+                    ) {
+                        <article>
+                            <strong>{{ match.bracketPosition }}</strong>
+                            <span>{{
+                                match.homeTeamName ||
+                                    "Победитель предыдущего матча"
+                            }}</span>
+                            <span class="published__versus">—</span>
+                            <span>{{
+                                match.awayTeamName ||
+                                    "Победитель предыдущего матча"
+                            }}</span>
+                            <small>
+                                {{
+                                    match.matchDatetime
+                                        | date: "dd.MM.yyyy, HH:mm"
+                                }}
+                                · {{ match.venueName }}
+                            </small>
+                        </article>
+                    }
+                </div>
+            </section>
+        } @else {
+            <section class="panel selection">
+                <div class="section-title">
+                    <div>
+                        <span class="step">Шаг 2</span>
+                        <h2>Участники полуфинала</h2>
+                    </div>
+                    <span class="counter"
+                        >{{ selectedIds().length }} /
+                        {{ state()!.knockoutStage.bracketSize }}</span
+                    >
+                </div>
+                <p class="hint">
+                    Рекомендуемые команды отмечены меткой. Вы можете изменить
+                    выбор вручную.
+                </p>
+                @if (state()!.suggestionError) {
+                    <p class="inline-warning">{{ state()!.suggestionError }}</p>
+                }
+                <div class="team-list">
+                    @for (group of state()!.groups; track group.id) {
+                        @for (
+                            row of group.standings;
+                            track row.tournamentTeamId
+                        ) {
+                            <label
+                                class="team-option"
+                                [class.team-option--selected]="
+                                    isSelected(row.tournamentTeamId)
+                                "
+                            >
+                                <input
+                                    type="checkbox"
+                                    [checked]="isSelected(row.tournamentTeamId)"
+                                    [disabled]="
+                                        !isSelected(row.tournamentTeamId) &&
+                                        selectedIds().length >=
+                                            state()!.knockoutStage.bracketSize
+                                    "
+                                    (change)="toggleTeam(row.tournamentTeamId)"
+                                />
+                                <span class="team-option__position">{{
+                                    row.position
+                                }}</span>
+                                <span class="team-option__name">{{
+                                    row.team.name
+                                }}</span>
+                                <small
+                                    >{{ group.name }} ·
+                                    {{ row.points }} очк.</small
+                                >
+                                @if (isSuggested(row.tournamentTeamId)) {
+                                    <span class="badge">Рекомендована</span>
+                                }
+                            </label>
+                        }
+                    }
+                </div>
+            </section>
+
+            <section class="panel pairings">
+                <div class="section-title">
+                    <div>
+                        <span class="step">Шаг 3</span>
+                        <h2>Полуфинальные пары</h2>
+                    </div>
+                    <button
+                        type="button"
+                        class="text-button"
+                        [disabled]="selectedIds().length !== 4"
+                        (click)="fillPairs()"
+                    >
+                        Заполнить 1–4, 2–3
+                    </button>
+                </div>
+                <p class="hint">
+                    Каждая выбранная команда должна встретиться ровно в одном
+                    полуфинале.
+                </p>
+                <div class="pairings__grid">
+                    @for (pair of pairs(); track $index; let index = $index) {
+                        <article class="pair-card">
+                            <strong>Полуфинал {{ index + 1 }}</strong>
+                            <select
+                                [ngModel]="pair.homeTournamentTeamId"
+                                (ngModelChange)="
+                                    updatePair(
+                                        index,
+                                        'homeTournamentTeamId',
+                                        $event ? +$event : undefined
+                                    )
+                                "
+                            >
+                                <option [ngValue]="undefined">
+                                    Выберите команду
+                                </option>
+                                @for (
+                                    team of selectedTeams();
+                                    track team.tournamentTeamId
+                                ) {
+                                    <option [ngValue]="team.tournamentTeamId">
+                                        {{ team.team.name }}
+                                    </option>
+                                }
+                            </select>
+                            <span>против</span>
+                            <select
+                                [ngModel]="pair.awayTournamentTeamId"
+                                (ngModelChange)="
+                                    updatePair(
+                                        index,
+                                        'awayTournamentTeamId',
+                                        $event ? +$event : undefined
+                                    )
+                                "
+                            >
+                                <option [ngValue]="undefined">
+                                    Выберите команду
+                                </option>
+                                @for (
+                                    team of selectedTeams();
+                                    track team.tournamentTeamId
+                                ) {
+                                    <option [ngValue]="team.tournamentTeamId">
+                                        {{ team.team.name }}
+                                    </option>
+                                }
+                            </select>
+                        </article>
+                    }
+                </div>
+            </section>
+
+            <section class="panel schedule">
+                <span class="step">Шаг 4</span>
+                <h2>Расписание и площадки</h2>
+                <p class="hint">
+                    Финал и матч за третье место публикуются сразу; участники
+                    появятся после полуфиналов.
+                </p>
+                @if (state()!.venues.length === 0) {
+                    <p class="inline-warning">
+                        Нет активных площадок. Сначала добавьте площадку в
+                        систему.
+                    </p>
+                }
+                <div class="schedule__list">
+                    @for (
+                        match of schedule();
+                        track match.bracketPosition;
+                        let index = $index
+                    ) {
+                        <article class="schedule-row">
+                            <strong>{{ match.label }}</strong>
+                            <label>
+                                <span>Дата и время</span>
+                                <input
+                                    type="datetime-local"
+                                    [ngModel]="match.matchDatetime"
+                                    (ngModelChange)="
+                                        updateSchedule(
+                                            index,
+                                            'matchDatetime',
+                                            $event
+                                        )
+                                    "
+                                />
+                            </label>
+                            <label>
+                                <span>Площадка</span>
+                                <select
+                                    [ngModel]="match.venueId"
+                                    (ngModelChange)="
+                                        updateSchedule(
+                                            index,
+                                            'venueId',
+                                            $event ? +$event : undefined
+                                        )
+                                    "
+                                >
+                                    <option [ngValue]="undefined">
+                                        Выберите площадку
+                                    </option>
+                                    @for (
+                                        venue of state()!.venues;
+                                        track venue.id
+                                    ) {
+                                        <option [ngValue]="venue.id">
+                                            {{ venue.name }}
+                                        </option>
+                                    }
+                                </select>
+                            </label>
+                        </article>
+                    }
+                </div>
+            </section>
+
+            <section class="publish-bar">
+                <div>
+                    <strong>Публикация необратима</strong>
+                    <span
+                        >После запуска состав сетки фиксируется, а матчи
+                        появляются в календаре.</span
+                    >
+                </div>
+                <button
+                    type="button"
+                    class="button button--primary"
+                    [disabled]="!canLaunch()"
+                    (click)="launch()"
+                >
+                    {{ processing() ? "Публикуем…" : "Опубликовать плей-офф" }}
+                </button>
+            </section>
+        }
+    }
+</main>
