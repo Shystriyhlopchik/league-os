@@ -139,17 +139,21 @@ export class QualificationService {
   ): Promise<QualificationSnapshotEntity> {
     return this.dataSource.transaction('SERIALIZABLE', async (manager) => {
       const snapshots = manager.getRepository(QualificationSnapshotEntity);
+      const entries = manager.getRepository(QualificationSnapshotEntryEntity);
       const participants = manager.getRepository(
         TournamentStageParticipantEntity,
       );
       const matches = manager.getRepository(MatchEntity);
       const snapshot = await snapshots.findOne({
         where: { id: snapshotId, tournamentId },
-        relations: { entries: true },
         lock: { mode: 'pessimistic_write' },
       });
       if (!snapshot)
         throw new NotFoundException('Qualification preview not found');
+      snapshot.entries = await entries.find({
+        where: { snapshotId: snapshot.id },
+        order: { selectionOrder: 'ASC' },
+      });
       if (snapshot.status !== QualificationSnapshotStatus.PREVIEW) {
         throw new ConflictException(
           'Only a qualification preview can be confirmed',

@@ -3,6 +3,7 @@ import type { DataSource, Repository } from 'typeorm';
 import { MatchEntity } from '../matches/entities/match.entity';
 import { MatchStatus } from '../matches/enums/match-status.enum';
 import { KnockoutBracketSnapshotEntity } from './entities/knockout-bracket-snapshot.entity';
+import { KnockoutBracketPlanEntity } from './entities/knockout-bracket-plan.entity';
 import { KnockoutBracketSnapshotStatus } from './enums/knockout-bracket-snapshot-status.enum';
 import { KnockoutBracketEngine } from './knockout-bracket.engine';
 import { KnockoutBracketService } from './knockout-bracket.service';
@@ -128,12 +129,17 @@ describe('KnockoutBracketService', () => {
       findOne: jest.fn(() => Promise.resolve(snapshot)),
     } as unknown as Repository<KnockoutBracketSnapshotEntity>;
     const matchSave = jest.fn();
+    const planRepository = {
+      find: jest.fn(() => Promise.resolve(snapshot.plans)),
+    } as unknown as Repository<KnockoutBracketPlanEntity>;
     const manager = {
-      getRepository: jest.fn((entity: unknown) =>
-        entity === KnockoutBracketSnapshotEntity
-          ? snapshotRepository
-          : ({ save: matchSave } as unknown as Repository<MatchEntity>),
-      ),
+      getRepository: jest.fn((entity: unknown) => {
+        if (entity === KnockoutBracketSnapshotEntity) {
+          return snapshotRepository;
+        }
+        if (entity === KnockoutBracketPlanEntity) return planRepository;
+        return { save: matchSave } as unknown as Repository<MatchEntity>;
+      }),
     };
     const dataSource = {
       transaction: jest.fn(
@@ -155,5 +161,13 @@ describe('KnockoutBracketService', () => {
 
     expect(confirmed).toBe(snapshot);
     expect(matchSave).not.toHaveBeenCalled();
+    expect(snapshotRepository.findOne).toHaveBeenCalledWith({
+      where: { id: 60, tournamentId: 10 },
+      lock: { mode: 'pessimistic_write' },
+    });
+    expect(planRepository.find).toHaveBeenCalledWith({
+      where: { snapshotId: 60 },
+      order: { order: 'ASC' },
+    });
   });
 });

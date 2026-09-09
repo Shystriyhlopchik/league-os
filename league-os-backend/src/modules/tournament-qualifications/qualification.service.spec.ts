@@ -81,9 +81,15 @@ describe('QualificationService snapshot diff', () => {
     const matchRepository = {
       exists: jest.fn(() => Promise.resolve(false)),
     } as unknown as Repository<MatchEntity>;
+    const entryRepository = {
+      find: jest.fn(() => Promise.resolve(snapshot.entries)),
+    } as unknown as Repository<QualificationSnapshotEntryEntity>;
     const manager = {
       getRepository: jest.fn((entity: unknown) => {
         if (entity === QualificationSnapshotEntity) return snapshotRepository;
+        if (entity === QualificationSnapshotEntryEntity) {
+          return entryRepository;
+        }
         if (entity === TournamentStageParticipantEntity) {
           return participantRepository;
         }
@@ -130,6 +136,11 @@ describe('QualificationService snapshot diff', () => {
       'SERIALIZABLE',
       expect.any(Function),
     );
+    expect(snapshotFindOne.mock.calls[0][0]).not.toHaveProperty('relations');
+    expect(entryRepository.find).toHaveBeenCalledWith({
+      where: { snapshotId: 40 },
+      order: { selectionOrder: 'ASC' },
+    });
   });
 
   it('refuses to confirm a preview after source standings changed', async () => {
@@ -146,7 +157,16 @@ describe('QualificationService snapshot diff', () => {
     const snapshotRepository = {
       findOne: jest.fn(() => Promise.resolve(snapshot)),
     } as unknown as Repository<QualificationSnapshotEntity>;
-    const manager = { getRepository: jest.fn(() => snapshotRepository) };
+    const entryRepository = {
+      find: jest.fn(() => Promise.resolve(snapshot.entries)),
+    } as unknown as Repository<QualificationSnapshotEntryEntity>;
+    const manager = {
+      getRepository: jest.fn((entity: unknown) =>
+        entity === QualificationSnapshotEntity
+          ? snapshotRepository
+          : entryRepository,
+      ),
+    };
     const dataSource = {
       transaction: jest.fn(
         (

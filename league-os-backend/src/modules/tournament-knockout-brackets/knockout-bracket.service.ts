@@ -111,11 +111,14 @@ export class KnockoutBracketService {
       const matches = manager.getRepository(MatchEntity);
       const snapshot = await snapshots.findOne({
         where: { id: snapshotId, tournamentId },
-        relations: { plans: true },
         lock: { mode: 'pessimistic_write' },
       });
       if (!snapshot)
         throw new NotFoundException('Knockout bracket preview not found');
+      snapshot.plans = await plans.find({
+        where: { snapshotId: snapshot.id },
+        order: { order: 'ASC' },
+      });
       if (snapshot.status === KnockoutBracketSnapshotStatus.CONFIRMED) {
         snapshot.plans.sort((left, right) => left.order - right.order);
         return snapshot;
