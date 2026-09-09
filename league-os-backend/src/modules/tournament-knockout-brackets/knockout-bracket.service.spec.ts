@@ -9,6 +9,34 @@ import { KnockoutBracketEngine } from './knockout-bracket.engine';
 import { KnockoutBracketService } from './knockout-bracket.service';
 
 describe('KnockoutBracketService', () => {
+  it('hashes JSON data independently of PostgreSQL jsonb key order', () => {
+    const service = new KnockoutBracketService(
+      {} as Repository<KnockoutBracketSnapshotEntity>,
+      {} as DataSource,
+      new KnockoutBracketEngine(),
+    ) as unknown as {
+      stableSerialize(value: unknown): string;
+    };
+
+    expect(
+      service.stableSerialize({
+        seedingInput: {
+          manualPairs: [{ home: 1, away: 2 }],
+          drawResults: [],
+        },
+        qualifiers: [{ id: 1, comparison: { points: 10, wins: 3 } }],
+      }),
+    ).toBe(
+      service.stableSerialize({
+        qualifiers: [{ comparison: { wins: 3, points: 10 }, id: 1 }],
+        seedingInput: {
+          drawResults: [],
+          manualPairs: [{ away: 2, home: 1 }],
+        },
+      }),
+    );
+  });
+
   it('fills final and third-place participants after a semi-final', async () => {
     const semi = {
       id: 1,

@@ -514,7 +514,7 @@ export class KnockoutBracketService {
   ): string {
     return createHash('sha256')
       .update(
-        JSON.stringify({
+        this.stableSerialize({
           qualificationSnapshotId: context.qualificationSnapshot.id,
           qualificationSourceHash: context.qualificationSnapshot.sourceHash,
           ruleVersionId: context.ruleVersion.id,
@@ -524,6 +524,26 @@ export class KnockoutBracketService {
         }),
       )
       .digest('hex');
+  }
+
+  private stableSerialize(value: unknown): string {
+    return JSON.stringify(this.sortJsonKeys(value));
+  }
+
+  private sortJsonKeys(value: unknown): unknown {
+    if (Array.isArray(value)) {
+      return value.map((item) => this.sortJsonKeys(item));
+    }
+    if (value === null || typeof value !== 'object') return value;
+
+    const record = value as Record<string, unknown>;
+    return Object.keys(value)
+      .sort()
+      .reduce<Record<string, unknown>>((result, key) => {
+        const item = record[key];
+        if (item !== undefined) result[key] = this.sortJsonKeys(item);
+        return result;
+      }, {});
   }
 
   private resolvedTeamId(
