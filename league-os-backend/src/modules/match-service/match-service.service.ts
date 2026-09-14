@@ -12,6 +12,8 @@ import {
   DeepPartial,
   EntityManager,
   In,
+  IsNull,
+  Not,
   Repository,
   Brackets,
 } from 'typeorm';
@@ -136,6 +138,8 @@ export class MatchServiceService {
       where: {
         status: MatchStatus.SCHEDULED,
         matchDatetime: matchDateTimeBeforeNow(),
+        homeTeamId: Not(IsNull()),
+        awayTeamId: Not(IsNull()),
       },
       relations: {
         homeTeam: true,
@@ -153,6 +157,8 @@ export class MatchServiceService {
       where: {
         status: MatchStatus.SCHEDULED,
         matchDatetime: matchDateTimeAtOrAfterNow(),
+        homeTeamId: Not(IsNull()),
+        awayTeamId: Not(IsNull()),
       },
       order: {
         matchDatetime: 'ASC',
@@ -174,6 +180,8 @@ export class MatchServiceService {
       where: {
         status: MatchStatus.SCHEDULED,
         matchDatetime: Between(startOfDay, endOfDay),
+        homeTeamId: Not(IsNull()),
+        awayTeamId: Not(IsNull()),
       },
       relations: {
         homeTeam: true,
@@ -201,6 +209,8 @@ export class MatchServiceService {
       where: {
         status: MatchStatus.SCHEDULED,
         matchDatetime: matchDateTimeBeforeNow(),
+        homeTeamId: Not(IsNull()),
+        awayTeamId: Not(IsNull()),
       },
       relations: {
         homeTeam: true,
