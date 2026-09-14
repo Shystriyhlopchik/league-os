@@ -17,6 +17,12 @@ export interface MatchRosterCheckMatch {
     status: 'scheduled' | 'live' | 'finished' | 'cancelled';
     homeScore: number;
     awayScore: number;
+    penalties?: PenaltyShootoutResult;
+    extraTimeEnabled: boolean;
+    penaltyShootout?: {
+        initialKicksPerTeam: number;
+        suddenDeath: boolean;
+    };
     resolutionType?:
         | 'regular_time'
         | 'extra_time'
@@ -28,6 +34,13 @@ export interface MatchRosterCheckMatch {
     venueName?: string;
     homeTeam: MatchRosterTeam;
     awayTeam: MatchRosterTeam;
+}
+
+export interface PenaltyShootoutResult {
+    home: number;
+    away: number;
+    homeKicksTaken: number;
+    awayKicksTaken: number;
 }
 
 export interface MatchRosterTeam {

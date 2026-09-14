@@ -1422,13 +1422,14 @@ export class MatchServiceService {
     );
     const homeSavedRoster = savedRosterByTeamId.get(match.homeTeamId);
     const awaySavedRoster = savedRosterByTeamId.get(match.awayTeamId);
-    const [homeRoster, awayRoster] = await Promise.all([
+    const [homeRoster, awayRoster, matchRules] = await Promise.all([
       homeSavedRoster?.isSubmitted
         ? this.findSubmittedTeamRoster(match, homeSavedRoster)
         : this.findTeamRoster(match, match.homeTeamId),
       awaySavedRoster?.isSubmitted
         ? this.findSubmittedTeamRoster(match, awaySavedRoster)
         : this.findTeamRoster(match, match.awayTeamId),
+      this.getEffectiveMatchRules(match, this.dataSource.manager),
     ]);
 
     return {
@@ -1437,6 +1438,25 @@ export class MatchServiceService {
         status: match.status,
         homeScore: match.homeScore,
         awayScore: match.awayScore,
+        penalties:
+          match.penaltyHomeScore != null &&
+          match.penaltyAwayScore != null &&
+          match.penaltyHomeKicksTaken != null &&
+          match.penaltyAwayKicksTaken != null
+            ? {
+                home: match.penaltyHomeScore,
+                away: match.penaltyAwayScore,
+                homeKicksTaken: match.penaltyHomeKicksTaken,
+                awayKicksTaken: match.penaltyAwayKicksTaken,
+              }
+            : undefined,
+        extraTimeEnabled: matchRules.extraTime.enabled,
+        penaltyShootout: matchRules.penalties.enabled
+          ? {
+              initialKicksPerTeam: matchRules.penalties.initialKicksPerTeam,
+              suddenDeath: matchRules.penalties.suddenDeath,
+            }
+          : undefined,
         resolutionType: match.resolutionType,
         technicalResultReason: match.technicalResultReason,
         matchDatetime: match.matchDatetime,

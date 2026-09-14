@@ -72,6 +72,24 @@
                             }
                         </div>
                     }
+                    @if (
+                        data.match.resolutionType === "penalties" &&
+                        data.match.penalties
+                    ) {
+                        <div class="penalty-result-summary">
+                            <strong>
+                                По пенальти
+                                {{ data.match.penalties.home }}:{{
+                                    data.match.penalties.away
+                                }}
+                            </strong>
+                            <p>
+                                Основной счёт {{ data.match.homeScore }}:{{
+                                    data.match.awayScore
+                                }}. Голы серии не включены в счёт матча.
+                            </p>
+                        </div>
+                    }
                 }
                 @if (isCorrectionMode) {
                     <p class="protocol-signed">
@@ -260,22 +278,41 @@
 
                 @if (!isProtocolSigned && !isCorrectionMode) {
                     <div class="protocol-actions">
-                        <button
-                            class="sign-protocol-button"
-                            type="button"
-                            [disabled]="
-                                isSigningProtocol ||
-                                isSavingEvent ||
-                                isSavingTechnicalLoss
-                            "
-                            (click)="signProtocol()"
-                        >
-                            {{
-                                isSigningProtocol
-                                    ? "Подписываем..."
-                                    : "Подписать протокол"
-                            }}
-                        </button>
+                        @if (requiresPenaltyShootout) {
+                            <button
+                                class="penalty-shootout-button"
+                                type="button"
+                                [disabled]="
+                                    isSigningProtocol ||
+                                    isSavingEvent ||
+                                    isSavingTechnicalLoss
+                                "
+                                (click)="togglePenaltyShootoutForm()"
+                            >
+                                {{
+                                    isPenaltyShootoutFormVisible
+                                        ? "Отменить серию пенальти"
+                                        : "Ввести серию пенальти"
+                                }}
+                            </button>
+                        } @else {
+                            <button
+                                class="sign-protocol-button"
+                                type="button"
+                                [disabled]="
+                                    isSigningProtocol ||
+                                    isSavingEvent ||
+                                    isSavingTechnicalLoss
+                                "
+                                (click)="signProtocol()"
+                            >
+                                {{
+                                    isSigningProtocol
+                                        ? "Подписываем..."
+                                        : "Подписать протокол"
+                                }}
+                            </button>
+                        }
                         <button
                             class="technical-loss-button"
                             type="button"
@@ -293,6 +330,93 @@
                             }}
                         </button>
                     </div>
+
+                    @if (
+                        isPenaltyShootoutFormVisible &&
+                        requiresPenaltyShootout
+                    ) {
+                        <form
+                            class="penalty-shootout-form"
+                            (ngSubmit)="savePenaltyShootout()"
+                        >
+                            <h3>Серия пенальти</h3>
+                            <p>
+                                Основной счёт останется {{ homeScore }}:{{
+                                    awayScore
+                                }}. Укажите отдельно результат серии и
+                                количество выполненных ударов.
+                            </p>
+
+                            <div class="penalty-shootout-grid">
+                                <strong>Команда</strong>
+                                <strong>Забито</strong>
+                                <strong>Ударов</strong>
+
+                                <span>{{ data.match.homeTeam.name }}</span>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    required
+                                    [(ngModel)]="homePenaltyScore"
+                                    name="homePenaltyScore"
+                                    aria-label="Забито хозяевами в серии пенальти"
+                                />
+                                <input
+                                    type="number"
+                                    min="0"
+                                    required
+                                    [(ngModel)]="homePenaltyKicksTaken"
+                                    name="homePenaltyKicksTaken"
+                                    aria-label="Удары хозяев в серии пенальти"
+                                />
+
+                                <span>{{ data.match.awayTeam.name }}</span>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    required
+                                    [(ngModel)]="awayPenaltyScore"
+                                    name="awayPenaltyScore"
+                                    aria-label="Забито гостями в серии пенальти"
+                                />
+                                <input
+                                    type="number"
+                                    min="0"
+                                    required
+                                    [(ngModel)]="awayPenaltyKicksTaken"
+                                    name="awayPenaltyKicksTaken"
+                                    aria-label="Удары гостей в серии пенальти"
+                                />
+                            </div>
+
+                            <small>
+                                Начальная серия: по
+                                {{
+                                    data.match.penaltyShootout
+                                        ?.initialKicksPerTeam
+                                }}
+                                ударов. Если победитель определился раньше,
+                                укажите фактическое число ударов.
+                            </small>
+
+                            @if (penaltyShootoutError) {
+                                <p class="event-error">
+                                    {{ penaltyShootoutError }}
+                                </p>
+                            }
+
+                            <button
+                                type="submit"
+                                [disabled]="isSigningProtocol"
+                            >
+                                {{
+                                    isSigningProtocol
+                                        ? "Сохраняем..."
+                                        : "Подписать с серией пенальти"
+                                }}
+                            </button>
+                        </form>
+                    }
 
                     @if (isTechnicalLossFormVisible) {
                         <form

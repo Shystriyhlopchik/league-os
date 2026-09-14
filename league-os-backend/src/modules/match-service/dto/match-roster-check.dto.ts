@@ -15,6 +15,17 @@ export class MatchRosterCheckDto {
     status: MatchStatus;
     homeScore: number;
     awayScore: number;
+    penalties?: {
+      home: number;
+      away: number;
+      homeKicksTaken: number;
+      awayKicksTaken: number;
+    };
+    extraTimeEnabled: boolean;
+    penaltyShootout?: {
+      initialKicksPerTeam: number;
+      suddenDeath: boolean;
+    };
     resolutionType?: MatchResolutionType;
     technicalResultReason?: string;
     matchDatetime?: Date;

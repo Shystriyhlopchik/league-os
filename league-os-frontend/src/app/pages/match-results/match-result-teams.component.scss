@@ -180,6 +180,18 @@
     background: #392918;
     color: #ffd29a;
 }
+.penalty-result-summary {
+    margin-top: 10px;
+    padding: 14px 15px;
+    border: 1px solid #28df7a;
+    border-radius: 12px;
+    background: #153426;
+    color: #78eeaa;
+}
+.penalty-result-summary p {
+    margin: 8px 0 0;
+    color: #fff;
+}
 .technical-result-summary p {
     margin: 8px 0 0;
     color: #fff;
@@ -192,6 +204,7 @@
     margin-top: 22px;
 }
 .sign-protocol-button,
+.penalty-shootout-button,
 .technical-loss-button {
     min-height: 52px;
     border-radius: 14px;
@@ -204,16 +217,74 @@
     background: #28df7a;
     color: #071010;
 }
+.penalty-shootout-button {
+    border: 0;
+    background: #28df7a;
+    color: #071010;
+}
 .technical-loss-button {
     border: 1px solid #ff6670;
     background: transparent;
     color: #ff8a92;
 }
 .sign-protocol-button:disabled,
+.penalty-shootout-button:disabled,
 .technical-loss-button:disabled,
+.penalty-shootout-form button:disabled,
 .technical-loss-form button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+.penalty-shootout-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 14px;
+    padding: 18px;
+    border: 1px solid #317253;
+    border-radius: 14px;
+    background: #202829;
+}
+.penalty-shootout-form h3,
+.penalty-shootout-form p {
+    margin: 0;
+}
+.penalty-shootout-form > p,
+.penalty-shootout-form > small {
+    color: #9ba7a7;
+}
+.penalty-shootout-grid {
+    display: grid;
+    grid-template-columns: minmax(150px, 1fr) minmax(90px, 120px) minmax(
+            90px,
+            120px
+        );
+    gap: 10px;
+    align-items: center;
+}
+.penalty-shootout-grid strong {
+    color: #c0c9c9;
+    font-size: 13px;
+}
+.penalty-shootout-grid input {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid #465353;
+    border-radius: 10px;
+    background: #151d1e;
+    color: #fff;
+    box-sizing: border-box;
+    font: inherit;
+}
+.penalty-shootout-form > button {
+    min-height: 46px;
+    border: 0;
+    border-radius: 10px;
+    background: #28df7a;
+    color: #071010;
+    font-weight: 800;
+    cursor: pointer;
 }
 .technical-loss-form {
     display: flex;
@@ -276,6 +347,12 @@
 @media (max-width: 600px) {
     .protocol-actions {
         grid-template-columns: 1fr;
+    }
+}
+@media (max-width: 520px) {
+    .penalty-shootout-grid {
+        grid-template-columns: minmax(110px, 1fr) 72px 72px;
+        gap: 8px;
     }
 }
 @media (max-width: 700px) {

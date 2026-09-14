@@ -1,7 +1,10 @@
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { MatchRosterCheck } from '../model/match-roster.types';
+import {
+    MatchRosterCheck,
+    PenaltyShootoutResult,
+} from '../model/match-roster.types';
 import { environment } from '../../../../environments/environment';
 import { HttpClient } from '@angular/common/http';
 
@@ -42,8 +45,13 @@ export interface SignedManualProtocol {
     homeScore: number;
     awayScore: number;
     winnerTeamId?: number;
-    resolutionType?: 'regular_time' | 'technical';
+    resolutionType?: 'regular_time' | 'extra_time' | 'penalties' | 'technical';
     technicalResultReason?: string;
+}
+
+export interface SignPenaltyShootoutRequest {
+    resolutionType: 'penalties';
+    penalties: PenaltyShootoutResult;
 }
 
 export interface SignTechnicalLossRequest {
@@ -125,10 +133,13 @@ export class MatchRosterApi {
         );
     }
 
-    signManualProtocol(matchId: number): Observable<SignedManualProtocol> {
+    signManualProtocol(
+        matchId: number,
+        dto: SignPenaltyShootoutRequest | Record<string, never> = {},
+    ): Observable<SignedManualProtocol> {
         return this.http.post<SignedManualProtocol>(
             `${this.apiUrl}/match-service/matches/${matchId}/manual-protocol/sign`,
-            {},
+            dto,
         );
     }
 
