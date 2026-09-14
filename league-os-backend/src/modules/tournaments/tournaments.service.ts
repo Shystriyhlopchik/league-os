@@ -11,6 +11,7 @@ import { MatchEventEntity } from '../match-events/entities/match-event.entity';
 import { MatchEventType } from '../match-events/enums/match-event-type.enum';
 import { MatchEntity } from '../matches/entities/match.entity';
 import { MatchStatus } from '../matches/enums/match-status.enum';
+import { MatchRoundType } from '../matches/enums/match-round-type.enum';
 import { TournamentStatsSummaryDto } from './dto/tournament-stats-summary.dto';
 import { TournamentEntity } from './entities/tournaments.entity';
 import { TournamentTeamEntity } from '../tournament-teams/entities/tournament-teams.entity';
@@ -23,6 +24,10 @@ import {
   PlayerLeaderboardMetric,
   TournamentPlayerLeadersDto,
 } from './dto/tournament-player-leaders.dto';
+import {
+  TournamentChampionDto,
+  TournamentChampionPlayerDto,
+} from './dto/tournament-champion.dto';
 
 interface PlayerLeaderboardAccumulator {
   player: PlayerLeaderboardEntryDto['player'];
@@ -129,6 +134,140 @@ export class TournamentsService extends BaseCrudService<TournamentEntity> {
       village: team.village ?? null,
       isActive: team.isActive,
     }));
+  }
+
+  async getChampion(tournamentId: number): Promise<TournamentChampionDto> {
+    const tournament = await this.tournamentsRepository.findOne({
+      where: { id: tournamentId, isActive: true },
+      relations: { season: true },
+    });
+    if (!tournament) {
+      throw new NotFoundException('Tournament not found');
+    }
+
+    const final = await this.matchesRepository.findOne({
+      where: [
+        {
+          tournamentId,
+          status: MatchStatus.FINISHED,
+          roundType: MatchRoundType.FINAL,
+          winnerTeamId: Not(IsNull()),
+        },
+        {
+          tournamentId,
+          status: MatchStatus.FINISHED,
+          bracketPosition: 'FINAL',
+          winnerTeamId: Not(IsNull()),
+        },
+      ],
+      relations: { winnerTeam: true },
+      order: { matchDatetime: 'DESC', id: 'DESC' },
+    });
+
+    if (!final?.winnerTeam) {
+      return {
+        tournament: { id: tournament.id, name: tournament.name },
+        season: {
+          id: tournament.season.id,
+          name: tournament.season.name,
+          year: tournament.season.year ?? null,
+        },
+        champion: null,
+      };
+    }
+
+    const rosterPlayers = await this.matchRosterPlayersRepository.find({
+      where: {
+        wasAllowed: true,
+        matchRoster: {
+          teamId: final.winnerTeam.id,
+          isSubmitted: true,
+          match: {
+            tournamentId,
+            status: MatchStatus.FINISHED,
+          },
+        },
+      },
+      relations: { player: true, matchRoster: true },
+      order: { id: 'ASC' },
+    });
+
+    const playersById = new Map<
+      number,
+      {
+        player: TournamentChampionPlayerDto;
+        matchIds: Set<number>;
+      }
+    >();
+    for (const rosterPlayer of rosterPlayers) {
+      const existing = playersById.get(rosterPlayer.playerId);
+      if (existing) {
+        existing.matchIds.add(rosterPlayer.matchRoster.matchId);
+        existing.player.shirtNumber =
+          rosterPlayer.shirtNumber ?? existing.player.shirtNumber;
+        existing.player.position =
+          rosterPlayer.position ??
+          rosterPlayer.player.position ??
+          existing.player.position;
+        continue;
+      }
+
+      playersById.set(rosterPlayer.playerId, {
+        player: {
+          id: rosterPlayer.player.id,
+          name: [
+            rosterPlayer.player.lastName,
+            rosterPlayer.player.firstName,
+            rosterPlayer.player.middleName,
+          ]
+            .filter(Boolean)
+            .join(' '),
+          photoUrl: rosterPlayer.player.photoUrl ?? null,
+          shirtNumber: rosterPlayer.shirtNumber ?? null,
+          position:
+            rosterPlayer.position ?? rosterPlayer.player.position ?? null,
+          appearances: 0,
+        },
+        matchIds: new Set([rosterPlayer.matchRoster.matchId]),
+      });
+    }
+
+    const players = [...playersById.values()]
+      .map(({ player, matchIds }) => ({
+        ...player,
+        appearances: matchIds.size,
+      }))
+      .sort((left, right) =>
+        left.name.localeCompare(right.name, 'ru', { sensitivity: 'base' }),
+      );
+
+    return {
+      tournament: { id: tournament.id, name: tournament.name },
+      season: {
+        id: tournament.season.id,
+        name: tournament.season.name,
+        year: tournament.season.year ?? null,
+      },
+      champion: {
+        team: {
+          id: final.winnerTeam.id,
+          name: final.winnerTeam.name,
+          shortName: final.winnerTeam.shortName ?? null,
+          logoUrl: final.winnerTeam.logoUrl ?? null,
+          primaryColor: final.winnerTeam.primaryColor ?? null,
+          secondaryColor: final.winnerTeam.secondaryColor ?? null,
+        },
+        final: {
+          matchId: final.id,
+          matchDatetime: final.matchDatetime ?? null,
+          homeScore: final.homeScore,
+          awayScore: final.awayScore,
+          penaltyHomeScore: final.penaltyHomeScore ?? null,
+          penaltyAwayScore: final.penaltyAwayScore ?? null,
+        },
+        players,
+      },
+    };
   }
 
   private toPublicTournament(tournament: TournamentEntity) {

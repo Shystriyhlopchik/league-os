@@ -621,6 +621,11 @@ export class TournamentsController {
     return this.tournamentsService.findPublicTeams(tournamentId);
   }
 
+  @Get(':tournamentId/champion')
+  getChampion(@Param('tournamentId', ParseIntPipe) tournamentId: number) {
+    return this.tournamentsService.getChampion(tournamentId);
+  }
+
   @Get('season/:seasonId')
   getBySeason(@Param('seasonId', ParseIntPipe) seasonId: number) {
     return this.tournamentsService.findBySeason(seasonId);

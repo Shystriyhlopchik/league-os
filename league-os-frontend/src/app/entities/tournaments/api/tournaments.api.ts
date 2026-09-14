@@ -3,6 +3,7 @@ import { environment } from '../../../../environments/environment';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Tournament } from '../model/tournaments.model';
+import { TournamentChampion } from '../model/tournament-champion.model';
 
 @Injectable({
     providedIn: 'root',
@@ -12,12 +13,16 @@ export class TournamentsApi {
     private readonly http = inject(HttpClient);
 
     getTournamentsSeason(seasonId: number): Observable<Tournament[]> {
-        return this.http.get<Tournament[]>(
-            `${this.apiUrl}/season/${seasonId}`,
-        );
+        return this.http.get<Tournament[]>(`${this.apiUrl}/season/${seasonId}`);
     }
 
     getActiveTournament(): Observable<Tournament | null> {
         return this.http.get<Tournament | null>(`${this.apiUrl}/active`);
+    }
+
+    getChampion(tournamentId: number): Observable<TournamentChampion> {
+        return this.http.get<TournamentChampion>(
+            `${this.apiUrl}/${tournamentId}/champion`,
+        );
     }
 }

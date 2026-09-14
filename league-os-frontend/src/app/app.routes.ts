@@ -47,6 +47,13 @@ export const routes: Routes = [
             ),
     },
     {
+        path: 'champion',
+        loadComponent: () =>
+            import(
+                './pages/season-champion/season-champion-page.component'
+            ).then((m) => m.SeasonChampionPageComponent),
+    },
+    {
         path: 'news/:slug',
         loadComponent: () =>
             import('./pages/news-detail/news-detail.component').then(

@@ -1,0 +1,254 @@
+<main class="champion-page">
+    @if (isLoading()) {
+        <p class="champion-state" role="status">Готовим страницу чемпиона...</p>
+    } @else if (error()) {
+        <div class="champion-state champion-state--error" role="alert">
+            <p>{{ error() }}</p>
+            <button type="button" (click)="loadChampion()">Повторить</button>
+        </div>
+    } @else {
+        @if (data(); as page) {
+            @if (page.champion; as seasonChampion) {
+                <section
+                    class="champion-hero"
+                    [style.--team-primary]="
+                        seasonChampion.team.primaryColor || '#f61129'
+                    "
+                    [style.--team-secondary]="
+                        seasonChampion.team.secondaryColor || '#ffd76a'
+                    "
+                >
+                    <div class="champion-hero__glow" aria-hidden="true"></div>
+
+                    <div class="trophy" role="img" aria-label="Кубок чемпиона">
+                        <svg viewBox="0 0 280 300" aria-hidden="true">
+                            <defs>
+                                <linearGradient
+                                    id="champion-cup-gold"
+                                    x1="0"
+                                    y1="0"
+                                    x2="1"
+                                    y2="1"
+                                >
+                                    <stop offset="0" stop-color="#fff4b0" />
+                                    <stop offset="0.3" stop-color="#f3bd39" />
+                                    <stop offset="0.65" stop-color="#fff09b" />
+                                    <stop offset="1" stop-color="#b86a0c" />
+                                </linearGradient>
+                                <linearGradient
+                                    id="champion-cup-shadow"
+                                    x1="0"
+                                    y1="0"
+                                    x2="0"
+                                    y2="1"
+                                >
+                                    <stop offset="0" stop-color="#e5a72e" />
+                                    <stop offset="1" stop-color="#8d4605" />
+                                </linearGradient>
+                            </defs>
+                            <path
+                                class="trophy__handle"
+                                d="M65 51H25c0 66 25 91 72 95"
+                            />
+                            <path
+                                class="trophy__handle"
+                                d="M215 51h40c0 66-25 91-72 95"
+                            />
+                            <path
+                                class="trophy__cup"
+                                d="M62 27h156v61c0 67-31 111-78 111S62 155 62 88V27Z"
+                            />
+                            <path
+                                class="trophy__shine"
+                                d="M91 45h27v61c0 35 9 59 27 76-38-4-54-41-54-83V45Z"
+                            />
+                            <path
+                                class="trophy__stem"
+                                d="M119 191h42v51h-42z"
+                            />
+                            <path
+                                class="trophy__base"
+                                d="M84 238h112l20 35H64l20-35Z"
+                            />
+                            <rect
+                                class="trophy__plaque"
+                                x="77"
+                                y="266"
+                                width="126"
+                                height="20"
+                                rx="4"
+                            />
+                        </svg>
+                    </div>
+
+                    <div class="champion-hero__identity">
+                        <p class="champion-hero__eyebrow">
+                            {{ page.season.name }}
+                            @if (page.season.year) {
+                                · {{ page.season.year }}
+                            }
+                        </p>
+                        <h1>Чемпион сезона</h1>
+
+                        <a
+                            class="champion-team"
+                            [routerLink]="['/team', seasonChampion.team.id]"
+                        >
+                            <span class="champion-team__logo">
+                                @if (
+                                    seasonChampion.team.logoUrl &&
+                                    !teamLogoFailed()
+                                ) {
+                                    <img
+                                        [src]="
+                                            getMediaUrl(
+                                                seasonChampion.team.logoUrl
+                                            )
+                                        "
+                                        [alt]="
+                                            'Логотип команды ' +
+                                            seasonChampion.team.name
+                                        "
+                                        (error)="teamLogoFailed.set(true)"
+                                    />
+                                } @else {
+                                    <span>
+                                        {{
+                                            getInitials(
+                                                seasonChampion.team.name
+                                            )
+                                        }}
+                                    </span>
+                                }
+                            </span>
+                            <strong>{{ seasonChampion.team.name }}</strong>
+                        </a>
+
+                        <div class="final-result">
+                            <span>Финал</span>
+                            <strong>
+                                {{ seasonChampion.final.homeScore }}:{{
+                                    seasonChampion.final.awayScore
+                                }}
+                                @if (
+                                    seasonChampion.final.penaltyHomeScore !==
+                                        null &&
+                                    seasonChampion.final.penaltyAwayScore !==
+                                        null
+                                ) {
+                                    <small>
+                                        по пенальти
+                                        {{
+                                            seasonChampion.final
+                                                .penaltyHomeScore
+                                        }}:{{
+                                            seasonChampion.final
+                                                .penaltyAwayScore
+                                        }}
+                                    </small>
+                                }
+                            </strong>
+                            @if (seasonChampion.final.matchDatetime) {
+                                <time>
+                                    {{
+                                        seasonChampion.final.matchDatetime
+                                            | date: "d MMMM y"
+                                    }}
+                                </time>
+                            }
+                        </div>
+                    </div>
+                </section>
+
+                <section class="champion-squad" aria-labelledby="squad-title">
+                    <header class="champion-squad__heading">
+                        <div>
+                            <p>Чемпионский состав</p>
+                            <h2 id="squad-title">Игроки сезона</h2>
+                        </div>
+                        <span>{{ seasonChampion.players.length }} игроков</span>
+                    </header>
+
+                    @if (seasonChampion.players.length) {
+                        <ul class="players-grid">
+                            @for (
+                                player of seasonChampion.players;
+                                track player.id
+                            ) {
+                                <li class="player-card">
+                                    <div class="player-card__portrait">
+                                        @if (
+                                            player.photoUrl &&
+                                            !failedPlayerPhotoIds().has(
+                                                player.id
+                                            )
+                                        ) {
+                                            <img
+                                                [src]="
+                                                    getMediaUrl(player.photoUrl)
+                                                "
+                                                [alt]="player.name"
+                                                (error)="
+                                                    markPlayerPhotoFailed(
+                                                        player.id
+                                                    )
+                                                "
+                                            />
+                                        } @else {
+                                            <span>{{
+                                                getInitials(player.name)
+                                            }}</span>
+                                        }
+                                        @if (player.shirtNumber !== null) {
+                                            <strong class="player-card__number">
+                                                {{ player.shirtNumber }}
+                                            </strong>
+                                        }
+                                    </div>
+                                    <div class="player-card__body">
+                                        <h3>{{ player.name }}</h3>
+                                        <p>
+                                            {{
+                                                getPositionLabel(
+                                                    player.position
+                                                )
+                                            }}
+                                        </p>
+                                        <span>
+                                            {{
+                                                getAppearancesLabel(
+                                                    player.appearances
+                                                )
+                                            }}
+                                            в заявке
+                                        </span>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    } @else {
+                        <p class="champion-squad__empty">
+                            Состав чемпиона будет опубликован после заполнения
+                            протоколов матчей.
+                        </p>
+                    }
+                </section>
+            } @else {
+                <section class="champion-awaiting">
+                    <div class="champion-awaiting__cup" aria-hidden="true">
+                        🏆
+                    </div>
+                    <p>{{ page.season.name }}</p>
+                    <h1>Чемпион определится в финале</h1>
+                    <span>
+                        После завершения финального матча здесь появятся команда
+                        и все игроки чемпионского состава.
+                    </span>
+                    <a [routerLink]="['/tournaments', page.tournament.id]">
+                        Смотреть турнир
+                    </a>
+                </section>
+            }
+        }
+    }
+</main>

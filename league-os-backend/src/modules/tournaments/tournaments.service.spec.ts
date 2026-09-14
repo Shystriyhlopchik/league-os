@@ -57,6 +57,7 @@ describe('TournamentsService active tournament', () => {
     };
     const matchesRepository = {
       find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn().mockResolvedValue(null),
     };
     const tournamentTeamsRepository = {
       find: jest.fn().mockResolvedValue([]),
@@ -158,6 +159,112 @@ describe('TournamentsService active tournament', () => {
       expect.objectContaining({
         where: expect.objectContaining({ tournamentId: 9 }),
       }),
+    );
+  });
+
+  it('returns the final winner and unique players who appeared in season match rosters', async () => {
+    const { service, matchesRepository, matchRosterPlayersRepository } =
+      createService(tournament);
+    matchesRepository.findOne.mockResolvedValue({
+      id: 501,
+      matchDatetime: new Date('2026-09-20T18:00:00Z'),
+      homeScore: 1,
+      awayScore: 1,
+      penaltyHomeScore: 5,
+      penaltyAwayScore: 4,
+      winnerTeam: {
+        id: 15,
+        name: 'Арман',
+        shortName: 'Арман',
+        logoUrl: '/uploads/teams/arman.png',
+        primaryColor: '#F61129',
+        secondaryColor: '#FFFFFF',
+      },
+    });
+    matchRosterPlayersRepository.find.mockResolvedValue([
+      {
+        id: 1,
+        playerId: 11,
+        shirtNumber: 7,
+        position: 'forward',
+        player: {
+          id: 11,
+          firstName: 'Иван',
+          lastName: 'Иванов',
+          photoUrl: '/uploads/players/ivanov.png',
+        },
+        matchRoster: { matchId: 101 },
+      },
+      {
+        id: 2,
+        playerId: 11,
+        shirtNumber: 7,
+        position: 'forward',
+        player: {
+          id: 11,
+          firstName: 'Иван',
+          lastName: 'Иванов',
+          photoUrl: '/uploads/players/ivanov.png',
+        },
+        matchRoster: { matchId: 102 },
+      },
+      {
+        id: 3,
+        playerId: 12,
+        shirtNumber: 1,
+        position: 'goalkeeper',
+        player: {
+          id: 12,
+          firstName: 'Пётр',
+          lastName: 'Петров',
+          photoUrl: null,
+        },
+        matchRoster: { matchId: 101 },
+      },
+    ]);
+
+    await expect(service.getChampion(9)).resolves.toEqual(
+      expect.objectContaining({
+        season: { id: 6, name: 'Season 2026', year: 2026 },
+        champion: expect.objectContaining({
+          team: expect.objectContaining({ id: 15, name: 'Арман' }),
+          final: expect.objectContaining({
+            matchId: 501,
+            homeScore: 1,
+            awayScore: 1,
+            penaltyHomeScore: 5,
+            penaltyAwayScore: 4,
+          }),
+          players: [
+            expect.objectContaining({
+              id: 11,
+              name: 'Иванов Иван',
+              appearances: 2,
+            }),
+            expect.objectContaining({
+              id: 12,
+              name: 'Петров Пётр',
+              appearances: 1,
+            }),
+          ],
+        }),
+      }),
+    );
+    expect(matchRosterPlayersRepository.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          wasAllowed: true,
+          matchRoster: expect.objectContaining({ teamId: 15 }),
+        }),
+      }),
+    );
+  });
+
+  it('returns an empty champion state until the final has been completed', async () => {
+    const { service } = createService(tournament);
+
+    await expect(service.getChampion(9)).resolves.toEqual(
+      expect.objectContaining({ champion: null }),
     );
   });
 
