@@ -29,6 +29,12 @@ export interface PlayoffLaunchState {
         id: number;
         name: string;
         bracketSize: number;
+        semiFinalPairing?: 'adjacent' | 'cross';
+        semiFinalSources?: Array<{
+            position: string;
+            home: string;
+            away: string;
+        }>;
         expectedMatches: Array<{
             bracketPosition: string;
             label: string;

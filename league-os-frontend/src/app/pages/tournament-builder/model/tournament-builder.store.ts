@@ -135,6 +135,7 @@ export class TournamentBuilderStore {
         const template = createTournamentTemplate(templateId);
         template.localId = current.localId;
         template.tournamentId = current.tournamentId;
+        template.registrationRequired = current.registrationRequired;
         template.ruleVersionId = current.ruleVersionId;
         template.lifecycleStatus = current.lifecycleStatus;
         template.details.seasonId = current.details.seasonId;

@@ -55,6 +55,37 @@ describe('KnockoutBracketComponent', () => {
             fixture.nativeElement.querySelector('.team--winner')?.textContent,
         ).toContain('А');
     });
+
+    it('shows the aggregate and highlights the tie winner, not the return-match winner', () => {
+        fixture.componentRef.setInput('matches', [
+            {
+                ...pending('QF-1:L2', 'quarter_final'),
+                status: 'finished',
+                homeTeam: { id: 2, name: 'Б', logoUrl: '' },
+                awayTeam: { id: 1, name: 'А', logoUrl: '' },
+                regularTime: { home: 2, away: 0 },
+                winnerTeamId: 2,
+                tie: {
+                    tiePosition: 'QF-1',
+                    leg: 2,
+                    legs: 2,
+                    home: 2,
+                    away: 3,
+                    complete: true,
+                    completedLegs: 2,
+                    winnerTeamId: 1,
+                },
+            },
+        ]);
+        fixture.detectChanges();
+        expect(fixture.nativeElement.textContent).toContain('Ответный матч');
+        expect(fixture.nativeElement.textContent).toContain(
+            'Сумма двух матчей: 2:3',
+        );
+        expect(
+            fixture.nativeElement.querySelector('.team--winner')?.textContent,
+        ).toContain('А');
+    });
 });
 
 function pending(

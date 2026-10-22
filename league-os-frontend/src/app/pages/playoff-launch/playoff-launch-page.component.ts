@@ -2,7 +2,8 @@ import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { SessionStore } from '../../entities/user/model/session.store';
 
 import { TournamentsApi } from '../../entities/tournaments/api/tournaments.api';
 import { PlayoffLaunchApi } from './playoff-launch.api';
@@ -33,6 +34,8 @@ interface ScheduleDraft {
 export class PlayoffLaunchPageComponent {
     private readonly tournamentsApi = inject(TournamentsApi);
     private readonly playoffApi = inject(PlayoffLaunchApi);
+    private readonly route = inject(ActivatedRoute);
+    private readonly session = inject(SessionStore);
 
     readonly state = signal<PlayoffLaunchState | null>(null);
     readonly loading = signal(true);
@@ -128,11 +131,32 @@ export class PlayoffLaunchPageComponent {
 
     fillPairs(): void {
         const ids = this.selectedIds();
-        if (ids.length !== 4) return;
-        this.pairs.set([
-            { homeTournamentTeamId: ids[0], awayTournamentTeamId: ids[3] },
-            { homeTournamentTeamId: ids[1], awayTournamentTeamId: ids[2] },
-        ]);
+        const size = this.state()?.knockoutStage.bracketSize ?? 4;
+        if (ids.length !== size) return;
+        const groups = this.state()?.groups ?? [];
+        if (size === 8 && groups.length === 2) {
+            const a = groups[0].standings
+                .filter((t) => ids.includes(t.tournamentTeamId))
+                .sort((a, b) => a.position - b.position);
+            const b = groups[1].standings
+                .filter((t) => ids.includes(t.tournamentTeamId))
+                .sort((a, b) => a.position - b.position);
+            if (a.length === 4 && b.length === 4) {
+                this.pairs.set(
+                    a.map((team, i) => ({
+                        homeTournamentTeamId: team.tournamentTeamId,
+                        awayTournamentTeamId: b[3 - i].tournamentTeamId,
+                    })),
+                );
+                return;
+            }
+        }
+        this.pairs.set(
+            Array.from({ length: size / 2 }, (_, i) => ({
+                homeTournamentTeamId: ids[i],
+                awayTournamentTeamId: ids[size - 1 - i],
+            })),
+        );
     }
 
     prepare(): void {
@@ -190,6 +214,26 @@ export class PlayoffLaunchPageComponent {
     }
 
     private load(): void {
+        const tournamentId = Number(
+            this.route.snapshot.queryParamMap.get('tournamentId'),
+        );
+        if (Number.isInteger(tournamentId) && tournamentId > 0) {
+            this.playoffApi.getState(tournamentId).subscribe({
+                next: (state) => {
+                    this.applyState(state);
+                    this.loading.set(false);
+                },
+                error: (error) => this.handleError(error, true),
+            });
+            return;
+        }
+        if (!this.session.hasAnyRole('super_admin', 'admin')) {
+            this.loading.set(false);
+            this.error.set(
+                'Выберите турнир для запуска плей-офф в разделе «Сообщества».',
+            );
+            return;
+        }
         this.tournamentsApi.getActiveTournament().subscribe({
             next: (tournament) => {
                 if (!tournament) {
@@ -211,9 +255,18 @@ export class PlayoffLaunchPageComponent {
 
     private applyState(state: PlayoffLaunchState): void {
         this.state.set(state);
+        if (this.pairs().length !== state.knockoutStage.bracketSize / 2) {
+            this.pairs.set(
+                Array.from(
+                    { length: state.knockoutStage.bracketSize / 2 },
+                    () => ({}),
+                ),
+            );
+        }
         if (!state.launched && this.selectedIds().length === 0) {
             this.selectedIds.set([...state.suggestedTournamentTeamIds]);
-            if (this.selectedIds().length === 4) this.fillPairs();
+            if (this.selectedIds().length === state.knockoutStage.bracketSize)
+                this.fillPairs();
         }
         if (this.schedule().length === 0) {
             this.schedule.set(

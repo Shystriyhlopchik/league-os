@@ -9,6 +9,9 @@ import {
 } from '../model/tournament-builder.types';
 
 export interface SavedTournament {
+    registrationRequired?: boolean;
+    registrationStatus?: string;
+    registrationOpenedAt?: string | null;
     id: number;
     lifecycleStatus: 'draft' | 'published' | 'in_progress' | 'completed';
     activeRuleVersionId?: number;
@@ -30,6 +33,9 @@ export interface SavedRuleVersion {
 
 export interface TournamentBuilderSnapshot {
     tournament: {
+        registrationRequired?: boolean;
+        registrationStatus?: string;
+        registrationOpenedAt?: string | null;
         id: number;
         seasonId: number;
         name: string;
@@ -101,7 +107,9 @@ export class TournamentBuilderApi {
     private readonly http = inject(HttpClient);
     private readonly baseUrl = `${environment.apiUrl}/tournaments`;
 
-    createTournament(payload: Record<string, unknown>): Observable<SavedTournament> {
+    createTournament(
+        payload: Record<string, unknown>,
+    ): Observable<SavedTournament> {
         return this.http.post<SavedTournament>(this.baseUrl, payload);
     }
 
@@ -160,6 +168,17 @@ export class TournamentBuilderApi {
         return this.http.post<SavedGroup>(
             `${this.baseUrl}/${tournamentId}/stages/${stageId}/groups`,
             payload,
+        );
+    }
+
+    removeStage(tournamentId: number, stageId: number) {
+        return this.http.delete(
+            `${this.baseUrl}/${tournamentId}/stages/${stageId}`,
+        );
+    }
+    removeGroup(tournamentId: number, stageId: number, groupId: number) {
+        return this.http.delete(
+            `${this.baseUrl}/${tournamentId}/stages/${stageId}/groups/${groupId}`,
         );
     }
 
@@ -242,10 +261,11 @@ export class TournamentBuilderApi {
     validate(
         tournamentId: number,
         config: TournamentRulesConfigV1,
+        mode: 'configuration' | 'launch' = 'launch',
     ): Observable<TournamentValidationResult> {
         return this.http.post<TournamentValidationResult>(
             `${this.baseUrl}/${tournamentId}/validate`,
-            { config },
+            { config, mode },
         );
     }
 

@@ -32,6 +32,7 @@ import type {
   KnockoutSeedingInput,
 } from './types/knockout-bracket.type';
 import { VenueEntity } from '../venues/entities/venue.entity';
+import { knockoutLeg } from './knockout-legs';
 
 interface BracketSourceContext {
   stage: TournamentStageEntity;
@@ -204,6 +205,7 @@ export class KnockoutBracketService {
         manager,
         orderedPlans.map((plan) => plan.bracketPosition),
         dto.schedule,
+        orderedPlans,
       );
       for (const plan of orderedPlans) {
         const schedule = scheduleByPosition.get(plan.bracketPosition);
@@ -244,6 +246,7 @@ export class KnockoutBracketService {
     manager: EntityManager,
     bracketPositions: string[],
     schedule: ConfirmKnockoutBracketDto['schedule'],
+    plans: KnockoutBracketPlanEntity[] = [],
   ): Promise<
     Map<string, NonNullable<ConfirmKnockoutBracketDto['schedule']>[number]>
   > {
@@ -281,6 +284,42 @@ export class KnockoutBracketService {
     if (venueCount !== venueIds.length) {
       throw new BadRequestException('Schedule contains an unavailable venue');
     }
+    const booked = new Set<string>();
+    for (const item of schedule) {
+      const time = new Date(item.matchDatetime).getTime();
+      const booking = `${item.venueId}:${time}`;
+      if (!Number.isFinite(time) || booked.has(booking)) {
+        throw new BadRequestException(
+          'На одной площадке нельзя назначить два матча одновременно',
+        );
+      }
+      booked.add(booking);
+      const leg = knockoutLeg(item.bracketPosition);
+      if (leg.legs === 2 && leg.leg === 2) {
+        const first = byPosition.get(`${leg.tiePosition}:L1`)!;
+        if (time <= new Date(first.matchDatetime).getTime()) {
+          throw new BadRequestException(
+            'Ответный матч должен проходить позже первого',
+          );
+        }
+      }
+      const plan = plans.find(
+        (p) => p.bracketPosition === item.bracketPosition,
+      );
+      for (const source of [plan?.homeSource, plan?.awaySource]) {
+        if (source?.type !== 'match_outcome') continue;
+        const sources = schedule.filter(
+          (s) =>
+            knockoutLeg(s.bracketPosition).tiePosition ===
+            source.bracketPosition,
+        );
+        if (sources.some((s) => new Date(s.matchDatetime).getTime() >= time)) {
+          throw new BadRequestException(
+            'Следующий раунд должен проходить после завершения предыдущих встреч',
+          );
+        }
+      }
+    }
     return byPosition;
   }
 
@@ -308,6 +347,88 @@ export class KnockoutBracketService {
     matchId: number,
   ): Promise<MatchEntity | undefined> {
     return this.advanceInternal(tournamentId, matchId, undefined, true);
+  }
+
+  async getTieContext(match: MatchEntity, manager = this.dataSource.manager) {
+    const leg = knockoutLeg(match.bracketPosition);
+    if (!match.bracketSnapshotId || leg.legs === 1) return undefined;
+    const first = await manager.getRepository(MatchEntity).findOneBy({
+      bracketSnapshotId: match.bracketSnapshotId,
+      bracketPosition: `${leg.tiePosition}:L1`,
+    });
+    if (!first)
+      throw new ConflictException('Первый матч противостояния не найден');
+    if (
+      leg.leg === 2 &&
+      first.homeTeamId &&
+      first.awayTeamId &&
+      (first.homeTeamId !== match.awayTeamId ||
+        first.awayTeamId !== match.homeTeamId)
+    ) {
+      throw new ConflictException(
+        'Участники ответного матча не соответствуют первому',
+      );
+    }
+    const firstLegOfficial =
+      first.status === MatchStatus.FINISHED && !!first.resultOfficialAt;
+    return {
+      ...leg,
+      firstLegOfficial,
+      previousScore:
+        leg.leg === 2 && firstLegOfficial
+          ? { home: first.awayScore, away: first.homeScore }
+          : undefined,
+    };
+  }
+
+  async assertTieResultWritable(
+    match: MatchEntity,
+    manager = this.dataSource.manager,
+  ) {
+    if (manager.queryRunner?.isTransactionActive && match.bracketSnapshotId) {
+      await manager.getRepository(KnockoutBracketSnapshotEntity).findOne({
+        where: { id: match.bracketSnapshotId },
+        lock: { mode: 'pessimistic_write' },
+      });
+    }
+    const tie = await this.getTieContext(match, manager);
+    if (!tie) return undefined;
+    if (tie.leg === 2 && !tie.firstLegOfficial) {
+      throw new ConflictException(
+        'Сначала утвердите результат первого матча противостояния',
+      );
+    }
+    const bracketMatches = await manager
+      .getRepository(MatchEntity)
+      .findBy({ bracketSnapshotId: match.bracketSnapshotId });
+    if (
+      tie.leg === 1 &&
+      bracketMatches.some(
+        (m) =>
+          m.bracketPosition === `${tie.tiePosition}:L2` &&
+          (m.status !== MatchStatus.SCHEDULED || !!m.resultOfficialAt),
+      )
+    ) {
+      throw new ConflictException(
+        'Нельзя менять первый матч после начала ответного',
+      );
+    }
+    if (
+      bracketMatches.some(
+        (m) =>
+          m.status !== MatchStatus.SCHEDULED &&
+          [m.homeParticipantSource, m.awayParticipantSource].some(
+            (source) =>
+              source?.type === 'match_outcome' &&
+              source.bracketPosition === tie.tiePosition,
+          ),
+      )
+    ) {
+      throw new ConflictException(
+        'Нельзя менять результат пары после начала следующего раунда',
+      );
+    }
+    return tie;
   }
 
   async advance(
@@ -353,7 +474,72 @@ export class KnockoutBracketService {
           'Knockout match participants are unresolved',
         );
       }
-      const winnerTeamId = suppliedWinnerTeamId ?? match.winnerTeamId;
+      const tie = knockoutLeg(match.bracketPosition);
+      if (tie.legs === 2) {
+        await manager.getRepository(KnockoutBracketSnapshotEntity).findOne({
+          where: { id: match.bracketSnapshotId },
+          lock: { mode: 'pessimistic_write' },
+        });
+      }
+      let winnerTeamId = suppliedWinnerTeamId ?? match.winnerTeamId;
+      if (tie.legs === 2) {
+        const legs = await matches.find({
+          where: {
+            bracketSnapshotId: match.bracketSnapshotId,
+            bracketPosition: In([
+              `${tie.tiePosition}:L1`,
+              `${tie.tiePosition}:L2`,
+            ]),
+          },
+        });
+        const first = legs.find((m) => m.bracketPosition?.endsWith(':L1'));
+        const second = legs.find((m) => m.bracketPosition?.endsWith(':L2'));
+        if (
+          !first ||
+          !second ||
+          legs.some(
+            (m) => m.status !== MatchStatus.FINISHED || !m.resultOfficialAt,
+          )
+        ) {
+          if (allowUnresolvedDraw) return undefined;
+          throw new ConflictException(
+            'Для прохода дальше нужны официальные результаты обеих встреч',
+          );
+        }
+        if (
+          first.homeTeamId !== second.awayTeamId ||
+          first.awayTeamId !== second.homeTeamId
+        ) {
+          throw new ConflictException(
+            'Участники двух встреч противостояния не совпадают',
+          );
+        }
+        const difference =
+          first.homeScore +
+          second.awayScore -
+          first.awayScore -
+          second.homeScore;
+        winnerTeamId =
+          difference > 0
+            ? first.homeTeamId
+            : difference < 0
+              ? first.awayTeamId
+              : second.penaltyHomeScore != null &&
+                  second.penaltyAwayScore != null &&
+                  second.penaltyHomeScore !== second.penaltyAwayScore
+                ? second.penaltyHomeScore > second.penaltyAwayScore
+                  ? second.homeTeamId
+                  : second.awayTeamId
+                : undefined;
+        if (
+          suppliedWinnerTeamId !== undefined &&
+          suppliedWinnerTeamId !== winnerTeamId
+        ) {
+          throw new ConflictException(
+            'Победитель должен соответствовать сумме двух матчей и серии пенальти',
+          );
+        }
+      }
       if (!winnerTeamId) {
         if (allowUnresolvedDraw) return undefined;
         throw new ConflictException(
@@ -367,9 +553,11 @@ export class KnockoutBracketService {
       }
       const loserTeamId =
         winnerTeamId === match.homeTeamId ? match.awayTeamId : match.homeTeamId;
-      match.winnerTeamId = winnerTeamId;
-      match.loserTeamId = loserTeamId;
-      await matches.save(match);
+      if (tie.legs === 1) {
+        match.winnerTeamId = winnerTeamId;
+        match.loserTeamId = loserTeamId;
+        await matches.save(match);
+      }
 
       const downstream = await matches.find({
         where: { bracketSnapshotId: match.bracketSnapshotId },
@@ -379,13 +567,13 @@ export class KnockoutBracketService {
         let changed = false;
         const homeResolved = this.outcomeTeam(
           candidate.homeParticipantSource,
-          match.bracketPosition,
+          tie.tiePosition,
           winnerTeamId,
           loserTeamId,
         );
         const awayResolved = this.outcomeTeam(
           candidate.awayParticipantSource,
-          match.bracketPosition,
+          tie.tiePosition,
           winnerTeamId,
           loserTeamId,
         );

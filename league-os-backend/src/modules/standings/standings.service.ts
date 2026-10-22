@@ -35,6 +35,10 @@ import { RuleDrivenStandingsEngine } from './rule-driven-standings.engine';
 import type { CalculatedStandingRow } from './types/standings-engine.type';
 import { QualificationSnapshotEntity } from '../tournament-qualifications/entities/qualification-snapshot.entity';
 import { KnockoutBracketSnapshotEntity } from '../tournament-knockout-brackets/entities/knockout-bracket-snapshot.entity';
+import {
+  knockoutTieSummary,
+  knockoutPredecessorPairs,
+} from '../tournament-knockout-brackets/knockout-legs';
 import type {
   CrossGroupCriterionV1,
   QualificationRuleV1,
@@ -359,7 +363,19 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
             .sort((left, right) => left.order - right.order)
             .map((plan) =>
               plan.match
-                ? this.publicMatch(plan.match, plan.homeSource, plan.awaySource)
+                ? {
+                    ...this.publicMatch(
+                      plan.match,
+                      plan.homeSource,
+                      plan.awaySource,
+                    ),
+                    tie: knockoutTieSummary(
+                      plan.match,
+                      bracket.plans
+                        .map((p) => p.match)
+                        .filter((m): m is MatchEntity => !!m),
+                    ),
+                  }
                 : {
                     position: plan.bracketPosition,
                     roundType: plan.roundType,
@@ -795,21 +811,33 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
         });
       }
 
+      const predecessorPairs = knockoutPredecessorPairs(
+        previousPositions,
+        rules.bracket.semiFinalPairing,
+      );
       positions.forEach((position, index) => {
         const sourceLabels = previousPositions.length
           ? [
-              `Победитель ${previousPositions[index * 2]}`,
-              `Победитель ${previousPositions[index * 2 + 1]}`,
+              `Победитель ${predecessorPairs[index][0]}`,
+              `Победитель ${predecessorPairs[index][1]}`,
             ]
           : this.initialSeedLabels(rules, index);
-        matches.push({
-          position,
-          roundType,
-          roundNumber,
-          status: 'pending',
-          homeSourceLabel: sourceLabels[0],
-          awaySourceLabel: sourceLabels[1],
-        });
+        const legs =
+          roundType === MatchRoundType.QUARTER_FINAL
+            ? (rules.bracket.quarterFinalLegs ?? 1)
+            : roundType === MatchRoundType.SEMI_FINAL
+              ? (rules.bracket.semiFinalLegs ?? 1)
+              : 1;
+        for (let leg = 1; leg <= legs; leg++) {
+          matches.push({
+            position: `${position}${legs === 2 ? `:L${leg}` : ''}`,
+            roundType,
+            roundNumber,
+            status: 'pending',
+            homeSourceLabel: sourceLabels[leg === 2 ? 1 : 0],
+            awaySourceLabel: sourceLabels[leg === 2 ? 0 : 1],
+          });
+        }
       });
 
       previousPositions = positions;
@@ -1058,7 +1086,9 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
         disciplinaryEvents: disciplinaryEvents.map((event) => ({
           teamId: event.teamId,
           eventType: event.eventType as
-            'yellow_card' | 'second_yellow_card' | 'red_card',
+            | 'yellow_card'
+            | 'second_yellow_card'
+            | 'red_card',
         })),
         disciplinaryWeights: stageRules.standings.disciplinaryScore,
         manualDecisionRanks: manualRanks,

@@ -389,6 +389,7 @@ BEGIN
     AND role.code = 'user';
 
   INSERT INTO competitions (
+    community_id,
     name,
     slug,
     description,
@@ -399,6 +400,7 @@ BEGIN
     region
   )
   VALUES (
+    (SELECT id FROM communities WHERE slug = 'dvorovaya-liga'),
     'Фестиваль дворового футбола',
     'demo-yard-competition',
     'Демонстрационное соревнование с реалистичными командами, игроками, календарём и статистикой.',
@@ -621,6 +623,13 @@ BEGIN
 
   INSERT INTO tournament_members (tournament_id, user_id, role)
   VALUES (tournament_id, organizer_user_id, 'organizer');
+
+  INSERT INTO community_members (community_id, user_id, role)
+  SELECT community.id, participants.user_id, participants.role
+  FROM communities community
+  CROSS JOIN (VALUES (owner_user_id, 'admin'), (organizer_user_id, 'member')) AS participants(user_id, role)
+  WHERE community.slug = 'dvorovaya-liga'
+  ON CONFLICT (community_id, user_id) DO NOTHING;
 
   INSERT INTO tournament_stages (
     tournament_id,

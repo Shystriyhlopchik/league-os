@@ -718,7 +718,14 @@ export class TournamentRulesConfigValidator {
     if (!bracket) return;
     this.exactKeys(
       bracket,
-      ['size', 'placementMatch', 'seeding'],
+      [
+        'size',
+        'placementMatch',
+        'seeding',
+        'quarterFinalLegs',
+        'semiFinalLegs',
+        'semiFinalPairing',
+      ],
       path,
       errors,
     );
@@ -739,6 +746,38 @@ export class TournamentRulesConfigValidator {
         'INVALID_PLACEMENT_MATCH',
         `${path}.placementMatch`,
         'Only third_place is supported',
+      );
+    }
+    for (const field of ['quarterFinalLegs', 'semiFinalLegs']) {
+      if (
+        bracket[field] !== undefined &&
+        ![1, 2].includes(bracket[field] as number)
+      ) {
+        this.error(
+          errors,
+          'INVALID_KNOCKOUT_LEGS',
+          `${path}.${field}`,
+          'Must be one or two matches per tie',
+        );
+      }
+    }
+    if (
+      bracket.semiFinalPairing !== undefined &&
+      !['adjacent', 'cross'].includes(bracket.semiFinalPairing as string)
+    ) {
+      this.error(
+        errors,
+        'INVALID_SEMIFINAL_PAIRING',
+        `${path}.semiFinalPairing`,
+        'Semi-final pairing must be adjacent or cross',
+      );
+    }
+    if (bracket.semiFinalPairing === 'cross' && (bracket.size as number) < 8) {
+      this.error(
+        errors,
+        'INVALID_SEMIFINAL_PAIRING',
+        `${path}.semiFinalPairing`,
+        'Cross quarter-final routing requires a bracket of at least eight teams',
       );
     }
     this.validateSeeding(bracket.seeding, `${path}.seeding`, errors);

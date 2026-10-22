@@ -1,0 +1,472 @@
+<main class="community-page">
+    <a routerLink="/dashboard">← Личный кабинет</a>
+    <h1>Сообщества</h1>
+    <p>Права действуют только внутри выбранного сообщества.</p>
+    @if (error()) {
+        <p class="message error" role="alert">{{ error() }}</p>
+    }
+    @if (notice()) {
+        <p class="message success" role="status">{{ notice() }}</p>
+    }
+    @if (busy()) {
+        <p role="status">Загрузка…</p>
+    }
+    <label
+        >Сообщество
+        <select
+            [ngModel]="selectedId()"
+            (ngModelChange)="selectCommunity(+$event)"
+            [disabled]="busy()"
+        >
+            <option [ngValue]="null">Выберите сообщество</option>
+            @for (community of communities(); track community.id) {
+                <option [ngValue]="community.id">
+                    {{ community.name }} ·
+                    {{ labels[community.role || ""] || "Суперадминистратор" }}
+                </option>
+            }
+        </select>
+    </label>
+    @if (!communities().length && !busy()) {
+        <p>
+            Вы пока не состоите в сообществах. Для получения доступа обратитесь
+            к владельцу сообщества.
+        </p>
+    }
+    @if (platformAdmin()) {
+        <details class="panel">
+            <summary>Создать сообщество</summary>
+            <p>
+                Первым владельцем станете вы. Других владельцев можно назначить
+                в списке участников.
+            </p>
+            <form (ngSubmit)="createCommunity()">
+                <label
+                    >Название
+                    <input
+                        name="communityName"
+                        [(ngModel)]="communityName"
+                        required
+                        maxlength="150"
+                /></label>
+                <label
+                    >Адрес латиницей
+                    <input
+                        name="communitySlug"
+                        [(ngModel)]="communitySlug"
+                        required
+                        maxlength="100"
+                        pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                        placeholder="dvorovaya-liga"
+                /></label>
+                <button
+                    [disabled]="
+                        busy() || !communityName.trim() || !communitySlug
+                    "
+                >
+                    Создать
+                </button>
+            </form>
+        </details>
+    }
+    @if (selected(); as community) {
+        @if (community.canManageTournaments) {
+            <app-team-access-requests [communityId]="community.id" />
+            <section class="panel">
+                <h2>Участники и права · {{ community.name }}</h2>
+                @if (!community.canManageMembers) {
+                    <p>
+                        Назначать и отзывать администраторов может владелец
+                        сообщества.
+                    </p>
+                }
+                <form class="filters" (ngSubmit)="loadMembers()">
+                    <label
+                        >Поиск участников
+                        <input
+                            name="search"
+                            [(ngModel)]="search"
+                            maxlength="100"
+                            placeholder="ФИО или логин"
+                    /></label>
+                    <label
+                        >Роль
+                        <select name="roleFilter" [(ngModel)]="roleFilter">
+                            <option value="">Все</option>
+                            <option value="owner">Владелец</option>
+                            <option value="admin">Администратор</option>
+                            <option value="member">Участник</option>
+                        </select></label
+                    >
+                    <button [disabled]="busy()">Найти</button>
+                </form>
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Пользователь</th>
+                                <th>Роль</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (user of members(); track user.id) {
+                                <tr>
+                                    <td>
+                                        {{ user.lastName }}
+                                        {{ user.firstName }} {{ user.middleName
+                                        }}<small
+                                            >&#64;{{ user.username
+                                            }}{{
+                                                user.isActive
+                                                    ? ""
+                                                    : " · учётная запись неактивна"
+                                            }}</small
+                                        >
+                                    </td>
+                                    <td>{{ labels[user.role || "member"] }}</td>
+                                    <td>
+                                        @if (
+                                            community.canManageMembers &&
+                                            (user.role !== "owner" ||
+                                                platformAdmin())
+                                        ) {
+                                            @if (user.role !== "admin") {
+                                                <button
+                                                    type="button"
+                                                    (click)="
+                                                        setRole(user, 'admin')
+                                                    "
+                                                    [disabled]="
+                                                        busy() || !user.isActive
+                                                    "
+                                                >
+                                                    Назначить администратором
+                                                </button>
+                                            }
+                                            @if (
+                                                user.role === "admin" ||
+                                                user.role === "owner"
+                                            ) {
+                                                <button
+                                                    type="button"
+                                                    (click)="
+                                                        setRole(user, 'member')
+                                                    "
+                                                    [disabled]="busy()"
+                                                >
+                                                    Отозвать права
+                                                </button>
+                                            }
+                                            @if (
+                                                platformAdmin() &&
+                                                user.role !== "owner"
+                                            ) {
+                                                <button
+                                                    type="button"
+                                                    (click)="
+                                                        setRole(user, 'owner')
+                                                    "
+                                                    [disabled]="
+                                                        busy() || !user.isActive
+                                                    "
+                                                >
+                                                    Назначить владельцем
+                                                </button>
+                                            }
+                                            <button
+                                                class="danger"
+                                                type="button"
+                                                (click)="remove(user)"
+                                                [disabled]="busy()"
+                                            >
+                                                Исключить
+                                            </button>
+                                        } @else {
+                                            <span>—</span>
+                                        }
+                                    </td>
+                                </tr>
+                            } @empty {
+                                <tr>
+                                    <td colspan="3">Участники не найдены.</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <nav aria-label="Страницы участников">
+                    <button
+                        (click)="loadMembers(page - 1)"
+                        [disabled]="busy() || page <= 1"
+                    >
+                        ←</button
+                    ><span>Страница {{ page }} · всего {{ total() }}</span
+                    ><button
+                        (click)="loadMembers(page + 1)"
+                        [disabled]="busy() || page * 20 >= total()"
+                    >
+                        →
+                    </button>
+                </nav>
+                @if (community.canManageMembers) {
+                    <h3>Добавить зарегистрированного пользователя</h3>
+                    <p>
+                        Введите точный логин или email. Поиск не показывает
+                        контакты пользователей.
+                    </p>
+                    <form class="filters" (ngSubmit)="findUser()">
+                        <label
+                            >Логин или email
+                            <input
+                                name="candidateSearch"
+                                [(ngModel)]="candidateSearch"
+                                minlength="3"
+                                maxlength="100"
+                                required /></label
+                        ><button
+                            [disabled]="
+                                busy() || candidateSearch.trim().length < 3
+                            "
+                        >
+                            Найти пользователя
+                        </button>
+                    </form>
+                    @for (user of candidates(); track user.id) {
+                        <article class="candidate">
+                            <span
+                                >{{ user.lastName }} {{ user.firstName }} ·
+                                &#64;{{ user.username }}</span
+                            >
+                            <button
+                                (click)="setRole(user, 'member')"
+                                [disabled]="busy()"
+                            >
+                                Добавить участником
+                            </button>
+                            <button
+                                (click)="setRole(user, 'admin')"
+                                [disabled]="busy()"
+                            >
+                                Назначить администратором
+                            </button>
+                            @if (platformAdmin()) {
+                                <button
+                                    (click)="setRole(user, 'owner')"
+                                    [disabled]="busy()"
+                                >
+                                    Назначить владельцем
+                                </button>
+                            }
+                        </article>
+                    }
+                }
+            </section>
+            @if (context(); as context) {
+                <section class="panel">
+                    <h2>Турниры сообщества</h2>
+                    <p>
+                        <a
+                            routerLink="/dashboard/tournaments/new"
+                            [queryParams]="{ communityId: community.id }"
+                            >Создать турнир →</a
+                        >
+                    </p>
+                    @for (
+                        tournament of context.tournaments;
+                        track tournament.id
+                    ) {
+                        <article class="tournament">
+                            <span>{{ tournament.name }}</span
+                            ><a
+                                [routerLink]="[
+                                    '/dashboard/tournaments',
+                                    tournament.id,
+                                    'edit',
+                                ]"
+                                >Управлять</a
+                            ><a
+                                routerLink="/dashboard/playoff-launch"
+                                [queryParams]="{ tournamentId: tournament.id }"
+                                >Плей-офф</a
+                            >
+                            <a
+                                routerLink="/dashboard/tournament-applications"
+                                [queryParams]="{
+                                    tournamentId: tournament.id,
+                                    mode: 'management',
+                                    section: 'review',
+                                }"
+                                >Заявки</a
+                            >
+                        </article>
+                    } @empty {
+                        <p>
+                            Турниров пока нет. Для первого турнира создайте
+                            серию соревнований и сезон ниже.
+                        </p>
+                    }
+                    <details>
+                        <summary>Серии соревнований и сезоны</summary>
+                        @for (
+                            competition of context.competitions;
+                            track competition.id
+                        ) {
+                            <h3>{{ competition.name }}</h3>
+                            @for (
+                                season of competition.seasons;
+                                track season.id
+                            ) {
+                                <p>
+                                    {{ season.name }}
+                                    <a
+                                        routerLink="/dashboard/tournaments/new"
+                                        [queryParams]="{
+                                            communityId: community.id,
+                                            seasonId: season.id,
+                                        }"
+                                        >Создать турнир сезона</a
+                                    >
+                                </p>
+                            }
+                        }
+                        <form (ngSubmit)="createCompetition()">
+                            <h3>Новая серия соревнований</h3>
+                            <label
+                                >Название
+                                <input
+                                    name="competitionName"
+                                    [(ngModel)]="competitionName"
+                                    required
+                                    maxlength="150"
+                            /></label>
+                            <label
+                                >Уникальный адрес латиницей
+                                <input
+                                    name="competitionSlug"
+                                    [(ngModel)]="competitionSlug"
+                                    required
+                                    maxlength="100"
+                                    pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                            /></label>
+                            <button
+                                [disabled]="
+                                    busy() ||
+                                    !competitionName.trim() ||
+                                    !competitionSlug
+                                "
+                            >
+                                Добавить серию
+                            </button>
+                        </form>
+                        @if (context.competitions.length) {
+                            <form (ngSubmit)="createSeason()">
+                                <h3>Новый сезон</h3>
+                                <label
+                                    >Серия
+                                    <select
+                                        name="competitionId"
+                                        [(ngModel)]="competitionId"
+                                    >
+                                        @for (
+                                            competition of context.competitions;
+                                            track competition.id
+                                        ) {
+                                            <option [ngValue]="competition.id">
+                                                {{ competition.name }}
+                                            </option>
+                                        }
+                                    </select></label
+                                >
+                                <label
+                                    >Название
+                                    <input
+                                        name="seasonName"
+                                        [(ngModel)]="seasonName"
+                                        required
+                                        maxlength="150"
+                                /></label>
+                                <label
+                                    >Адрес латиницей
+                                    <input
+                                        name="seasonSlug"
+                                        [(ngModel)]="seasonSlug"
+                                        required
+                                        maxlength="100"
+                                        pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                                /></label>
+                                <label
+                                    >Год
+                                    <input
+                                        name="seasonYear"
+                                        type="number"
+                                        [(ngModel)]="seasonYear"
+                                        min="1900"
+                                        max="2200"
+                                        required
+                                /></label>
+                                <button
+                                    [disabled]="
+                                        busy() ||
+                                        !competitionId ||
+                                        !seasonName.trim() ||
+                                        !seasonSlug
+                                    "
+                                >
+                                    Добавить сезон
+                                </button>
+                            </form>
+                        }
+                    </details>
+                </section>
+            }
+            @if (community.canManageMembers) {
+                <section class="panel">
+                    <h2>История изменения прав</h2>
+                    @for (entry of history(); track entry.id) {
+                        <p class="audit">
+                            {{ entry.createdAt | date: "dd.MM.yyyy HH:mm" }} ·
+                            {{ userLabel(entry.actorUserId) }} →
+                            {{ userLabel(entry.targetUserId)
+                            }}<small
+                                >{{
+                                    labels[entry.previousRole || ""] ||
+                                        "Нет доступа"
+                                }}
+                                →
+                                {{
+                                    labels[entry.newRole || ""] || "Нет доступа"
+                                }}</small
+                            >
+                        </p>
+                    } @empty {
+                        <p>Изменений пока нет.</p>
+                    }
+                    <nav aria-label="Страницы истории">
+                        <button
+                            (click)="loadHistory(auditPage - 1)"
+                            [disabled]="busy() || auditPage <= 1"
+                        >
+                            ←</button
+                        ><span
+                            >Страница {{ auditPage }} · всего
+                            {{ auditTotal() }}</span
+                        ><button
+                            (click)="loadHistory(auditPage + 1)"
+                            [disabled]="
+                                busy() || auditPage * 20 >= auditTotal()
+                            "
+                        >
+                            →
+                        </button>
+                    </nav>
+                </section>
+            }
+        } @else {
+            <p>
+                Вы участник этого сообщества. Для получения административных
+                прав обратитесь к его владельцу.
+            </p>
+        }
+    }
+</main>

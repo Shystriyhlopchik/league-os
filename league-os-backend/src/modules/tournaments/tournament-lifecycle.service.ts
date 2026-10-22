@@ -5,10 +5,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Not, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
 
 import { MatchEntity } from '../matches/entities/match.entity';
 import { MatchStatus } from '../matches/enums/match-status.enum';
+import { MatchRoundType } from '../matches/enums/match-round-type.enum';
 import { TournamentGroupEntity } from '../tournament-groups/entities/tournament-group.entity';
 import { TournamentMemberEntity } from '../tournament-members/entities/tournament-member.entity';
 import { TournamentRuleVersionEntity } from '../tournament-rules/entities/tournament-rule-version.entity';
@@ -19,6 +20,7 @@ import { TournamentStageEntity } from '../tournament-stages/entities/tournament-
 import { TournamentStageType } from '../tournament-stages/enums/tournament-stage-type.enum';
 import type { TournamentStageConfiguration } from '../tournament-stages/types/tournament-stage-configuration.type';
 import { TournamentTeamEntity } from '../tournament-teams/entities/tournament-teams.entity';
+import { TournamentTeamStatus } from '../tournament-teams/enums/tournament-team-status.enum';
 import { UserEntity } from '../users/entities/user.entity';
 import { CreateGroupRequestDto } from './dto/create-group-request.dto';
 import { CreateRuleVersionRequestDto } from './dto/create-rule-version-request.dto';
@@ -36,6 +38,13 @@ import { TournamentLifecycleStatus } from './enums/tournament-lifecycle-status.e
 import { TournamentStatus } from './enums/tournament-status.enum';
 import { TournamentConfigurationValidationService } from './validation/tournament-configuration-validation.service';
 import type { TournamentValidationResult } from './validation/tournament-validation-result.type';
+import { CommunitiesService } from '../communities/communities.service';
+import { CommunityMemberEntity } from '../communities/entities/community-member.entity';
+import { SeasonEntity } from '../seasons/entities/season.entity';
+import { TournamentApplicationEntity } from '../registrations/entities/registration.entity';
+import { VenueEntity } from '../venues/entities/venue.entity';
+import { formatLocalDateTime } from '../matches/helper/formatLocalDateTime';
+import { UpdateCalendarMatchDto } from './dto/update-calendar-match.dto';
 
 const POST_PUBLISH_METADATA_FIELDS = new Set([
   'name',
@@ -68,15 +77,43 @@ export class TournamentLifecycleService {
     private readonly userRepository: Repository<UserEntity>,
     private readonly dataSource: DataSource,
     private readonly configurationValidation: TournamentConfigurationValidationService,
+    private readonly communitiesService: CommunitiesService,
+    @InjectRepository(SeasonEntity)
+    private readonly seasonRepository: Repository<SeasonEntity>,
+    @InjectRepository(CommunityMemberEntity)
+    private readonly communityMemberRepository: Repository<CommunityMemberEntity>,
   ) {}
 
   async create(
     dto: CreateUserTournamentDto,
     ownerUserId: number,
   ): Promise<TournamentEntity> {
+    const season = await this.seasonRepository.findOne({
+      where: { id: dto.seasonId, isActive: true },
+      relations: { competition: true },
+    });
+    if (!season?.competition?.isActive)
+      throw new NotFoundException('Сезон не найден');
+    if (
+      dto.communityId !== undefined &&
+      dto.communityId !== season.competition.communityId
+    )
+      throw new BadRequestException('Сезон принадлежит другому сообществу');
+    const owner = await this.userRepository.findOne({
+      where: { id: ownerUserId, isActive: true },
+      relations: { roles: true },
+    });
+    if (!owner) throw new NotFoundException('Пользователь не найден');
+    await this.communitiesService.assertAccess(season.competition.communityId, {
+      id: ownerUserId,
+      roles: owner.roles.map((r) => r.code),
+    });
+    const details = { ...dto };
+    delete details.communityId;
     const tournament = this.tournamentRepository.create({
-      ...dto,
+      ...details,
       ownerUserId,
+      registrationRequired: true,
       lifecycleStatus: TournamentLifecycleStatus.DRAFT,
       status: TournamentStatus.PLANNED,
       isActive: true,
@@ -89,8 +126,34 @@ export class TournamentLifecycleService {
     dto: UpdateUserTournamentDto,
   ): Promise<TournamentEntity> {
     const tournament = await this.getTournament(tournamentId);
+    const originalSeason = await this.seasonRepository.findOne({
+      where: { id: tournament.seasonId },
+      relations: { competition: true },
+    });
+    if (!originalSeason) throw new NotFoundException('Сезон не найден');
+    if (
+      dto.communityId !== undefined &&
+      dto.communityId !== originalSeason.competition.communityId
+    )
+      throw new BadRequestException(
+        'Нельзя перенести турнир в другое сообщество',
+      );
+    if (dto.seasonId !== undefined && dto.seasonId !== tournament.seasonId) {
+      const nextSeason = await this.seasonRepository.findOne({
+        where: { id: dto.seasonId, isActive: true },
+        relations: { competition: true },
+      });
+      if (
+        !nextSeason ||
+        nextSeason.competition.communityId !==
+          originalSeason.competition.communityId
+      )
+        throw new BadRequestException('Сезон принадлежит другому сообществу');
+    }
+    const details = { ...dto };
+    delete details.communityId;
     if (tournament.lifecycleStatus !== TournamentLifecycleStatus.DRAFT) {
-      const structuralFields = Object.keys(dto).filter(
+      const structuralFields = Object.keys(details).filter(
         (field) => !POST_PUBLISH_METADATA_FIELDS.has(field),
       );
       if (structuralFields.length > 0) {
@@ -103,7 +166,7 @@ export class TournamentLifecycleService {
       throw new ConflictException('Completed tournament is read-only');
     }
     return this.tournamentRepository.save(
-      this.tournamentRepository.merge(tournament, dto),
+      this.tournamentRepository.merge(tournament, details),
     );
   }
 
@@ -134,7 +197,7 @@ export class TournamentLifecycleService {
           order: { version: 'DESC' },
         }),
         this.tournamentTeamRepository.find({
-          where: { tournamentId },
+          where: { tournamentId, status: TournamentTeamStatus.ACTIVE },
           relations: { team: true },
           order: { id: 'ASC' },
         }),
@@ -158,11 +221,15 @@ export class TournamentLifecycleService {
     tournamentId: number,
     teamId: number,
   ): Promise<TournamentTeamEntity> {
-    await this.assertDraft(tournamentId);
+    const tournament = await this.assertDraft(tournamentId);
     const existing = await this.tournamentTeamRepository.findOne({
       where: { tournamentId, teamId },
     });
     if (existing) return existing;
+    if (tournament.registrationRequired)
+      throw new ConflictException(
+        'Команда становится участником только после утверждения заявки',
+      );
     return this.tournamentTeamRepository.save(
       this.tournamentTeamRepository.create({ tournamentId, teamId }),
     );
@@ -173,12 +240,30 @@ export class TournamentLifecycleService {
     dto: ManageTournamentMemberDto,
   ): Promise<TournamentMemberEntity> {
     const tournament = await this.getTournament(tournamentId);
-    if (tournament.ownerUserId === dto.userId) {
-      throw new BadRequestException('Owner already has full tournament access');
-    }
-    if (!(await this.userRepository.exists({ where: { id: dto.userId } }))) {
+    if (
+      !(await this.userRepository.exists({
+        where: { id: dto.userId, isActive: true },
+      }))
+    ) {
       throw new NotFoundException('User not found');
     }
+    const season = await this.seasonRepository.findOne({
+      where: { id: tournament.seasonId },
+      relations: { competition: true },
+    });
+    if (
+      !season ||
+      !(await this.communityMemberRepository.exists({
+        where: {
+          communityId: season.competition.communityId,
+          userId: dto.userId,
+          isActive: true,
+        },
+      }))
+    )
+      throw new BadRequestException(
+        'Сначала добавьте пользователя в сообщество',
+      );
     const existing = await this.memberRepository.findOne({
       where: { tournamentId, userId: dto.userId },
     });
@@ -334,6 +419,7 @@ export class TournamentLifecycleService {
     const validation = await this.configurationValidation.validate(
       tournamentId,
       dto.config,
+      tournament.lifecycleStatus === TournamentLifecycleStatus.DRAFT,
     );
     if (!validation.valid) {
       throw new BadRequestException(validation);
@@ -432,6 +518,7 @@ export class TournamentLifecycleService {
     const validation = await this.configurationValidation.validate(
       tournamentId,
       dto.config,
+      tournament.lifecycleStatus === TournamentLifecycleStatus.DRAFT,
     );
     if (!validation.valid) throw new BadRequestException(validation);
 
@@ -449,7 +536,118 @@ export class TournamentLifecycleService {
     dto: PreviewTournamentDto,
   ): Promise<TournamentValidationResult> {
     const config = await this.resolveConfiguration(tournamentId, dto);
-    return this.configurationValidation.validate(tournamentId, config);
+    const result = await this.configurationValidation.validate(
+      tournamentId,
+      config,
+      dto.mode === 'configuration',
+    );
+    if (dto.mode === 'configuration' || !result.valid) return result;
+    const tournament = await this.getTournament(tournamentId);
+    const errors = [
+      ...result.errors,
+      ...(await this.launchPreparationErrors(tournament, config)),
+    ];
+    return { ...result, valid: errors.length === 0, errors };
+  }
+
+  private async launchPreparationErrors(
+    tournament: TournamentEntity,
+    config: TournamentRulesConfig,
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<TournamentValidationResult['errors']> {
+    if (
+      !tournament.registrationRequired ||
+      tournament.lifecycleStatus !== TournamentLifecycleStatus.DRAFT
+    )
+      return [];
+    const errors: TournamentValidationResult['errors'] = [];
+    const add = (code: string, path: string, message: string) =>
+      errors.push({ code, path, message });
+    if (tournament.registrationStatus !== 'closed')
+      add(
+        'REGISTRATION_NOT_CLOSED',
+        '$.registration',
+        'Перед запуском закройте приём заявок',
+      );
+    if (
+      await manager.exists(TournamentApplicationEntity, {
+        where: { tournamentId: tournament.id, status: 'submitted' },
+      })
+    )
+      add(
+        'APPLICATIONS_PENDING',
+        '$.applications',
+        'Сначала рассмотрите все отправленные заявки',
+      );
+    const rules = config.stages.filter((s) => s.type === 'group_stage');
+    if (!rules.length) return errors;
+    const stages = await manager.find(TournamentStageEntity, {
+      where: { tournamentId: tournament.id },
+      relations: { groups: true, participants: { tournamentTeam: true } },
+    });
+    const matches = await manager.find(MatchEntity, {
+      where: {
+        tournamentId: tournament.id,
+        status: Not(MatchStatus.CANCELLED),
+      },
+    });
+    for (const rule of rules) {
+      if (rule.type !== 'group_stage') continue;
+      const stage = stages.find((s) => s.key === rule.stageKey);
+      if (!stage) continue; // Structural validation reports the missing stage.
+      const stageMatches = matches.filter((m) => m.stageId === stage.id);
+      let complete = stageMatches.every(
+        (m) =>
+          m.roundType === MatchRoundType.GROUP_ROUND &&
+          (m.roundNumber ?? 0) > 0,
+      );
+      const groupIds = new Set(stage.groups.map((g) => g.id));
+      if (stageMatches.some((m) => !m.groupId || !groupIds.has(m.groupId)))
+        complete = false;
+      for (const group of stage.groups) {
+        const ids = stage.participants
+          .filter((p) => p.groupId === group.id)
+          .map((p) => p.tournamentTeam.teamId);
+        const fixtures = stageMatches.filter((m) => m.groupId === group.id);
+        const counts = new Map<string, number>();
+        for (const m of fixtures) {
+          if (
+            !ids.includes(m.homeTeamId) ||
+            !ids.includes(m.awayTeamId) ||
+            m.homeTeamId === m.awayTeamId
+          )
+            complete = false;
+          const key = [m.homeTeamId, m.awayTeamId]
+            .sort((a, b) => a - b)
+            .join(':');
+          counts.set(key, (counts.get(key) ?? 0) + 1);
+        }
+        const legs = rule.schedule.legs;
+        if (fixtures.length !== ((ids.length * (ids.length - 1)) / 2) * legs)
+          complete = false;
+        for (let i = 0; i < ids.length; i++)
+          for (let j = i + 1; j < ids.length; j++) {
+            if (
+              counts.get([ids[i], ids[j]].sort((a, b) => a - b).join(':')) !==
+              legs
+            )
+              complete = false;
+          }
+      }
+      if (!complete || !stageMatches.length)
+        add(
+          'CALENDAR_INCOMPLETE',
+          `$.stages.${stage.key}.calendar`,
+          `${stage.name}: сформируйте полный календарь для текущих групп и числа кругов`,
+        );
+      if (stageMatches.some((m) => !m.matchDatetime || !m.venueId))
+        add(
+          'CALENDAR_NOT_SCHEDULED',
+          `$.stages.${stage.key}.calendar`,
+          `${stage.name}: назначьте всем матчам дату, время и площадку`,
+        );
+    }
+    return errors;
   }
 
   async publish(
@@ -498,6 +696,17 @@ export class TournamentLifecycleService {
       });
       if (!lockedTournament)
         throw new NotFoundException('Tournament not found');
+      const preparationErrors = await this.launchPreparationErrors(
+        lockedTournament,
+        version.config,
+        manager,
+      );
+      if (preparationErrors.length)
+        throw new BadRequestException({
+          valid: false,
+          errors: preparationErrors,
+          warnings: [],
+        });
       const lockedVersion = await versions.findOne({
         where: { id: ruleVersionId, tournamentId },
         lock: { mode: 'pessimistic_write' },
@@ -542,6 +751,15 @@ export class TournamentLifecycleService {
             : TournamentLifecycleStatus.PUBLISHED,
         status: TournamentStatus.ACTIVE,
       });
+      // Fixtures prepared in the draft become official with the launched rules.
+      if (
+        lockedTournament.registrationRequired &&
+        lockedTournament.lifecycleStatus === TournamentLifecycleStatus.DRAFT
+      )
+        await matches.update(
+          { tournamentId, status: MatchStatus.SCHEDULED },
+          { effectiveRuleVersionId: ruleVersionId },
+        );
     });
 
     return this.getTournament(tournamentId);
@@ -558,6 +776,160 @@ export class TournamentLifecycleService {
         status: TournamentStatus.ACTIVE,
       },
     );
+  }
+
+  async calendar(tournamentId: number) {
+    const tournament = await this.getTournament(tournamentId);
+    const [stages, matches, venues] = await Promise.all([
+      this.stageRepository.find({
+        where: { tournamentId },
+        order: { order: 'ASC' },
+      }),
+      this.matchRepository.find({
+        where: { tournamentId, status: Not(MatchStatus.CANCELLED) },
+        relations: { homeTeam: true, awayTeam: true },
+        order: { stageId: 'ASC', roundNumber: 'ASC', id: 'ASC' },
+      }),
+      this.dataSource
+        .getRepository(VenueEntity)
+        .find({ where: { isActive: true }, order: { name: 'ASC' } }),
+    ]);
+    return {
+      tournament,
+      stages,
+      venues: venues.map((v) => ({ id: v.id, name: v.name })),
+      matches: matches.map((m) => ({
+        id: m.id,
+        stageId: m.stageId,
+        round: m.round,
+        status: m.status,
+        home: m.homeTeam?.name ?? 'Участник уточняется',
+        away: m.awayTeam?.name ?? 'Участник уточняется',
+        matchDatetime: formatLocalDateTime(m.matchDatetime),
+        venueId: m.venueId,
+      })),
+    };
+  }
+
+  async updateCalendarMatch(
+    tournamentId: number,
+    matchId: number,
+    dto: UpdateCalendarMatchDto,
+  ) {
+    const date = new Date(dto.matchDatetime);
+    if (
+      !Number.isFinite(date.getTime()) ||
+      formatLocalDateTime(date)?.slice(0, 16) !== dto.matchDatetime.slice(0, 16)
+    )
+      throw new BadRequestException('Некорректная дата матча');
+    return this.dataSource.transaction(async (manager) => {
+      const tournament = await manager.findOne(TournamentEntity, {
+        where: { id: tournamentId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (
+        !tournament ||
+        ![
+          TournamentLifecycleStatus.DRAFT,
+          TournamentLifecycleStatus.PUBLISHED,
+          TournamentLifecycleStatus.IN_PROGRESS,
+        ].includes(tournament.lifecycleStatus!)
+      )
+        throw new ConflictException(
+          'Календарь завершённого турнира недоступен для изменения',
+        );
+      if (
+        tournament.lifecycleStatus === TournamentLifecycleStatus.DRAFT &&
+        tournament.registrationRequired &&
+        tournament.registrationStatus !== 'closed'
+      )
+        throw new ConflictException(
+          'Сначала закройте приём заявок и распределите команды по группам',
+        );
+      const match = await manager.findOne(MatchEntity, {
+        where: { id: matchId, tournamentId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!match || match.status !== MatchStatus.SCHEDULED)
+        throw new ConflictException(
+          'Можно назначать только ещё не начатый матч',
+        );
+      if (
+        !(await manager.exists(VenueEntity, {
+          where: { id: dto.venueId, isActive: true },
+        }))
+      )
+        throw new NotFoundException('Площадка не найдена');
+      // Venue lock serializes competing bookings even from different tournaments.
+      await manager.findOne(VenueEntity, {
+        where: { id: dto.venueId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      const collision = await manager.exists(MatchEntity, {
+        where: {
+          id: Not(matchId),
+          venueId: dto.venueId,
+          matchDatetime: date,
+          status: Not(MatchStatus.CANCELLED),
+        },
+      });
+      if (collision)
+        throw new ConflictException(
+          'На этой площадке в это время уже назначен матч',
+        );
+      match.matchDatetime = date;
+      if (match.bracketSnapshotId) {
+        const bracket = await manager.find(MatchEntity, {
+          where: { bracketSnapshotId: match.bracketSnapshotId },
+        });
+        const times = bracket.map((m) => ({
+          ...m,
+          matchDatetime: m.id === match.id ? date : m.matchDatetime,
+        }));
+        for (const candidate of times) {
+          if (!candidate.matchDatetime) continue;
+          const secondLeg =
+            candidate.bracketPosition?.match(/^((?:QF|SF)-\d+):L2$/);
+          const firstLeg = secondLeg
+            ? times.find((m) => m.bracketPosition === `${secondLeg[1]}:L1`)
+            : undefined;
+          if (
+            firstLeg?.matchDatetime &&
+            candidate.matchDatetime <= firstLeg.matchDatetime
+          ) {
+            throw new ConflictException(
+              'Ответный матч должен проходить позже первого',
+            );
+          }
+          for (const source of [
+            candidate.homeParticipantSource,
+            candidate.awayParticipantSource,
+          ]) {
+            if (source?.type !== 'match_outcome') continue;
+            if (
+              times.some(
+                (m) =>
+                  m.bracketPosition?.replace(/:L[12]$/, '') ===
+                    source.bracketPosition &&
+                  m.matchDatetime &&
+                  m.matchDatetime >= candidate.matchDatetime!,
+              )
+            ) {
+              throw new ConflictException(
+                'Следующий раунд должен проходить после предыдущих встреч',
+              );
+            }
+          }
+        }
+      }
+      match.venueId = dto.venueId;
+      await manager.save(match);
+      return {
+        id: match.id,
+        matchDatetime: formatLocalDateTime(date),
+        venueId: match.venueId,
+      };
+    });
   }
 
   async complete(tournamentId: number): Promise<TournamentEntity> {
@@ -687,7 +1059,7 @@ export class TournamentLifecycleService {
     });
     if (matches > 0) {
       throw new ConflictException(
-        'Reset the stage schedule before changing its structure or participants',
+        'Календарь уже сформирован. Сначала сбросьте подготовленный календарь, затем измените структуру или группы',
       );
     }
   }

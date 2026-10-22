@@ -16,6 +16,9 @@ import { TournamentStatus } from './enums/tournament-status.enum';
 import { TournamentLifecycleService } from './tournament-lifecycle.service';
 import type { TournamentConfigurationValidationService } from './validation/tournament-configuration-validation.service';
 import { createYardLeagueRules } from './validation/yard-league-rules.fixture';
+import { CommunitiesService } from '../communities/communities.service';
+import { CommunityMemberEntity } from '../communities/entities/community-member.entity';
+import { SeasonEntity } from '../seasons/entities/season.entity';
 
 const repository = <T>() =>
   ({
@@ -40,6 +43,11 @@ describe('TournamentLifecycleService', () => {
   const tournamentTeams = repository<TournamentTeamEntity>();
   const matches = repository<MatchEntity>();
   const users = repository<UserEntity>();
+  const seasons = repository<SeasonEntity>();
+  const communityMembers = repository<CommunityMemberEntity>();
+  const communities = {
+    assertAccess: jest.fn(),
+  } as unknown as CommunitiesService;
   const txTournaments = repository<TournamentEntity>();
   const txVersions = repository<TournamentRuleVersionEntity>();
   const manager = {
@@ -68,16 +76,69 @@ describe('TournamentLifecycleService', () => {
     users,
     dataSource,
     validation,
+    communities,
+    seasons,
+    communityMembers,
   );
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.mocked(communities.assertAccess).mockReset();
+    jest.mocked(seasons.findOne).mockResolvedValue({
+      id: 1,
+      competition: { communityId: 2, isActive: true },
+    } as SeasonEntity);
+    jest
+      .mocked(users.findOne)
+      .mockResolvedValue({ id: 42, roles: [] } as unknown as UserEntity);
     jest.mocked(matches.exists).mockResolvedValue(false);
     jest.mocked(validation.validate).mockResolvedValue({
       valid: true,
       errors: [],
       warnings: [],
     });
+  });
+
+  it('rejects creation in a different community even if a valid season id is supplied', async () => {
+    await expect(
+      service.create(
+        { communityId: 99, seasonId: 1, name: 'Cup', slug: 'cup' },
+        42,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(tournaments.save).not.toHaveBeenCalled();
+  });
+
+  it('checks current community permissions before creating a tournament', async () => {
+    jest
+      .mocked(communities.assertAccess)
+      .mockRejectedValue(new Error('denied'));
+    await expect(
+      service.create({ seasonId: 1, name: 'Cup', slug: 'cup' }, 42),
+    ).rejects.toThrow('denied');
+    expect(tournaments.save).not.toHaveBeenCalled();
+  });
+
+  it('rejects moving a draft to a season in another community', async () => {
+    jest.mocked(tournaments.findOne).mockResolvedValue({
+      id: 10,
+      seasonId: 1,
+      lifecycleStatus: TournamentLifecycleStatus.DRAFT,
+    } as TournamentEntity);
+    jest
+      .mocked(seasons.findOne)
+      .mockResolvedValueOnce({
+        id: 1,
+        competition: { communityId: 2 },
+      } as SeasonEntity)
+      .mockResolvedValueOnce({
+        id: 3,
+        competition: { communityId: 99 },
+      } as SeasonEntity);
+    await expect(service.update(10, { seasonId: 3 })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(tournaments.save).not.toHaveBeenCalled();
   });
 
   it('creates a draft tournament owned by the authenticated user', async () => {
@@ -93,6 +154,33 @@ describe('TournamentLifecycleService', () => {
       }),
     );
     expect(result.ownerUserId).toBe(42);
+  });
+
+  it('validates configuration without checking admission completeness', async () => {
+    const config = createYardLeagueRules();
+    const result = await service.preview(10, { config, mode: 'configuration' });
+    expect(result.valid).toBe(true);
+    expect(validation.validate).toHaveBeenCalledWith(10, config, true);
+  });
+
+  it('uses configuration-only validation when saving a draft rule version', async () => {
+    const config = createYardLeagueRules();
+    jest
+      .mocked(tournaments.findOne)
+      .mockResolvedValue({
+        id: 10,
+        lifecycleStatus: TournamentLifecycleStatus.DRAFT,
+      } as TournamentEntity);
+    jest
+      .mocked(txTournaments.findOne)
+      .mockResolvedValue({
+        id: 10,
+        lifecycleStatus: TournamentLifecycleStatus.DRAFT,
+      } as TournamentEntity);
+    jest.mocked(txVersions.findOne).mockResolvedValue(null);
+    await service.createRuleVersion(10, { config }, 42);
+    expect(validation.validate).toHaveBeenCalledWith(10, config, true);
+    expect(tournamentTeams.count).not.toHaveBeenCalled();
   });
 
   it('rejects structural changes after publication', async () => {

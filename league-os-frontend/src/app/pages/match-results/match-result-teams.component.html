@@ -22,6 +22,24 @@
             />
 
             @if (canEditProtocol) {
+                @if (data.match.knockoutTie; as tie) {
+                    <p class="state-text">
+                        {{ tie.tiePosition }} ·
+                        {{ tie.leg === 1 ? "Первый матч" : "Ответный матч" }}.
+                        @if (tie.previousScore; as previous) {
+                            Сумма двух встреч: {{ homeScore + previous.home }} :
+                            {{ awayScore + previous.away }}
+                            (в порядке команд этого матча). Пенальти — только
+                            при равенстве суммы.
+                        } @else if (tie.leg === 2) {
+                            Сначала необходимо утвердить результат первого
+                            матча.
+                        } @else {
+                            В первом матче допускается ничья, пенальти не
+                            проводятся.
+                        }
+                    </p>
+                }
                 <section class="team-choice">
                     <button
                         type="button"
@@ -277,6 +295,29 @@
                 </div>
 
                 @if (!isProtocolSigned && !isCorrectionMode) {
+                    @if (requiresExtraTime) {
+                        <section class="penalty-shootout-form">
+                            <h3>Дополнительное время</h3>
+                            <p>
+                                Укажите только голы дополнительного времени.
+                                Основной счёт не включайте.
+                            </p>
+                            <label
+                                >{{ data.match.homeTeam.name }}
+                                <input
+                                    type="number"
+                                    min="0"
+                                    [(ngModel)]="extraHomeScore"
+                            /></label>
+                            <label
+                                >{{ data.match.awayTeam.name }}
+                                <input
+                                    type="number"
+                                    min="0"
+                                    [(ngModel)]="extraAwayScore"
+                            /></label>
+                        </section>
+                    }
                     <div class="protocol-actions">
                         @if (requiresPenaltyShootout) {
                             <button
@@ -332,8 +373,7 @@
                     </div>
 
                     @if (
-                        isPenaltyShootoutFormVisible &&
-                        requiresPenaltyShootout
+                        isPenaltyShootoutFormVisible && requiresPenaltyShootout
                     ) {
                         <form
                             class="penalty-shootout-form"

@@ -26,6 +26,7 @@ import type { PreviewGroupStageScheduleDto } from '../dto/preview-group-stage-sc
 import { GroupAssignmentStrategy } from '../enums/group-assignment-strategy.enum';
 import { TournamentEntity } from '../entities/tournaments.entity';
 import { TournamentLifecycleStatus } from '../enums/tournament-lifecycle-status.enum';
+import { TournamentApplicationEntity } from '../../registrations/entities/registration.entity';
 import {
   GroupAssignmentStrategyService,
   type PlannedGroupAssignment,
@@ -193,6 +194,24 @@ export class TournamentGroupSchedulingService {
       );
       const preview = this.buildPreview(context, dto.legs);
       this.assertTournamentWritable(context.stage.tournament);
+      if (
+        context.stage.tournament.registrationRequired &&
+        context.stage.tournament.lifecycleStatus ===
+          TournamentLifecycleStatus.DRAFT &&
+        context.stage.tournament.registrationStatus !== 'closed'
+      )
+        throw new ConflictException(
+          'Сначала закройте приём заявок и рассмотрите заявки команд',
+        );
+      if (
+        context.stage.tournament.registrationRequired &&
+        (await manager.exists(TournamentApplicationEntity, {
+          where: { tournamentId, status: 'submitted' },
+        }))
+      )
+        throw new ConflictException(
+          'Сначала рассмотрите все отправленные заявки',
+        );
       const plannedMatches = this.flattenSchedule(context, preview);
       const existing = await repositories.matches.find({
         where: {
@@ -253,22 +272,56 @@ export class TournamentGroupSchedulingService {
     });
   }
 
+  async resetPreparedSchedule(tournamentId: number, stageId: number) {
+    return this.dataSource.transaction(async (manager) => {
+      const repositories = this.repositories(manager);
+      const context = await this.loadContext(
+        tournamentId,
+        stageId,
+        repositories,
+        true,
+      );
+      if (
+        context.stage.tournament.lifecycleStatus !==
+        TournamentLifecycleStatus.DRAFT
+      )
+        throw new ConflictException(
+          'Сбрасывать подготовленный календарь можно только до запуска турнира',
+        );
+      const matches = await repositories.matches.find({
+        where: { stageId, status: Not(MatchStatus.CANCELLED) },
+      });
+      if (matches.some((m) => m.status !== MatchStatus.SCHEDULED))
+        throw new ConflictException(
+          'Нельзя сбросить календарь с начатыми или завершёнными матчами',
+        );
+      if (matches.length)
+        await repositories.matches.update(
+          { id: In(matches.map((m) => m.id)) },
+          { status: MatchStatus.CANCELLED },
+        );
+      return { cancelledMatches: matches.length };
+    });
+  }
+
   private async loadContext(
     tournamentId: number,
     stageId: number,
     repositories: ScheduleRepositories,
     lock = false,
   ): Promise<ScheduleContext> {
+    // Use the same tournament-first lock order as launch and calendar editing.
+    const tournament = await repositories.tournaments.findOne({
+      where: { id: tournamentId },
+      ...(lock ? { lock: { mode: 'pessimistic_write' as const } } : {}),
+    });
+    if (!tournament) throw new NotFoundException('Tournament not found');
     const stage = await repositories.stages.findOne({
       where: { id: stageId, tournamentId },
       ...(lock ? { lock: { mode: 'pessimistic_write' as const } } : {}),
     });
     if (!stage) throw new NotFoundException('Tournament stage not found');
 
-    const tournament = await repositories.tournaments.findOne({
-      where: { id: tournamentId },
-    });
-    if (!tournament) throw new NotFoundException('Tournament not found');
     stage.tournament = tournament;
 
     const [groups, participants, activeTeams] = await Promise.all([

@@ -22,6 +22,13 @@ export class MatchRosterCheckDto {
       awayKicksTaken: number;
     };
     extraTimeEnabled: boolean;
+    knockoutTie?: {
+      tiePosition: string | undefined;
+      leg: 1 | 2;
+      legs: 2;
+      firstLegOfficial: boolean;
+      previousScore?: { home: number; away: number };
+    };
     penaltyShootout?: {
       initialKicksPerTeam: number;
       suddenDeath: boolean;

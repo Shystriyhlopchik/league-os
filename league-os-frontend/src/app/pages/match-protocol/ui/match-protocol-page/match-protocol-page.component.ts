@@ -1,11 +1,13 @@
 import {
     Component,
     computed,
-    DestroyRef, effect,
+    DestroyRef,
+    effect,
     inject,
     signal,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
@@ -13,6 +15,7 @@ import { InfoCardComponent } from '../../../../shared/ui/info-card/info-card.com
 import { MatchProtocolStore } from '../../model/match-protocol.store';
 import {
     MatchEventType,
+    FinalizePlayedMatch,
     MatchProtocolRosterPlayer,
     StartEventRecordingResponse,
 } from '../../../../entities/match-service/model/match-service.types';
@@ -51,7 +54,7 @@ interface OwnGoalDraft {
 
 @Component({
     selector: 'app-match-protocol-page',
-    imports: [PageHeaderComponent, InfoCardComponent, DatePipe],
+    imports: [PageHeaderComponent, InfoCardComponent, DatePipe, FormsModule],
     templateUrl: './match-protocol-page.component.html',
     styleUrl: './match-protocol-page.component.scss',
     providers: [MatchProtocolStore],
@@ -80,6 +83,55 @@ export class MatchProtocolPageComponent {
     });
 
     readonly matchId = Number(this.route.snapshot.paramMap.get('matchId'));
+    extraHome = 0;
+    extraAway = 0;
+    penaltyHome = 0;
+    penaltyAway = 0;
+    homeKicks = 5;
+    awayKicks = 5;
+
+    get aggregateHome(): number {
+        return (
+            (this.store.session()?.homeScore ?? 0) +
+            (this.store.match()?.knockoutTie?.previousScore?.home ?? 0)
+        );
+    }
+    get aggregateAway(): number {
+        return (
+            (this.store.session()?.awayScore ?? 0) +
+            (this.store.match()?.knockoutTie?.previousScore?.away ?? 0)
+        );
+    }
+    get needsExtraTime(): boolean {
+        return (
+            !!this.store.match()?.matchRules?.extraTime.enabled &&
+            this.aggregateHome === this.aggregateAway
+        );
+    }
+    get needsPenalties(): boolean {
+        return (
+            !!this.store.match()?.matchRules?.penalties.enabled &&
+            this.aggregateHome + (this.needsExtraTime ? this.extraHome : 0) ===
+                this.aggregateAway + (this.needsExtraTime ? this.extraAway : 0)
+        );
+    }
+    private finalResult(): FinalizePlayedMatch {
+        return {
+            ...(this.needsExtraTime
+                ? { extraTime: { home: this.extraHome, away: this.extraAway } }
+                : {}),
+            ...(this.needsPenalties
+                ? {
+                      penalties: {
+                          home: this.penaltyHome,
+                          away: this.penaltyAway,
+                          homeKicksTaken: this.homeKicks,
+                          awayKicksTaken: this.awayKicks,
+                      },
+                  }
+                : {}),
+        };
+    }
 
     readonly displaySeconds = computed(() => {
         const session = this.store.session();
@@ -246,7 +298,8 @@ export class MatchProtocolPageComponent {
             return 0;
         }
 
-        const passedSeconds = this.displaySeconds() - activeRedBall.activatedSecond;
+        const passedSeconds =
+            this.displaySeconds() - activeRedBall.activatedSecond;
         const remaining = activeRedBall.durationSeconds - passedSeconds;
 
         return Math.max(remaining, 0);
@@ -321,7 +374,11 @@ export class MatchProtocolPageComponent {
     }
 
     goBack(): void {
-        this.router.navigate(['/dashboard/match-service', this.matchId, 'rosters']);
+        this.router.navigate([
+            '/dashboard/match-service',
+            this.matchId,
+            'rosters',
+        ]);
     }
 
     start(): void {
@@ -337,7 +394,10 @@ export class MatchProtocolPageComponent {
     }
 
     finishHalf(): void {
-        this.store.finishHalf(this.matchId);
+        this.store.finishHalf(
+            this.matchId,
+            this.store.session()?.currentHalf === 2 ? this.finalResult() : {},
+        );
     }
 
     startSecondHalf(): void {
@@ -345,25 +405,21 @@ export class MatchProtocolPageComponent {
     }
 
     finishMatch(): void {
-        this.store.finishMatch(this.matchId);
+        this.store.finishMatch(this.matchId, this.finalResult());
     }
 
     startGoalRecording(): void {
-        this.store.startEventRecording(
-            this.matchId,
-            'goal',
-            (response) => {
-                this.goalDraft.set({
-                    eventType: 'goal',
-                    half: response.eventDraft.half,
-                    second: response.eventDraft.second,
-                    minute: response.eventDraft.minute,
-                });
+        this.store.startEventRecording(this.matchId, 'goal', (response) => {
+            this.goalDraft.set({
+                eventType: 'goal',
+                half: response.eventDraft.half,
+                second: response.eventDraft.second,
+                minute: response.eventDraft.minute,
+            });
 
-                this.goalStep.set('team');
-                this.isGoalModalOpen.set(true);
-            },
-        );
+            this.goalStep.set('team');
+            this.isGoalModalOpen.set(true);
+        });
     }
 
     cancelEvent(eventId: number): void {
@@ -451,21 +507,17 @@ export class MatchProtocolPageComponent {
     }
 
     startCardRecording(eventType: CardEventType): void {
-        this.store.startEventRecording(
-            this.matchId,
-            eventType,
-            (response) => {
-                this.cardDraft.set({
-                    eventType,
-                    half: response.eventDraft.half,
-                    second: response.eventDraft.second,
-                    minute: response.eventDraft.minute,
-                });
+        this.store.startEventRecording(this.matchId, eventType, (response) => {
+            this.cardDraft.set({
+                eventType,
+                half: response.eventDraft.half,
+                second: response.eventDraft.second,
+                minute: response.eventDraft.minute,
+            });
 
-                this.cardStep.set('team');
-                this.isCardModalOpen.set(true);
-            },
-        );
+            this.cardStep.set('team');
+            this.isCardModalOpen.set(true);
+        });
     }
 
     selectCardTeam(teamId: number): void {
@@ -516,21 +568,17 @@ export class MatchProtocolPageComponent {
     }
 
     startOwnGoalRecording(): void {
-        this.store.startEventRecording(
-            this.matchId,
-            'own_goal',
-            (response) => {
-                this.ownGoalDraft.set({
-                    eventType: 'own_goal',
-                    half: response.eventDraft.half,
-                    second: response.eventDraft.second,
-                    minute: response.eventDraft.minute,
-                });
+        this.store.startEventRecording(this.matchId, 'own_goal', (response) => {
+            this.ownGoalDraft.set({
+                eventType: 'own_goal',
+                half: response.eventDraft.half,
+                second: response.eventDraft.second,
+                minute: response.eventDraft.minute,
+            });
 
-                this.ownGoalStep.set('team');
-                this.isOwnGoalModalOpen.set(true);
-            },
-        );
+            this.ownGoalStep.set('team');
+            this.isOwnGoalModalOpen.set(true);
+        });
     }
 
     selectOwnGoalTeam(teamId: number): void {

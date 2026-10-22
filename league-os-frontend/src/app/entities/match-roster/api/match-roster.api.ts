@@ -7,6 +7,7 @@ import {
 } from '../model/match-roster.types';
 import { environment } from '../../../../environments/environment';
 import { HttpClient } from '@angular/common/http';
+import type { FinalizePlayedMatch } from '../../match-service/model/match-service.types';
 
 export type ManualMatchEventType =
     | 'goal'
@@ -135,7 +136,7 @@ export class MatchRosterApi {
 
     signManualProtocol(
         matchId: number,
-        dto: SignPenaltyShootoutRequest | Record<string, never> = {},
+        dto: SignPenaltyShootoutRequest | FinalizePlayedMatch = {},
     ): Observable<SignedManualProtocol> {
         return this.http.post<SignedManualProtocol>(
             `${this.apiUrl}/match-service/matches/${matchId}/manual-protocol/sign`,

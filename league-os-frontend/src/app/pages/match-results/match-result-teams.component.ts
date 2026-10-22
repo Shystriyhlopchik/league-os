@@ -55,6 +55,8 @@ export class MatchResultTeamsComponent {
     homePenaltyKicksTaken: number | null = null;
     awayPenaltyKicksTaken: number | null = null;
     penaltyShootoutError = '';
+    extraHomeScore = 0;
+    extraAwayScore = 0;
     eventError = '';
 
     readonly eventLabels: Record<ManualMatchEventType, string> = {
@@ -200,12 +202,28 @@ export class MatchResultTeamsComponent {
         return this.isCorrectionMode || !this.isProtocolSigned;
     }
 
+    get requiresExtraTime(): boolean {
+        const match = this.store.data()?.match;
+        return (
+            !!match?.extraTimeEnabled &&
+            this.homeScore + (match.knockoutTie?.previousScore?.home ?? 0) ===
+                this.awayScore + (match.knockoutTie?.previousScore?.away ?? 0)
+        );
+    }
+
     get requiresPenaltyShootout(): boolean {
         const match = this.store.data()?.match;
         return Boolean(
             match?.penaltyShootout &&
-                !match.extraTimeEnabled &&
-                this.homeScore === this.awayScore,
+                (!match.knockoutTie ||
+                    (match.knockoutTie.leg === 2 &&
+                        match.knockoutTie.firstLegOfficial)) &&
+                this.homeScore +
+                    (match.knockoutTie?.previousScore?.home ?? 0) +
+                    (this.requiresExtraTime ? this.extraHomeScore : 0) ===
+                    this.awayScore +
+                        (match.knockoutTie?.previousScore?.away ?? 0) +
+                        (this.requiresExtraTime ? this.extraAwayScore : 0),
         );
     }
 
@@ -263,17 +281,30 @@ export class MatchResultTeamsComponent {
 
         this.isSigningProtocol = true;
         this.eventError = '';
-        this.rosterApi.signManualProtocol(this.matchId).subscribe({
-            next: () => {
-                this.isSigningProtocol = false;
-                this.store.load(this.matchId);
-            },
-            error: (error) => {
-                this.eventError =
-                    error?.error?.message || 'Не удалось подписать протокол';
-                this.isSigningProtocol = false;
-            },
-        });
+        this.rosterApi
+            .signManualProtocol(
+                this.matchId,
+                this.requiresExtraTime
+                    ? {
+                          extraTime: {
+                              home: this.extraHomeScore,
+                              away: this.extraAwayScore,
+                          },
+                      }
+                    : {},
+            )
+            .subscribe({
+                next: () => {
+                    this.isSigningProtocol = false;
+                    this.store.load(this.matchId);
+                },
+                error: (error) => {
+                    this.eventError =
+                        error?.error?.message ||
+                        'Не удалось подписать протокол';
+                    this.isSigningProtocol = false;
+                },
+            });
     }
 
     togglePenaltyShootoutForm(): void {
@@ -318,6 +349,14 @@ export class MatchResultTeamsComponent {
         this.rosterApi
             .signManualProtocol(this.matchId, {
                 resolutionType: 'penalties',
+                ...(this.requiresExtraTime
+                    ? {
+                          extraTime: {
+                              home: this.extraHomeScore,
+                              away: this.extraAwayScore,
+                          },
+                      }
+                    : {}),
                 penalties: {
                     home: penalties.home!,
                     away: penalties.away!,

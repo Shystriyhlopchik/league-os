@@ -40,6 +40,8 @@ describe('MatchServiceService registration editing', () => {
       {} as never,
       {} as never,
       dataSource as never,
+      { matchRoster: jest.fn().mockResolvedValue(null) } as never,
+      { myTeams: jest.fn().mockResolvedValue([]) } as never,
     );
 
     return {
@@ -91,7 +93,14 @@ describe('MatchServiceService registration editing', () => {
     expect(query.where).toHaveBeenCalledWith('match.status = :status', {
       status: MatchStatus.SCHEDULED,
     });
-    expect(query.andWhere).not.toHaveBeenCalled();
+    expect(query.andWhere).toHaveBeenCalledWith(
+      '(tournament.lifecycle_status IS NULL OR tournament.lifecycle_status <> :draft)',
+      { draft: 'draft' },
+    );
+    expect(query.andWhere).not.toHaveBeenCalledWith(
+      expect.stringMatching(/match_datetime/),
+      expect.anything(),
+    );
   });
 
   it('returns submission and referee approval as separate states', async () => {

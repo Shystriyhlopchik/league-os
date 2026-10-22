@@ -14,6 +14,7 @@ import {
   In,
   IsNull,
   Not,
+  Or,
   Repository,
   Brackets,
 } from 'typeorm';
@@ -50,10 +51,15 @@ import { TournamentLifecycleService } from '../tournaments/tournament-lifecycle.
 import { KnockoutBracketService } from '../tournament-knockout-brackets/knockout-bracket.service';
 import { FinalizeMatchResultDto } from './dto/finalize-match-result.dto';
 import { MatchResultResolver } from '../matches/match-result.resolver';
+import {
+  knockoutLeg,
+  knockoutTieSummary,
+} from '../tournament-knockout-brackets/knockout-legs';
 import { MatchResolutionType } from '../matches/enums/match-resolution-type.enum';
 import { TournamentStageEntity } from '../tournament-stages/entities/tournament-stage.entity';
 import { TournamentRuleVersionEntity } from '../tournament-rules/entities/tournament-rule-version.entity';
 import { TournamentEntity } from '../tournaments/entities/tournaments.entity';
+import { TournamentLifecycleStatus } from '../tournaments/enums/tournament-lifecycle-status.enum';
 import type { MatchRulesV1 } from '../tournament-rules/types/tournament-rules-config.type';
 import {
   PlayerDisciplineEligibility,
@@ -65,6 +71,9 @@ import {
   matchDateTimeBeforeNow,
 } from '../matches/helper/matchDatetimeNow';
 import { formatLocalDateTime } from '../matches/helper/formatLocalDateTime';
+import { TournamentApplicationsService } from '../registrations/tournament-applications.service';
+import { CommunitySquadsService } from '../registrations/community-squads.service';
+import { TournamentRosterPlayerEntity } from '../registrations/entities/registration.entity';
 
 type SyncEventResult =
   | {
@@ -131,11 +140,16 @@ export class MatchServiceService {
     private readonly knockoutBracketService: KnockoutBracketService,
     private readonly matchResultResolver: MatchResultResolver,
     private readonly dataSource: DataSource,
+    private readonly tournamentApplications: TournamentApplicationsService,
+    private readonly communitySquads: CommunitySquadsService,
   ) {}
 
   async findAvailableMatches(): Promise<MatchServiceMatchDto[]> {
     const overdueMatches = await this.matchRepository.find({
       where: {
+        tournament: {
+          lifecycleStatus: Or(IsNull(), Not(TournamentLifecycleStatus.DRAFT)),
+        },
         status: MatchStatus.SCHEDULED,
         matchDatetime: matchDateTimeBeforeNow(),
         homeTeamId: Not(IsNull()),
@@ -155,6 +169,9 @@ export class MatchServiceService {
 
     const nearestMatch = await this.matchRepository.findOne({
       where: {
+        tournament: {
+          lifecycleStatus: Or(IsNull(), Not(TournamentLifecycleStatus.DRAFT)),
+        },
         status: MatchStatus.SCHEDULED,
         matchDatetime: matchDateTimeAtOrAfterNow(),
         homeTeamId: Not(IsNull()),
@@ -178,6 +195,9 @@ export class MatchServiceService {
 
     const nearestRoundMatches = await this.matchRepository.find({
       where: {
+        tournament: {
+          lifecycleStatus: Or(IsNull(), Not(TournamentLifecycleStatus.DRAFT)),
+        },
         status: MatchStatus.SCHEDULED,
         matchDatetime: Between(startOfDay, endOfDay),
         homeTeamId: Not(IsNull()),
@@ -207,6 +227,9 @@ export class MatchServiceService {
   async findOverdueMatches(): Promise<MatchServiceMatchDto[]> {
     const matches = await this.matchRepository.find({
       where: {
+        tournament: {
+          lifecycleStatus: Or(IsNull(), Not(TournamentLifecycleStatus.DRAFT)),
+        },
         status: MatchStatus.SCHEDULED,
         matchDatetime: matchDateTimeBeforeNow(),
         homeTeamId: Not(IsNull()),
@@ -247,9 +270,7 @@ export class MatchServiceService {
     return matches.map((match) => this.toDto(match));
   }
 
-  async findFinishedMatchEvents(
-    matchId: number,
-  ): Promise<MatchEventEntity[]> {
+  async findFinishedMatchEvents(matchId: number): Promise<MatchEventEntity[]> {
     await this.findFinishedMatch(matchId);
 
     return this.matchEventRepository.find({
@@ -300,10 +321,7 @@ export class MatchServiceService {
       );
 
       if (this.isScoringEvent(event.eventType)) {
-        await this.recalculateCorrectedMatchScore(
-          transactionalMatch,
-          manager,
-        );
+        await this.recalculateCorrectedMatchScore(transactionalMatch, manager);
       }
 
       return event;
@@ -378,7 +396,9 @@ export class MatchServiceService {
     });
     const [currentPlayers, selectedPlayers] = await Promise.all([
       this.findTeamRoster(match, teamId),
-      roster ? this.findSubmittedTeamRoster(match, roster) : Promise.resolve([]),
+      roster
+        ? this.findSubmittedTeamRoster(match, roster)
+        : Promise.resolve([]),
     ]);
     const candidatesByTeamPlayerId = new Map<number, MatchRosterPlayerDto>();
 
@@ -416,9 +436,16 @@ export class MatchServiceService {
     teamPlayerIds: number[],
   ) {
     const match = await this.findFinishedMatch(matchId, teamId);
-    if (teamPlayerIds.length < 5) {
+    const rosterPolicy = match.tournament?.registrationRequired
+      ? this.tournamentApplications.policy(match.tournament)
+      : null;
+    if (
+      teamPlayerIds.length < (rosterPolicy?.minMatchPlayers ?? 5) ||
+      teamPlayerIds.length >
+        (rosterPolicy?.maxMatchPlayers ?? Number.MAX_SAFE_INTEGER)
+    ) {
       throw new BadRequestException(
-        'В протоколе каждой команды должно быть минимум 5 игроков',
+        `Проверьте число игроков в протоколе: минимум ${rosterPolicy?.minMatchPlayers ?? 5}${rosterPolicy ? `, максимум ${rosterPolicy.maxMatchPlayers}` : ''}`,
       );
     }
 
@@ -673,11 +700,15 @@ export class MatchServiceService {
     const result = await this.dataSource.transaction(async (manager) => {
       const matchRepository = manager.getRepository(MatchEntity);
       const eventRepository = manager.getRepository(MatchEventEntity);
-      const match = await matchRepository.findOne({ where: { id: matchId } });
+      const match = await matchRepository.findOne({
+        where: { id: matchId },
+        relations: { tournament: true },
+      });
 
       if (!match) {
         throw new NotFoundException('Матч не найден');
       }
+      this.assertTournamentLaunched(match);
 
       if (match.status !== MatchStatus.SCHEDULED) {
         throw new BadRequestException('Протокол уже подписан');
@@ -753,10 +784,7 @@ export class MatchServiceService {
       const scoringEvents = await eventRepository.find({
         where: {
           matchId,
-          eventType: In([
-            MatchEventType.GOAL,
-            MatchEventType.OWN_GOAL,
-          ]),
+          eventType: In([MatchEventType.GOAL, MatchEventType.OWN_GOAL]),
           isCancelled: false,
         },
       });
@@ -800,9 +828,7 @@ export class MatchServiceService {
         tournamentId,
         matchId,
       );
-      await this.playerTournamentStatsService.serveSuspensionsForMatch(
-        matchId,
-      );
+      await this.playerTournamentStatsService.serveSuspensionsForMatch(matchId);
     }
     return result;
   }
@@ -822,18 +848,19 @@ export class MatchServiceService {
       .leftJoinAndSelect('match.venue', 'venue')
       .innerJoinAndSelect('match.tournament', 'tournament')
       .where('match.status = :status', { status: MatchStatus.SCHEDULED })
+      .andWhere(
+        '(tournament.lifecycle_status IS NULL OR tournament.lifecycle_status <> :draft)',
+        { draft: TournamentLifecycleStatus.DRAFT },
+      )
       .orderBy('match.match_datetime', 'ASC')
       .addOrderBy('match.id', 'ASC');
 
     if (!canManageAllTeams) {
-      const captainLinks = await this.teamPlayerRepository
-        .createQueryBuilder('teamPlayer')
-        .innerJoin('teamPlayer.player', 'player')
-        .where('player.user_id = :currentUserId', { currentUserId })
-        .andWhere('"teamPlayer"."isCaptain" = :isCaptain', { isCaptain: true })
-        .andWhere('"teamPlayer"."isActive" = :isActive', { isActive: true })
-        .getMany();
-      const teamIds = captainLinks.map((link) => link.teamId);
+      const managedTeams = await this.communitySquads.myTeams({
+        id: currentUserId,
+        roles,
+      });
+      const teamIds = [...new Set(managedTeams.map((team) => team.teamId))];
 
       if (teamIds.length === 0) {
         return [];
@@ -859,7 +886,7 @@ export class MatchServiceService {
     currentUserId: number,
   ) {
     const match = await this.findRegistrationMatch(matchId, teamId);
-    await this.ensureCanManageRegistrationTeam(teamId, currentUserId);
+    await this.ensureCanManageRegistrationTeam(teamId, currentUserId, match);
 
     const [players, roster] = await Promise.all([
       this.findTeamRoster(match, teamId),
@@ -884,7 +911,10 @@ export class MatchServiceService {
       },
       isSubmitted: roster?.isSubmitted ?? false,
       isApproved: roster?.isApproved ?? false,
-      players: players.map((player) => ({
+      players: (roster?.isApproved
+        ? await this.findSubmittedTeamRoster(match, roster)
+        : players
+      ).map((player) => ({
         ...player,
         isSelected: selectedTeamPlayerIds.has(player.teamPlayerId),
       })),
@@ -900,11 +930,26 @@ export class MatchServiceService {
     submitAndApproveRoster = false,
   ) {
     const match = await this.findRegistrationMatch(matchId, teamId);
-    await this.ensureCanManageRegistrationTeam(teamId, currentUserId);
+    await this.ensureCanManageRegistrationTeam(teamId, currentUserId, match);
 
     if (new Set(teamPlayerIds).size !== teamPlayerIds.length) {
       throw new BadRequestException('Игрок не может быть добавлен дважды');
     }
+
+    if (match.tournament?.registrationRequired) {
+      const policy = this.tournamentApplications.policy(match.tournament);
+      if (
+        teamPlayerIds.length > policy.maxMatchPlayers ||
+        (submitAndApproveRoster &&
+          teamPlayerIds.length < policy.minMatchPlayers)
+      )
+        throw new BadRequestException(
+          `В протоколе должно быть от ${policy.minMatchPlayers} до ${policy.maxMatchPlayers} игроков`,
+        );
+    } else if (submitAndApproveRoster && teamPlayerIds.length < 5)
+      throw new BadRequestException(
+        'В составе команды должно быть минимум 5 игроков',
+      );
 
     const availablePlayers = await this.findTeamRoster(match, teamId);
     const playersByTeamPlayerId = new Map(
@@ -935,8 +980,32 @@ export class MatchServiceService {
       const rosterPlayerRepository = manager.getRepository(
         MatchRosterPlayerEntity,
       );
+      if (match.tournament?.registrationRequired) {
+        await manager.findOne(TournamentEntity, {
+          where: { id: match.tournamentId },
+          lock: { mode: 'pessimistic_write' },
+        });
+        const active = await manager.find(TournamentRosterPlayerEntity, {
+          where: { tournamentId: match.tournamentId, teamId, isActive: true },
+        });
+        if (
+          selectedPlayers.some(
+            (p) =>
+              !active.some(
+                (row) =>
+                  row.teamPlayerId === p!.teamPlayerId &&
+                  row.shirtNumber === p!.shirtNumber &&
+                  row.isCaptain === p!.isCaptain,
+              ),
+          )
+        )
+          throw new BadRequestException(
+            'Заявка турнира изменилась. Обновите страницу',
+          );
+      }
       let roster = await rosterRepository.findOne({
         where: { matchId, teamId },
+        lock: { mode: 'pessimistic_write' },
       });
 
       if (roster?.isApproved && !allowApprovedRosterChanges) {
@@ -992,12 +1061,6 @@ export class MatchServiceService {
     teamPlayerIds: number[],
     currentUserId: number,
   ) {
-    if (teamPlayerIds.length < 5) {
-      throw new BadRequestException(
-        'В составе команды должно быть минимум 5 игроков',
-      );
-    }
-
     return this.saveMatchRegistration(
       matchId,
       teamId,
@@ -1013,8 +1076,12 @@ export class MatchServiceService {
     teamId: number,
     currentUserId: number,
   ) {
-    await this.findRegistrationMatch(matchId, teamId);
-    await this.ensureCanManageRegistrationTeam(teamId, currentUserId);
+    const match = await this.findRegistrationMatch(matchId, teamId);
+    await this.ensureCanManageRegistrationTeam(teamId, currentUserId, match);
+    if (match.tournament?.registrationRequired) {
+      await this.approveRegisteredMatchRoster(match, teamId, currentUserId);
+      return this.getMatchRegistration(matchId, teamId, currentUserId);
+    }
     const roster = await this.matchRosterRepository.findOne({
       where: { matchId, teamId },
     });
@@ -1023,18 +1090,22 @@ export class MatchServiceService {
       throw new BadRequestException('Сначала сохраните заявку');
     }
 
-    if (!roster.isSubmitted) {
+    if (!roster.isApproved) {
       const rosterPlayers = await this.matchRosterPlayerRepository.find({
         where: { matchRosterId: roster.id },
       });
 
-      if (rosterPlayers.length < 5) {
+      const policy = match.tournament?.registrationRequired
+        ? this.tournamentApplications.policy(match.tournament)
+        : null;
+      const min = policy?.minMatchPlayers ?? 5;
+      const max = policy?.maxMatchPlayers ?? Number.MAX_SAFE_INTEGER;
+      if (rosterPlayers.length < min || rosterPlayers.length > max) {
         throw new BadRequestException(
-          'Для утверждения заявки необходимо выбрать минимум 5 игроков',
+          `Для утверждения заявки необходимо выбрать минимум ${min} игроков${policy ? `, максимум ${max}` : ''}`,
         );
       }
 
-      const match = await this.findRegistrationMatch(matchId, teamId);
       const availablePlayers = await this.findTeamRoster(match, teamId);
       const eligibilityByTeamPlayerId = new Map(
         availablePlayers.map((player) => [player.teamPlayerId, player]),
@@ -1042,6 +1113,15 @@ export class MatchServiceService {
       const suspendedPlayer = rosterPlayers
         .map((player) => eligibilityByTeamPlayerId.get(player.teamPlayerId!))
         .find((player) => player?.eligibilityStatus === 'not_allowed');
+
+      if (
+        rosterPlayers.some(
+          (player) => !eligibilityByTeamPlayerId.has(player.teamPlayerId!),
+        )
+      )
+        throw new BadRequestException(
+          'Состав заявки на турнир изменился. Пересохраните протокол матча',
+        );
 
       if (suspendedPlayer) {
         throw new BadRequestException(
@@ -1072,6 +1152,67 @@ export class MatchServiceService {
     return this.getMatchRegistration(matchId, teamId, currentUserId);
   }
 
+  private async approveRegisteredMatchRoster(
+    match: MatchEntity,
+    teamId: number,
+    userId: number,
+  ) {
+    const user = await this.usersService.findById(userId);
+    const canApprove =
+      user?.roles.some((r) =>
+        [RoleCode.Referee, RoleCode.Admin, RoleCode.SuperAdmin].includes(
+          r.code,
+        ),
+      ) ?? false;
+    await this.dataSource.transaction(async (manager) => {
+      await manager.findOne(TournamentEntity, {
+        where: { id: match.tournamentId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      const roster = await manager.findOne(MatchRosterEntity, {
+        where: { matchId: match.id, teamId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!roster) throw new BadRequestException('Сначала сохраните заявку');
+      if (roster.isApproved) return;
+      const selected = await manager.find(MatchRosterPlayerEntity, {
+        where: { matchRosterId: roster.id },
+      });
+      const policy = this.tournamentApplications.policy(match.tournament);
+      if (
+        selected.length < policy.minMatchPlayers ||
+        selected.length > policy.maxMatchPlayers
+      )
+        throw new BadRequestException(
+          `В протоколе должно быть от ${policy.minMatchPlayers} до ${policy.maxMatchPlayers} игроков`,
+        );
+      const available = await this.findTeamRoster(match, teamId);
+      if (
+        selected.some(
+          (p) =>
+            !available.some(
+              (a) =>
+                a.teamPlayerId === p.teamPlayerId &&
+                a.id === p.playerId &&
+                a.eligibilityStatus !== 'not_allowed',
+            ),
+        )
+      )
+        throw new BadRequestException(
+          'В протоколе есть игрок вне утверждённой заявки или с дисквалификацией. Пересохраните протокол',
+        );
+      roster.isSubmitted = true;
+      roster.submittedAt = new Date();
+      roster.submittedByUserId = userId;
+      if (canApprove) {
+        roster.isApproved = true;
+        roster.approvedAt = new Date();
+        roster.approvedByUserId = userId;
+      }
+      await manager.save(roster);
+    });
+  }
+
   private async findRegistrationMatch(
     matchId: number,
     teamId: number,
@@ -1089,6 +1230,7 @@ export class MatchServiceService {
     if (!match) {
       throw new NotFoundException('Предстоящий матч не найден');
     }
+    this.assertTournamentLaunched(match);
 
     if (match.homeTeamId !== teamId && match.awayTeamId !== teamId) {
       throw new BadRequestException('Команда не участвует в этом матче');
@@ -1100,9 +1242,23 @@ export class MatchServiceService {
   private async ensureCanManageRegistrationTeam(
     teamId: number,
     currentUserId: number,
+    match?: MatchEntity,
   ): Promise<void> {
     const user = await this.usersService.findById(currentUserId);
     const roles = user?.roles?.map((role) => role.code) ?? [];
+
+    if (match?.tournament?.registrationRequired) {
+      if (roles.includes(RoleCode.Referee)) return;
+      const tournament = await this.tournamentApplications.tournament(
+        match.tournamentId,
+      );
+      await this.communitySquads.assertManage(
+        this.tournamentApplications.communityId(tournament),
+        teamId,
+        { id: currentUserId, roles },
+      );
+      return;
+    }
 
     if (
       roles.includes(RoleCode.Admin) ||
@@ -1112,20 +1268,11 @@ export class MatchServiceService {
       return;
     }
 
-    const captainLink = await this.teamPlayerRepository
-      .createQueryBuilder('teamPlayer')
-      .innerJoin('teamPlayer.player', 'player')
-      .where('teamPlayer.team_id = :teamId', { teamId })
-      .andWhere('player.user_id = :currentUserId', { currentUserId })
-      .andWhere('"teamPlayer"."isCaptain" = :isCaptain', { isCaptain: true })
-      .andWhere('"teamPlayer"."isActive" = :isActive', { isActive: true })
-      .getOne();
-
-    if (!captainLink) {
-      throw new BadRequestException(
-        'Нет прав на управление заявкой этой команды',
-      );
-    }
+    const communityId = await this.communitySquads.defaultCommunityId();
+    await this.communitySquads.assertManage(communityId, teamId, {
+      id: currentUserId,
+      roles,
+    });
   }
 
   private toDto(match: MatchEntity): MatchServiceMatchDto {
@@ -1287,6 +1434,17 @@ export class MatchServiceService {
     }
 
     const previousWinnerTeamId = match.winnerTeamId;
+    const leg = knockoutLeg(match.bracketPosition);
+    const previousLegs =
+      leg.legs === 2 && leg.leg === 2
+        ? await manager
+            .getRepository(MatchEntity)
+            .findBy({ bracketSnapshotId: match.bracketSnapshotId })
+        : [];
+    const previousTieWinner = knockoutTieSummary(
+      match,
+      previousLegs,
+    )?.winnerTeamId;
     await this.applyOfficialResult(
       match,
       { home, away },
@@ -1295,7 +1453,14 @@ export class MatchServiceService {
     );
     if (
       match.bracketSnapshotId &&
-      previousWinnerTeamId !== match.winnerTeamId
+      ((leg.legs === 1 && previousWinnerTeamId !== match.winnerTeamId) ||
+        (leg.legs === 2 &&
+          leg.leg === 2 &&
+          previousTieWinner !==
+            knockoutTieSummary(
+              match,
+              previousLegs.map((m) => (m.id === match.id ? match : m)),
+            )?.winnerTeamId))
     ) {
       throw new BadRequestException(
         'Нельзя изменить победителя уже продвинутого матча плей-офф',
@@ -1308,15 +1473,21 @@ export class MatchServiceService {
     match: MatchEntity,
     teamId: number,
   ): Promise<MatchRosterPlayerDto[]> {
-    const teamPlayers = await this.teamPlayerRepository
-      .createQueryBuilder('teamPlayer')
-      .leftJoinAndSelect('teamPlayer.player', 'player')
-      .where('teamPlayer.team_id = :teamId', { teamId })
-      .andWhere('teamPlayer.isActive = true')
-      .andWhere('player.isActive = true')
-      .orderBy('teamPlayer.isCaptain', 'DESC')
-      .addOrderBy('teamPlayer.shirtNumber', 'ASC')
-      .getMany();
+    const approvedRoster = await this.tournamentApplications.matchRoster(
+      match.tournamentId,
+      teamId,
+    );
+    const teamPlayers =
+      approvedRoster ??
+      (await this.teamPlayerRepository
+        .createQueryBuilder('teamPlayer')
+        .leftJoinAndSelect('teamPlayer.player', 'player')
+        .where('teamPlayer.team_id = :teamId', { teamId })
+        .andWhere('teamPlayer.isActive = true')
+        .andWhere('player.isActive = true')
+        .orderBy('teamPlayer.isCaptain', 'DESC')
+        .addOrderBy('teamPlayer.shirtNumber', 'ASC')
+        .getMany());
 
     const playerIds = teamPlayers.map((teamPlayer) => teamPlayer.playerId);
 
@@ -1422,15 +1593,20 @@ export class MatchServiceService {
     );
     const homeSavedRoster = savedRosterByTeamId.get(match.homeTeamId);
     const awaySavedRoster = savedRosterByTeamId.get(match.awayTeamId);
-    const [homeRoster, awayRoster, matchRules] = await Promise.all([
-      homeSavedRoster?.isSubmitted
-        ? this.findSubmittedTeamRoster(match, homeSavedRoster)
-        : this.findTeamRoster(match, match.homeTeamId),
-      awaySavedRoster?.isSubmitted
-        ? this.findSubmittedTeamRoster(match, awaySavedRoster)
-        : this.findTeamRoster(match, match.awayTeamId),
-      this.getEffectiveMatchRules(match, this.dataSource.manager),
-    ]);
+    const [homeRoster, awayRoster, matchRules, knockoutTie] = await Promise.all(
+      [
+        homeSavedRoster?.isSubmitted
+          ? this.findSubmittedTeamRoster(match, homeSavedRoster)
+          : this.findTeamRoster(match, match.homeTeamId),
+        awaySavedRoster?.isSubmitted
+          ? this.findSubmittedTeamRoster(match, awaySavedRoster)
+          : this.findTeamRoster(match, match.awayTeamId),
+        this.getEffectiveMatchRules(match, this.dataSource.manager),
+        knockoutLeg(match.bracketPosition).legs === 2
+          ? this.knockoutBracketService.getTieContext(match)
+          : Promise.resolve(undefined),
+      ],
+    );
 
     return {
       match: {
@@ -1451,6 +1627,7 @@ export class MatchServiceService {
               }
             : undefined,
         extraTimeEnabled: matchRules.extraTime.enabled,
+        knockoutTie,
         penaltyShootout: matchRules.penalties.enabled
           ? {
               initialKicksPerTeam: matchRules.penalties.initialKicksPerTeam,
@@ -1579,7 +1756,15 @@ export class MatchServiceService {
   async approveRoster(
     matchId: number,
     teamId: number,
+    currentUserId?: number,
   ): Promise<MatchRosterCheckDto> {
+    const match = await this.findRegistrationMatch(matchId, teamId);
+    if (match.tournament?.registrationRequired) {
+      if (!currentUserId)
+        throw new BadRequestException('Требуется авторизация судьи');
+      await this.approveMatchRegistration(matchId, teamId, currentUserId);
+      return this.getRosterCheck(matchId);
+    }
     await this.dataSource.transaction(async (manager) => {
       const matchRosterRepository = manager.getRepository(MatchRosterEntity);
       const matchRosterPlayerRepository = manager.getRepository(
@@ -1794,8 +1979,16 @@ export class MatchServiceService {
     if (!match) {
       throw new NotFoundException('Матч не найден');
     }
+    this.assertTournamentLaunched(match);
 
     return match;
+  }
+
+  private assertTournamentLaunched(match: MatchEntity): void {
+    if (match.tournament?.lifecycleStatus === TournamentLifecycleStatus.DRAFT)
+      throw new BadRequestException(
+        'Турнир ещё не запущен. Подготовленные матчи недоступны для протоколов и результатов',
+      );
   }
 
   private async getApprovedRosterPlayers(match: MatchEntity) {
@@ -1898,6 +2091,14 @@ export class MatchServiceService {
       this.getMatchEvents(match.id),
       this.getRedBallState(match.id),
     ]);
+    const matchRules = await this.getEffectiveMatchRules(
+      match,
+      this.dataSource.manager,
+    );
+    const knockoutTie =
+      knockoutLeg(match.bracketPosition).legs === 2
+        ? await this.knockoutBracketService.getTieContext(match)
+        : undefined;
 
     return {
       match: {
@@ -1907,6 +2108,8 @@ export class MatchServiceService {
         status: match.status,
         matchDatetime: match.matchDatetime,
         result: this.mapMatchResult(match),
+        matchRules,
+        knockoutTie,
 
         homeTeam: {
           id: match.homeTeam.id,
@@ -2103,6 +2306,11 @@ export class MatchServiceService {
 
   async startMatch(matchId: number) {
     const match = await this.findMatchForService(matchId);
+    if (knockoutLeg(match.bracketPosition).legs === 2) {
+      if (match.status !== MatchStatus.SCHEDULED)
+        throw new BadRequestException('Матч уже начат или завершён');
+      await this.knockoutBracketService.assertTieResultWritable(match);
+    }
 
     await this.assertBothRostersApproved(match);
 
@@ -2236,7 +2444,8 @@ export class MatchServiceService {
       session.status = MatchServiceStatus.FINISHED;
       session.finishedAt = new Date();
 
-      await this.matchRepository.save(match);
+      if (knockoutLeg(match.bracketPosition).legs !== 2)
+        await this.matchRepository.save(match);
       await this.tournamentLifecycleService.markInProgress(match.tournamentId);
       await this.knockoutBracketService.advanceAutomatically(
         match.tournamentId,
@@ -2361,7 +2570,8 @@ export class MatchServiceService {
     session.finishedAt = new Date();
 
     const savedSession = await this.matchServiceSessionRepository.save(session);
-    await this.matchRepository.save(match);
+    if (knockoutLeg(match.bracketPosition).legs !== 2)
+      await this.matchRepository.save(match);
     await this.tournamentLifecycleService.markInProgress(match.tournamentId);
     await this.knockoutBracketService.advanceAutomatically(
       match.tournamentId,
@@ -3096,6 +3306,21 @@ export class MatchServiceService {
     dto: FinalizeMatchResultDto,
     manager: EntityManager = this.dataSource.manager,
   ): Promise<void> {
+    if (
+      knockoutLeg(match.bracketPosition).legs === 2 &&
+      !manager.queryRunner?.isTransactionActive
+    ) {
+      await this.dataSource.transaction(async (transaction) => {
+        await this.applyOfficialResult(
+          match,
+          authoritativeRegularTime,
+          dto,
+          transaction,
+        );
+        await transaction.getRepository(MatchEntity).save(match);
+      });
+      return;
+    }
     const isAdministrative =
       dto.resolutionType === MatchResolutionType.TECHNICAL ||
       dto.resolutionType === MatchResolutionType.WALKOVER;
@@ -3115,6 +3340,13 @@ export class MatchServiceService {
         ? dto.regularTime
         : authoritativeRegularTime;
     const rules = await this.getEffectiveMatchRules(match, manager);
+    const tie =
+      knockoutLeg(match.bracketPosition).legs === 2
+        ? await this.knockoutBracketService.assertTieResultWritable(
+            match,
+            manager,
+          )
+        : undefined;
     const resolved = this.matchResultResolver.resolve({
       homeTeamId: match.homeTeamId,
       awayTeamId: match.awayTeamId,
@@ -3124,6 +3356,7 @@ export class MatchServiceService {
       resolutionType: dto.resolutionType,
       winnerTeamId: dto.winnerTeamId,
       rules,
+      tie,
     });
 
     match.regularTimeHomeScore = resolved.regularTime.home;
@@ -3181,6 +3414,17 @@ export class MatchServiceService {
       throw new BadRequestException(
         `Rule version ${version.version} has no match settings for stage ${stage.key}`,
       );
+    }
+    if (
+      knockoutLeg(match.bracketPosition).legs === 2 &&
+      knockoutLeg(match.bracketPosition).leg === 1
+    ) {
+      return {
+        ...stageRules.match,
+        allowDraw: true,
+        extraTime: { enabled: false },
+        penalties: { enabled: false },
+      };
     }
     return stageRules.match;
   }

@@ -13,6 +13,10 @@ import { TournamentFormat } from '../enums/tournament-format.enum';
 import { TournamentType } from '../enums/tournament-type.enum';
 
 export class CreateUserTournamentDto {
+  @IsOptional()
+  @IsInt()
+  communityId?: number;
+
   @IsInt()
   seasonId: number;
 

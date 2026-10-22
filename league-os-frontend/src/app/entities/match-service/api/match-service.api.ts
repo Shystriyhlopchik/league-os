@@ -3,12 +3,17 @@ import { Observable } from 'rxjs';
 
 import {
     ActivateRedBallDto,
+    FinalizePlayedMatch,
     ActivateRedBallResponse,
-    CreateMatchServiceEventDto, CreateMatchServiceEventResponse,
-    MatchProtocolData, MatchProtocolEvent,
-    MatchServiceMatch, MatchRegistration,
+    CreateMatchServiceEventDto,
+    CreateMatchServiceEventResponse,
+    MatchProtocolData,
+    MatchProtocolEvent,
+    MatchServiceMatch,
+    MatchRegistration,
     MatchServiceSession,
-    StartEventRecordingDto, StartEventRecordingResponse
+    StartEventRecordingDto,
+    StartEventRecordingResponse,
 } from '../model/match-service.types';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
@@ -44,7 +49,10 @@ export class MatchServiceApi {
         );
     }
 
-    getMatchRegistration(matchId: number, teamId: number): Observable<MatchRegistration> {
+    getMatchRegistration(
+        matchId: number,
+        teamId: number,
+    ): Observable<MatchRegistration> {
         return this.http.get<MatchRegistration>(
             `${this.apiUrl}/match-service/registration-matches/${matchId}/teams/${teamId}/roster`,
         );
@@ -129,10 +137,13 @@ export class MatchServiceApi {
         );
     }
 
-    finishHalf(matchId: number): Observable<MatchServiceSession> {
+    finishHalf(
+        matchId: number,
+        result: FinalizePlayedMatch = {},
+    ): Observable<MatchServiceSession> {
         return this.http.post<MatchServiceSession>(
             `${this.apiUrl}/match-service/matches/${matchId}/finish-half`,
-            {},
+            result,
         );
     }
 
@@ -143,10 +154,13 @@ export class MatchServiceApi {
         );
     }
 
-    finishMatch(matchId: number): Observable<MatchServiceSession> {
+    finishMatch(
+        matchId: number,
+        result: FinalizePlayedMatch = {},
+    ): Observable<MatchServiceSession> {
         return this.http.post<MatchServiceSession>(
             `${this.apiUrl}/match-service/matches/${matchId}/finish`,
-            {},
+            result,
         );
     }
 
@@ -170,7 +184,10 @@ export class MatchServiceApi {
         );
     }
 
-    cancelEvent(matchId: number, eventId: number): Observable<{
+    cancelEvent(
+        matchId: number,
+        eventId: number,
+    ): Observable<{
         cancelledEvent: MatchProtocolEvent;
         session: MatchServiceSession;
         events: MatchProtocolEvent[];

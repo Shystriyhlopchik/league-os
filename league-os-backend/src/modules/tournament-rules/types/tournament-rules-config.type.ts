@@ -7,7 +7,9 @@ export interface TournamentRulesConfigV1 {
 export type TournamentRulesConfig = TournamentRulesConfigV1;
 
 export type StageRulesV1 =
-  RoundRobinStageRulesV1 | GroupStageRulesV1 | KnockoutStageRulesV1;
+  | RoundRobinStageRulesV1
+  | GroupStageRulesV1
+  | KnockoutStageRulesV1;
 
 interface StageRulesBaseV1 {
   stageKey: string;
@@ -79,7 +81,10 @@ export type TieBreakerRuleV1 =
   | { type: 'draw_lots' };
 
 export type HeadToHeadMetricV1 =
-  'points' | 'wins' | 'goal_difference' | 'goals_for';
+  | 'points'
+  | 'wins'
+  | 'goal_difference'
+  | 'goals_for';
 
 export interface StageTransitionRuleV1 {
   fromStageKey: string;
@@ -136,6 +141,11 @@ export type CrossGroupCriterionV1 =
 
 export interface BracketRuleV1 {
   size: 2 | 4 | 8 | 16 | 32;
+  /** Omitted in existing tournaments: one match per tie. Finals remain single-leg. */
+  quarterFinalLegs?: 1 | 2;
+  semiFinalLegs?: 1 | 2;
+  /** Quarter-final winners feeding semi-finals; omitted preserves existing brackets. */
+  semiFinalPairing?: 'adjacent' | 'cross';
   placementMatch?: 'third_place';
   seeding: SeedingRuleV1;
 }

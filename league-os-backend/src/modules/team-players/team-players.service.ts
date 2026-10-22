@@ -1,11 +1,13 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
+import { CommunitySquadsService } from '../registrations/community-squads.service';
 
 import { TeamEntity } from '../teams/entities/team.entity';
 import { PlayerEntity } from '../players/entities/player.entity';
@@ -70,10 +72,12 @@ export class TeamPlayersService {
     private readonly playersRepository: Repository<PlayerEntity>,
 
     private readonly usersService: UsersService,
+    private readonly dataSource: DataSource,
+    private readonly squads: CommunitySquadsService,
   ) {}
 
   async findByTeam(teamId: number): Promise<TeamPlayerEntity[]> {
-    await this.ensureTeamExists(teamId);
+    await this.ensureTeamExists(teamId, true);
 
     return this.teamPlayersRepository.find({
       where: {
@@ -96,18 +100,60 @@ export class TeamPlayersService {
     currentUserId: number,
     photo?: { buffer: Buffer },
   ): Promise<TeamPlayerEntity> {
-    await this.ensureTeamExists(teamId);
-    await this.ensureCanManageTeam(teamId, currentUserId);
-    await this.ensureShirtNumberAvailable(teamId, dto.shirtNumber);
-
-    const savedPlayer = await this.createPlayer(dto, photo);
-    const savedTeamPlayer = await this.createTeamPlayer(
-      teamId,
-      savedPlayer.id,
-      dto,
-    );
-
-    return this.findTeamPlayerWithPlayer(savedTeamPlayer.id);
+    return this.dataSource.transaction(async (manager) => {
+      const communityId = await this.squads.defaultCommunityId(manager);
+      await this.squads.lockCommunity(manager, communityId);
+      const user = await this.usersService.findById(currentUserId);
+      await this.squads.assertManage(
+        communityId,
+        teamId,
+        { id: currentUserId, roles: user?.roles.map((r) => r.code) },
+        manager,
+      );
+      await this.squads.assertSlot(
+        manager,
+        communityId,
+        teamId,
+        dto.shirtNumber,
+      );
+      // Serialize creation of person identities across communities as well.
+      await manager.query('SELECT pg_advisory_xact_lock(72918401)');
+      const candidates = await manager
+        .getRepository(PlayerEntity)
+        .createQueryBuilder('p')
+        .where('lower(trim(p."firstName")) = lower(:firstName)', {
+          firstName: dto.firstName.trim(),
+        })
+        .andWhere('lower(trim(p."lastName")) = lower(:lastName)', {
+          lastName: dto.lastName.trim(),
+        })
+        .andWhere('(p."birthDate" = :birthDate OR p."birthDate" IS NULL)', {
+          birthDate: dto.birthDate,
+        })
+        .getMany();
+      if (candidates.length)
+        throw new ConflictException({
+          code: 'PLAYER_ALREADY_EXISTS',
+          message:
+            'Найдены карточки с таким именем и датой рождения. Выберите существующего игрока через поиск. Для однофамильцев обратитесь к администратору',
+          playerIds: candidates.map((p) => p.id),
+        });
+      const player = await this.createPlayer(dto, photo, manager);
+      const link = await manager.save(TeamPlayerEntity, {
+        communityId,
+        teamId,
+        playerId: player.id,
+        shirtNumber: dto.shirtNumber,
+        position: dto.position,
+        isCaptain: dto.isCaptain ?? false,
+        isActive: true,
+        joinedAt: this.getCurrentDate(),
+      });
+      return manager.findOneOrFail(TeamPlayerEntity, {
+        where: { id: link.id },
+        relations: { player: true },
+      });
+    });
   }
 
   async updateForTeam(
@@ -117,44 +163,105 @@ export class TeamPlayersService {
     currentUserId: number,
     photo?: { buffer: Buffer },
   ): Promise<TeamPlayerEntity> {
-    await this.ensureTeamExists(teamId);
-    await this.ensureCanManageTeam(teamId, currentUserId);
+    return this.dataSource.transaction(async (manager) => {
+      const communityId = await this.squads.defaultCommunityId(manager);
+      await this.squads.lockCommunity(manager, communityId);
+      await this.ensureTeamExists(teamId);
+      await this.ensureCanManageTeam(teamId, currentUserId);
 
-    const teamPlayer = await this.teamPlayersRepository.findOne({
-      where: { id: teamPlayerId, teamId },
-      relations: { player: true },
+      const teamPlayer = await manager.findOne(TeamPlayerEntity, {
+        where: { id: teamPlayerId, teamId, communityId, isActive: true },
+        relations: { player: true },
+      });
+
+      if (!teamPlayer) {
+        throw new NotFoundException('Игрок команды не найден');
+      }
+
+      await this.ensureShirtNumberAvailable(
+        teamId,
+        dto.shirtNumber,
+        teamPlayerId,
+      );
+
+      const player = teamPlayer.player;
+
+      const currentUser = await this.usersService.findById(currentUserId);
+      const canEditIdentity =
+        currentUser?.roles.some((r) =>
+          [RoleCode.Admin, RoleCode.SuperAdmin].includes(r.code),
+        ) ?? false;
+      if (
+        !canEditIdentity &&
+        ((dto.firstName !== undefined &&
+          dto.firstName.trim() !== player.firstName) ||
+          (dto.lastName !== undefined &&
+            dto.lastName.trim() !== player.lastName) ||
+          (dto.middleName !== undefined &&
+            (dto.middleName?.trim() || '') !== (player.middleName || '')) ||
+          (dto.birthDate !== undefined && dto.birthDate !== player.birthDate))
+      )
+        throw new ForbiddenException(
+          'ФИО и дату рождения общей карточки исправляет администратор',
+        );
+
+      if (dto.firstName !== undefined) player.firstName = dto.firstName.trim();
+      if (dto.lastName !== undefined) player.lastName = dto.lastName.trim();
+      if (dto.middleName !== undefined) {
+        player.middleName = dto.middleName?.trim() || undefined;
+      }
+      if (dto.birthDate !== undefined) player.birthDate = dto.birthDate;
+      if (
+        canEditIdentity &&
+        (dto.firstName !== undefined ||
+          dto.lastName !== undefined ||
+          dto.birthDate !== undefined)
+      ) {
+        await manager.query('SELECT pg_advisory_xact_lock(72918401)');
+        const duplicate = await manager
+          .getRepository(PlayerEntity)
+          .createQueryBuilder('p')
+          .where('p.id != :id', { id: player.id })
+          .andWhere('lower(trim(p."firstName")) = lower(:firstName)', {
+            firstName: player.firstName,
+          })
+          .andWhere('lower(trim(p."lastName")) = lower(:lastName)', {
+            lastName: player.lastName,
+          })
+          .andWhere('(p."birthDate" = :birthDate OR p."birthDate" IS NULL)', {
+            birthDate: player.birthDate ?? null,
+          })
+          .getExists();
+        if (duplicate)
+          throw new ConflictException(
+            'Существует другая карточка с таким именем и датой рождения. Не объединяйте игроков изменением ФИО',
+          );
+      }
+      if (dto.preferredFoot !== undefined)
+        player.preferredFoot = dto.preferredFoot;
+      if (dto.position !== undefined) player.position = dto.position;
+      if (photo)
+        player.photoUrl = await this.savePlayerPhoto(player.slug, photo.buffer);
+
+      if (dto.shirtNumber !== undefined)
+        teamPlayer.shirtNumber = dto.shirtNumber;
+      if (dto.position !== undefined) teamPlayer.position = dto.position;
+      if (dto.isCaptain === false)
+        await this.squads.assertCaptainHandover(
+          teamPlayer,
+          { id: currentUserId, roles: currentUser?.roles.map((r) => r.code) },
+          manager,
+        );
+      if (dto.isCaptain !== undefined) teamPlayer.isCaptain = dto.isCaptain;
+
+      await manager.save(player);
+      await manager.save(teamPlayer);
+
+      return manager.findOneOrFail(TeamPlayerEntity, {
+        where: { id: teamPlayer.id },
+        relations: { player: true },
+      });
     });
-
-    if (!teamPlayer) {
-      throw new NotFoundException('Игрок команды не найден');
-    }
-
-    await this.ensureShirtNumberAvailable(
-      teamId,
-      dto.shirtNumber,
-      teamPlayerId,
-    );
-
-    const player = teamPlayer.player;
-
-    if (dto.firstName !== undefined) player.firstName = dto.firstName.trim();
-    if (dto.lastName !== undefined) player.lastName = dto.lastName.trim();
-    if (dto.middleName !== undefined) {
-      player.middleName = dto.middleName?.trim() || undefined;
-    }
-    if (dto.birthDate !== undefined) player.birthDate = dto.birthDate;
-    if (dto.preferredFoot !== undefined) player.preferredFoot = dto.preferredFoot;
-    if (dto.position !== undefined) player.position = dto.position;
-    if (photo) player.photoUrl = await this.savePlayerPhoto(player.slug, photo.buffer);
-
-    if (dto.shirtNumber !== undefined) teamPlayer.shirtNumber = dto.shirtNumber;
-    if (dto.position !== undefined) teamPlayer.position = dto.position;
-    if (dto.isCaptain !== undefined) teamPlayer.isCaptain = dto.isCaptain;
-
-    await this.playersRepository.save(player);
-    await this.teamPlayersRepository.save(teamPlayer);
-
-    return this.findTeamPlayerWithPlayer(teamPlayer.id);
   }
 
   async removeFromTeam(
@@ -162,66 +269,36 @@ export class TeamPlayersService {
     teamPlayerId: number,
     currentUserId: number,
   ): Promise<{ id: number; isActive: false; leftAt: string }> {
-    await this.ensureTeamExists(teamId);
-    await this.ensureCanManageTeam(teamId, currentUserId);
-
-    const teamPlayer = await this.teamPlayersRepository.findOne({
-      where: {
-        id: teamPlayerId,
-        teamId,
-        isActive: true,
-      },
+    const communityId = await this.squads.defaultCommunityId();
+    const user = await this.usersService.findById(currentUserId);
+    await this.squads.remove(communityId, teamId, teamPlayerId, {
+      id: currentUserId,
+      roles: user?.roles.map((r) => r.code),
     });
-
-    if (!teamPlayer) {
-      throw new NotFoundException('Игрок команды не найден');
-    }
-
-    teamPlayer.isActive = false;
-    teamPlayer.isCaptain = false;
-    teamPlayer.leftAt = this.getCurrentDate();
-
-    await this.teamPlayersRepository.save(teamPlayer);
-
-    return {
-      id: teamPlayer.id,
-      isActive: false,
-      leftAt: teamPlayer.leftAt,
-    };
+    return { id: teamPlayerId, isActive: false, leftAt: this.getCurrentDate() };
   }
 
   private async ensureCanManageTeam(
     teamId: number,
     currentUserId: number,
   ): Promise<void> {
-    const user = await this.usersService.findById(currentUserId);
-    const userRoles = user?.roles?.map((role) => role.code) ?? [];
-
-    if (
-      userRoles.includes(RoleCode.Admin) ||
-      userRoles.includes(RoleCode.SuperAdmin)
-    ) {
-      return;
-    }
-
-    const captainLink = await this.teamPlayersRepository
-      .createQueryBuilder('team_player')
-      .innerJoin('team_player.player', 'player')
-      .where('team_player.team_id = :teamId', { teamId })
-      .andWhere('"team_player"."isActive" = :isActive', { isActive: true })
-      .andWhere('"team_player"."isCaptain" = :isCaptain', { isCaptain: true })
-      .andWhere('player.user_id = :currentUserId', { currentUserId })
-      .getOne();
-
-    if (!captainLink) {
-      throw new ForbiddenException('Недостаточно прав для изменения состава команды');
-    }
+    const communityId = await this.squads.defaultCommunityId();
+    const actor = await this.usersService.findById(currentUserId);
+    await this.squads.assertManage(communityId, teamId, {
+      id: currentUserId,
+      roles: actor?.roles.map((r) => r.code),
+    });
   }
 
-  private async ensureTeamExists(teamId: number): Promise<void> {
+  private async ensureTeamExists(
+    teamId: number,
+    publicOnly = false,
+  ): Promise<void> {
     const team = await this.teamsRepository.findOne({
       where: {
         id: teamId,
+        ...(publicOnly ? { profileStatus: 'published' } : {}),
+        isActive: true,
       },
     });
 
@@ -261,6 +338,7 @@ export class TeamPlayersService {
   private async createPlayer(
     dto: CreateTeamPlayerDto,
     photo?: { buffer: Buffer },
+    manager?: EntityManager,
   ): Promise<PlayerEntity> {
     const slug = await this.generatePlayerSlug(dto.lastName, dto.firstName);
     const photoUrl = photo
@@ -278,7 +356,9 @@ export class TeamPlayersService {
       isActive: true,
     });
 
-    return this.playersRepository.save(player);
+    return manager
+      ? manager.save(PlayerEntity, player)
+      : this.playersRepository.save(player);
   }
 
   private async savePlayerPhoto(slug: string, buffer: Buffer): Promise<string> {

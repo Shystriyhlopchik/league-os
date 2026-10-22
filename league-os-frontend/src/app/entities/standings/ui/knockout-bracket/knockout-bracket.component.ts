@@ -57,20 +57,23 @@ export class KnockoutBracketComponent {
 
     isWinner(match: PublicBracketMatch, side: 'home' | 'away'): boolean {
         const team = side === 'home' ? match.homeTeam : match.awayTeam;
-        return Boolean(team && match.winnerTeamId === team.id);
+        return Boolean(
+            team &&
+                (match.tie ? match.tie.winnerTeamId : match.winnerTeamId) ===
+                    team.id,
+        );
     }
 
     private roundLabel(roundType: PublicBracketMatch['roundType']): string {
-        const labels: Partial<
-            Record<PublicBracketMatch['roundType'], string>
-        > = {
-            round_of_32: '1/16 финала',
-            round_of_16: '1/8 финала',
-            quarter_final: 'Четвертьфинал',
-            semi_final: 'Полуфинал',
-            third_place: 'Матч за 3-е место',
-            final: 'Финал',
-        };
+        const labels: Partial<Record<PublicBracketMatch['roundType'], string>> =
+            {
+                round_of_32: '1/16 финала',
+                round_of_16: '1/8 финала',
+                quarter_final: 'Четвертьфинал',
+                semi_final: 'Полуфинал',
+                third_place: 'Матч за 3-е место',
+                final: 'Финал',
+            };
         return labels[roundType] ?? 'Раунд';
     }
 }

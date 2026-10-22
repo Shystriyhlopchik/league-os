@@ -3,21 +3,55 @@
         <section class="round" [attr.data-round]="round.key">
             <h4>{{ round.title }}</h4>
             <div class="round__matches">
-                @for (match of round.matches; track match.id ?? match.position) {
-                    <article class="match" [class.match--pending]="match.status === 'pending'">
+                @for (
+                    match of round.matches;
+                    track match.id ?? match.position
+                ) {
+                    <article
+                        class="match"
+                        [class.match--pending]="match.status === 'pending'"
+                    >
                         <div class="match__position">{{ match.position }}</div>
-                        <div class="team" [class.team--winner]="isWinner(match, 'home')">
-                            <span>{{ teamName(match, 'home') }}</span>
-                            <strong>{{ score(match, 'home') }}</strong>
+                        @if (match.tie; as tie) {
+                            <div class="match__detail">
+                                {{
+                                    tie.leg === 1
+                                        ? "Первый матч"
+                                        : "Ответный матч"
+                                }}
+                            </div>
+                        }
+                        <div
+                            class="team"
+                            [class.team--winner]="isWinner(match, 'home')"
+                        >
+                            <span>{{ teamName(match, "home") }}</span>
+                            <strong>{{ score(match, "home") }}</strong>
                         </div>
-                        <div class="team" [class.team--winner]="isWinner(match, 'away')">
-                            <span>{{ teamName(match, 'away') }}</span>
-                            <strong>{{ score(match, 'away') }}</strong>
+                        <div
+                            class="team"
+                            [class.team--winner]="isWinner(match, 'away')"
+                        >
+                            <span>{{ teamName(match, "away") }}</span>
+                            <strong>{{ score(match, "away") }}</strong>
                         </div>
                         @if (match.penalties) {
                             <div class="match__detail">
-                                Пенальти: {{ match.penalties.home }}:{{ match.penalties.away }}
+                                Пенальти: {{ match.penalties.home }}:{{
+                                    match.penalties.away
+                                }}
                             </div>
+                        }
+                        @if (match.tie; as tie) {
+                            @if (tie.completedLegs > 0) {
+                                <div class="match__detail">
+                                    {{
+                                        tie.complete
+                                            ? "Сумма двух матчей"
+                                            : "После первого матча"
+                                    }}: {{ tie.home }}:{{ tie.away }}
+                                </div>
+                            }
                         }
                         @if (match.administrativeDecision) {
                             <div class="match__decision">

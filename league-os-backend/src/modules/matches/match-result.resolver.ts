@@ -25,6 +25,7 @@ export interface ResolveMatchResultInput {
   resolutionType?: MatchResolutionType;
   winnerTeamId?: number;
   rules: MatchRulesV1;
+  tie?: { leg: 1 | 2; previousScore?: MatchScore };
 }
 
 export interface ResolvedMatchResult {
@@ -35,6 +36,7 @@ export interface ResolvedMatchResult {
   winnerTeamId?: number;
   loserTeamId?: number;
   legacyScore: MatchScore;
+  tieWinnerTeamId?: number;
 }
 
 @Injectable()
@@ -42,6 +44,8 @@ export class MatchResultResolver {
   resolve(input: ResolveMatchResultInput): ResolvedMatchResult {
     this.assertParticipants(input.homeTeamId, input.awayTeamId);
     this.assertScore(input.regularTime, 'regularTime');
+
+    if (input.tie) return this.resolveTwoLegResult(input);
 
     if (
       input.resolutionType === MatchResolutionType.TECHNICAL ||
@@ -136,6 +140,68 @@ export class MatchResultResolver {
       extraTime: input.extraTime,
       resolutionType,
       legacyScore: aggregate,
+    };
+  }
+
+  private resolveTwoLegResult(
+    input: ResolveMatchResultInput,
+  ): ResolvedMatchResult {
+    const { tie, ...single } = input;
+    if (tie!.leg === 1) {
+      return this.resolve({
+        ...single,
+        rules: {
+          ...input.rules,
+          allowDraw: true,
+          extraTime: { enabled: false },
+          penalties: { enabled: false },
+        },
+      });
+    }
+    if (!tie!.previousScore) {
+      throw new BadRequestException(
+        'Сначала утвердите результат первого матча противостояния',
+      );
+    }
+    this.assertScore(tie!.previousScore, 'previousScore');
+    if (
+      [MatchResolutionType.TECHNICAL, MatchResolutionType.WALKOVER].includes(
+        input.resolutionType!,
+      )
+    ) {
+      return this.resolve(single);
+    }
+    // Resolve the tie using the aggregate, but retain only this leg's goals and
+    // match winner for statistics. There is deliberately no away-goals rule.
+    const result = this.resolve({
+      ...single,
+      regularTime: {
+        home: input.regularTime.home + tie!.previousScore.home,
+        away: input.regularTime.away + tie!.previousScore.away,
+      },
+    });
+    const legacyScore = {
+      home: input.regularTime.home + (input.extraTime?.home ?? 0),
+      away: input.regularTime.away + (input.extraTime?.away ?? 0),
+    };
+    const comparison = this.compare(legacyScore);
+    const winnerTeamId =
+      comparison > 0
+        ? input.homeTeamId
+        : comparison < 0
+          ? input.awayTeamId
+          : undefined;
+    return {
+      ...result,
+      regularTime: input.regularTime,
+      legacyScore,
+      tieWinnerTeamId: result.winnerTeamId,
+      winnerTeamId,
+      loserTeamId: winnerTeamId
+        ? winnerTeamId === input.homeTeamId
+          ? input.awayTeamId
+          : input.homeTeamId
+        : undefined,
     };
   }
 

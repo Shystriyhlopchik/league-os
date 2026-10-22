@@ -1,0 +1,293 @@
+<section class="card squad-card">
+    <div class="section-heading">
+        <div>
+            <h2>Состав команды</h2>
+            <p class="hint">
+                {{
+                    loaded()
+                        ? roster().length + " игроков · максимум 12"
+                        : "Загружаем состав…"
+                }}
+            </p>
+        </div>
+        <button
+            class="primary"
+            (click)="startAdd()"
+            [disabled]="
+                busy() || !loaded() || roster().length >= 12 || showAdd()
+            "
+        >
+            + Добавить игрока
+        </button>
+    </div>
+    <p class="hint">
+        Текущий список команды. В заявку на турнир игроки выбираются отдельно.
+        Изменения здесь сохраняются сразу.
+    </p>
+    @if (error()) {
+        <p class="error" role="alert">{{ error() }}</p>
+    }
+    @if (notice()) {
+        <p class="notice" role="status">{{ notice() }}</p>
+    }
+    @if (busy()) {
+        <p class="loading" role="status">Обновляем состав…</p>
+    }
+    <fieldset [disabled]="busy()">
+        @if (!loaded() && !busy()) {
+            <button (click)="reload()">Повторить загрузку состава</button>
+        }
+        @if (showAdd()) {
+            <section class="inset add-player">
+                <div class="section-heading">
+                    <h3>Добавить игрока</h3>
+                    <button (click)="closeAdd()">Закрыть</button>
+                </div>
+                <p class="hint">
+                    Сначала поищите игрока в системе, даже если раньше он играл
+                    за другую команду. Так у него сохранится единая история.
+                </p>
+                <form class="row" (ngSubmit)="searchPlayers()">
+                    <label class="grow"
+                        >Фамилия игрока<input
+                            name="search"
+                            [(ngModel)]="search"
+                            required
+                            minlength="3"
+                            placeholder="Минимум 3 символа"
+                    /></label>
+                    <button [disabled]="search.trim().length < 3">Найти</button>
+                </form>
+                @if (searched()) {
+                    <label
+                        >Номер в команде<input
+                            type="number"
+                            min="1"
+                            max="99"
+                            [(ngModel)]="shirtNumber"
+                    /></label>
+                    @for (player of candidates(); track player.id) {
+                        <div class="list-row">
+                            <div class="grow">
+                                <strong>{{ player.name }}</strong
+                                ><span class="hint"
+                                    >{{ player.birthYear || "Год не указан" }} ·
+                                    {{
+                                        player.teamName || "Свободный агент"
+                                    }}</span
+                                >
+                            </div>
+                            <button
+                                (click)="add(player.id)"
+                                [disabled]="
+                                    player.teamId === teamId() ||
+                                    !shirtNumber ||
+                                    shirtNumber < 1 ||
+                                    shirtNumber > 99
+                                "
+                            >
+                                {{
+                                    player.teamId === teamId()
+                                        ? "Уже в составе"
+                                        : player.teamId
+                                          ? "Запросить переход"
+                                          : "Добавить"
+                                }}
+                            </button>
+                        </div>
+                    } @empty {
+                        <p class="hint">
+                            Игроки не найдены. Уточните фамилию или создайте
+                            новую карточку ниже.
+                        </p>
+                    }
+                    @if (!showNew()) {
+                        <button class="text-button" (click)="showNew.set(true)">
+                            Нужного игрока нет — создать карточку
+                        </button>
+                    }
+                }
+                @if (showNew()) {
+                    <form class="new-player" (ngSubmit)="create()">
+                        <h3>Новый игрок</h3>
+                        <p class="hint">
+                            Не создавайте повторную карточку при переходе.
+                            Совпадения имени и даты рождения проверяются
+                            системой.
+                        </p>
+                        <div class="grid">
+                            <label
+                                >Фамилия *<input
+                                    name="lastName"
+                                    maxlength="100"
+                                    required
+                                    [(ngModel)]="newPlayer.lastName"
+                            /></label>
+                            <label
+                                >Имя *<input
+                                    name="firstName"
+                                    maxlength="100"
+                                    required
+                                    [(ngModel)]="newPlayer.firstName"
+                            /></label>
+                            <label
+                                >Отчество<input
+                                    name="middleName"
+                                    maxlength="100"
+                                    [(ngModel)]="newPlayer.middleName"
+                            /></label>
+                            <label
+                                >Дата рождения *<input
+                                    name="birthDate"
+                                    type="date"
+                                    required
+                                    [(ngModel)]="newPlayer.birthDate"
+                            /></label>
+                            <label
+                                >Номер *<input
+                                    name="number"
+                                    type="number"
+                                    required
+                                    min="1"
+                                    max="99"
+                                    [(ngModel)]="newPlayer.shirtNumber"
+                            /></label>
+                            <label class="check"
+                                ><input
+                                    name="captain"
+                                    type="checkbox"
+                                    [(ngModel)]="newPlayer.isCaptain"
+                                />Игровой капитан</label
+                            >
+                        </div>
+                        <button
+                            class="primary"
+                            [disabled]="
+                                !newPlayer.firstName.trim() ||
+                                !newPlayer.lastName.trim() ||
+                                !newPlayer.birthDate ||
+                                !newPlayer.shirtNumber ||
+                                newPlayer.shirtNumber < 1 ||
+                                newPlayer.shirtNumber > 99
+                            "
+                        >
+                            Создать и добавить в состав
+                        </button>
+                    </form>
+                }
+            </section>
+        }
+        <div class="roster-list">
+            @for (link of roster(); track link.id) {
+                <div class="player-row">
+                    <span class="shirt-number" aria-label="Номер игрока">{{
+                        link.shirtNumber || "—"
+                    }}</span>
+                    <div class="grow">
+                        <strong
+                            >{{ link.player.lastName }}
+                            {{ link.player.firstName }}
+                            {{ link.player.middleName }}</strong
+                        >
+                        <span class="hint">{{
+                            link.player.birthDate
+                                ? link.player.birthDate.slice(0, 4) + " г. р."
+                                : "Дата рождения не указана"
+                        }}</span>
+                    </div>
+                    @if (link.isCaptain) {
+                        <span class="badge captain">Капитан</span>
+                    }
+                    <details class="row-menu" #menu>
+                        <summary
+                            [attr.aria-label]="
+                                'Действия: ' +
+                                link.player.lastName +
+                                ' ' +
+                                link.player.firstName
+                            "
+                        >
+                            Действия
+                        </summary>
+                        <div>
+                            <button
+                                (click)="startEdit(link); menu.open = false"
+                            >
+                                Номер и капитан</button
+                            ><button
+                                class="danger"
+                                (click)="remove(link); menu.open = false"
+                            >
+                                Исключить из состава
+                            </button>
+                        </div>
+                    </details>
+                </div>
+                @if (editingPlayer()?.id === link.id) {
+                    <form
+                        class="inset row"
+                        (ngSubmit)="update(link, editCaptain, editNumber)"
+                    >
+                        <label
+                            >Номер<input
+                                name="editNumber"
+                                type="number"
+                                min="1"
+                                max="99"
+                                required
+                                [(ngModel)]="editNumber"
+                        /></label>
+                        <label class="check"
+                            ><input
+                                name="editCaptain"
+                                type="checkbox"
+                                [(ngModel)]="editCaptain"
+                            />Игровой капитан</label
+                        >
+                        <button
+                            class="primary"
+                            [disabled]="
+                                !editNumber || editNumber < 1 || editNumber > 99
+                            "
+                        >
+                            Сохранить
+                        </button>
+                        <button type="button" (click)="cancelEdit()">
+                            Отмена
+                        </button>
+                    </form>
+                }
+            } @empty {
+                @if (loaded()) {
+                    <div class="empty-state">
+                        <h3>Добавьте первого игрока</h3>
+                        <p class="hint">
+                            Создатель команды не добавляется в состав
+                            автоматически.<br />Найдите себя и остальных игроков
+                            через «Добавить игрока».
+                        </p>
+                    </div>
+                }
+            }
+        </div>
+        @if (loaded() && roster().length >= 12) {
+            <p class="hint">
+                В составе 12 игроков. Чтобы добавить другого, сначала исключите
+                одного из текущего списка.
+            </p>
+        }
+    </fieldset>
+    <details class="inset">
+        <summary>Чем состав отличается от заявки?</summary>
+        <p class="hint">
+            Состав команды хранится между сезонами. Заявочный лист фиксирует
+            игроков конкретного турнира, а протокол — участников конкретного
+            матча. Изменения текущего списка не меняют уже утверждённые заявки и
+            протоколы.
+        </p>
+        <p class="hint">
+            Отметьте одного игрового капитана и укажите разные номера. Отметка
+            капитана не выдаёт доступ к управлению командой.
+        </p>
+    </details>
+</section>

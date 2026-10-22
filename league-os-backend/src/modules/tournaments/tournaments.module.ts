@@ -36,10 +36,16 @@ import { MatchRosterPlayerEntity } from '../match-rosters/entities/match-roster-
 import { StandingsModule } from '../standings/standings.module';
 import { VenueEntity } from '../venues/entities/venue.entity';
 import { PlayoffLaunchService } from './playoff-launch.service';
+import { CommunitiesModule } from '../communities/communities.module';
+import { CommunityMemberEntity } from '../communities/entities/community-member.entity';
+import { SeasonEntity } from '../seasons/entities/season.entity';
+import { RegistrationsModule } from '../registrations/registrations.module';
 
 @Module({
   imports: [
     AuthModule,
+    CommunitiesModule,
+    RegistrationsModule,
     PlayerSuspensionsModule,
     StandingsModule,
     TypeOrmModule.forFeature([
@@ -60,6 +66,8 @@ import { PlayoffLaunchService } from './playoff-launch.service';
       KnockoutBracketPlanEntity,
       MatchRosterPlayerEntity,
       VenueEntity,
+      CommunityMemberEntity,
+      SeasonEntity,
     ]),
   ],
   controllers: [TournamentsController],

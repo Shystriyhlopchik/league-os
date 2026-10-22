@@ -3,4 +3,5 @@ export enum TournamentAccessAction {
   EDIT = 'edit',
   MANAGE_MEMBERS = 'manage_members',
   PUBLISH = 'publish',
+  REVIEW_APPLICATIONS = 'review_applications',
 }

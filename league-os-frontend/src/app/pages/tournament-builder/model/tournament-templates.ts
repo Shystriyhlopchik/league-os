@@ -117,6 +117,9 @@ function baseDraft(templateId: TournamentTemplateId): TournamentBuilderDraft {
         playoff: {
             enabled: false,
             bracketSize: 4,
+            quarterFinalLegs: 1,
+            semiFinalLegs: 1,
+            semiFinalPairing: 'adjacent',
             seeding: 'standard',
             avoidSameSourceGroup: false,
             constraintMode: 'best_effort',
@@ -189,6 +192,7 @@ export function createTournamentTemplate(
         draft.details.name = yard ? 'Дворовая лига' : '';
         draft.details.slug = yard ? 'yard-league' : '';
         draft.qualification.enabled = true;
+        draft.qualification.winnersPerGroup = yard ? 1 : 2;
         draft.qualification.bestPlacedCount = yard ? 1 : 0;
         draft.playoff.enabled = true;
         draft.playoff.bracketSize = yard ? 4 : 8;

@@ -3,6 +3,8 @@ import { MatchServiceStatus } from '../enums/match-service-status.enum';
 import { MatchEventType } from '../../match-events/enums/match-event-type.enum';
 import { RedBallStatus } from '../entities/match-red-ball-activation.entity';
 import { MatchResolutionType } from '../../matches/enums/match-resolution-type.enum';
+import type { MatchRulesV1 } from '../../tournament-rules/types/tournament-rules-config.type';
+import type { MatchRosterCheckDto } from './match-roster-check.dto';
 
 export interface MatchServiceSessionDto {
   match: {
@@ -24,6 +26,8 @@ export interface MatchServiceSessionDto {
       winnerTeamId?: number;
       officialAt?: Date;
     };
+    matchRules?: MatchRulesV1;
+    knockoutTie?: MatchRosterCheckDto['match']['knockoutTie'];
 
     homeTeam: {
       id: number;

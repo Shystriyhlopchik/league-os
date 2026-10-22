@@ -5,8 +5,8 @@
             <p class="eyebrow">Конструктор турниров</p>
             <h1>{{ draft().details.name || "Новый турнир" }}</h1>
             <p class="subtitle">
-                Настройте структуру и правила. Прогресс сохраняется локально
-                после каждого изменения.
+                Сначала создайте турнир без команд. Затем откройте приём заявок,
+                подготовьте календарь и запустите соревнование.
             </p>
         </div>
 
@@ -15,10 +15,20 @@
                 class="status"
                 [class.status--draft]="draft().lifecycleStatus === 'draft'"
             >
-                {{ draft().lifecycleStatus }}
+                {{
+                    draft().lifecycleStatus === "draft"
+                        ? draft().tournamentId
+                            ? "Турнир создан · ещё не запущен"
+                            : "Не создан на сервере"
+                        : draft().lifecycleStatus === "completed"
+                          ? "Завершён"
+                          : "Турнир запущен"
+                }}
             </span>
             <small>
-                @if (store.dirty()) {
+                @if (!draft().tournamentId) {
+                    Изменения пока сохранены только в этом браузере
+                } @else if (store.dirty()) {
                     Есть несохранённые на сервере изменения
                 } @else {
                     Черновик синхронизирован
@@ -29,11 +39,32 @@
 
     @if (store.structureLocked()) {
         <div class="lock-banner">
-            <strong>Структура турнира опубликована.</strong>
+            <strong>Турнир запущен.</strong>
             Этапы, участники, группы и базовые правила доступны только для
             просмотра. Для изменения правил создайте новую версию.
         </div>
     }
+
+    <app-tournament-workflow
+        [tournamentId]="draft().tournamentId"
+        [current]="workflowPhase()"
+        [busy]="operation() !== null"
+        (selected)="selectWorkflow($event)"
+    />
+    <div class="notice">
+        @if (workflowPhase() === "setup") {
+            Создание турнира не требует команд и распределения по группам.
+            Заполните основные данные, структуру и правила. Кнопка «Создать
+            турнир» сохраняет их на сервере, но не запускает соревнование.
+        } @else if (workflowPhase() === "preparation") {
+            Используются только принятые заявки. Закройте приём, рассмотрите
+            отправленные заявки, распределите команды по группам и сформируйте
+            календарь.
+        } @else {
+            Запуск — отдельное действие после набора команд. Проверяются
+            участники, группы, рассмотрение заявок и готовность календаря.
+        }
+    </div>
 
     @if (store.notice()) {
         <div class="notice" role="status">
@@ -45,10 +76,10 @@
     <div class="builder__layout">
         <aside class="builder__sidebar">
             <app-tournament-wizard-stepper
-                [steps]="steps"
-                [current]="activeStep()"
-                [errorSteps]="errorSteps()"
-                (selected)="goToStep($event)"
+                [steps]="visibleSteps()"
+                [current]="visibleStepIndex()"
+                [errorSteps]="visibleErrorSteps()"
+                (selected)="selectVisibleStep($event)"
             />
         </aside>
 
@@ -57,10 +88,16 @@
                 <header class="step-card__header">
                     <div>
                         <span
-                            >Шаг {{ activeStep() + 1 }} из
-                            {{ steps.length }}</span
+                            >Настройка {{ visibleStepIndex() + 1 }} из
+                            {{ visibleSteps().length }}</span
                         >
-                        <h2>{{ steps[activeStep()].title }}</h2>
+                        <h2>
+                            {{
+                                workflowPhase() === "launch"
+                                    ? "Запуск турнира"
+                                    : steps[activeStep()].title
+                            }}
+                        </h2>
                     </div>
                     @if (stepIssueCount(activeStep())) {
                         <span class="error-badge">
@@ -201,16 +238,55 @@
                             </label>
 
                             <label class="field">
-                                ID сезона *
-                                <input
-                                    type="number"
-                                    min="1"
+                                Сообщество *
+                                <select
+                                    [ngModel]="selectedCommunityId()"
+                                    (ngModelChange)="selectCommunity(+$event)"
+                                    [disabled]="
+                                        store.structureLocked() ||
+                                        !!draft().tournamentId
+                                    "
+                                >
+                                    @for (
+                                        community of availableCommunities();
+                                        track community.id
+                                    ) {
+                                        <option [ngValue]="community.id">
+                                            {{ community.name }}
+                                        </option>
+                                    }
+                                </select>
+                            </label>
+                            <label class="field">
+                                Сезон *
+                                <select
                                     [ngModel]="draft().details.seasonId"
                                     (ngModelChange)="
                                         updateDetails('seasonId', +$event)
                                     "
                                     [disabled]="store.structureLocked()"
-                                />
+                                >
+                                    <option [ngValue]="0">
+                                        Выберите сезон
+                                    </option>
+                                    @for (
+                                        season of communitySeasons();
+                                        track season.id
+                                    ) {
+                                        <option [ngValue]="season.id">
+                                            {{ season.competitionName }} ·
+                                            {{ season.name }}
+                                        </option>
+                                    }
+                                </select>
+                                @if (!communitySeasons().length) {
+                                    <small
+                                        >Создайте сезон в разделе
+                                        <a routerLink="/dashboard/communities"
+                                            >«Сообщества»</a
+                                        >.</small
+                                    >
+                                }
                             </label>
 
                             <label class="field">
@@ -521,82 +597,118 @@
                     }
 
                     @case (2) {
-                        <div class="summary-strip">
-                            <div>
-                                <strong>{{
-                                    draft().participants.length
-                                }}</strong>
-                                <span>выбрано</span>
-                            </div>
-                            <div>
-                                <strong>{{
-                                    expectedTeamCount() || "—"
-                                }}</strong>
-                                <span>ожидается форматом</span>
-                            </div>
-                            <div>
-                                <strong>
-                                    {{
-                                        draft().participants.length ===
-                                        expectedTeamCount()
-                                            ? "Готово"
-                                            : "Проверьте"
-                                    }}
-                                </strong>
-                                <span>комплектность</span>
-                            </div>
-                        </div>
-                        <p class="hint">
-                            Команды выбираются из общего каталога. При
-                            сохранении мастер сам создаёт их участие в турнире и
-                            связывает с этапом.
-                        </p>
-                        @if (teamsLoading()) {
-                            <p class="empty-state">Загрузка команд…</p>
+                        @if (applicationsRequired()) {
+                            <p class="hint">
+                                Участники добавляются автоматически только после
+                                утверждения заявки. Ручного включения команд из
+                                каталога нет.
+                            </p>
+                            @for (
+                                team of draft().participants;
+                                track team.teamId
+                            ) {
+                                <article class="entity-card">
+                                    <strong>{{ team.name }}</strong> · заявка
+                                    принята
+                                </article>
+                            } @empty {
+                                <p class="empty-state">
+                                    Принятых заявок пока нет. Откройте приём
+                                    заявок и рассмотрите поступившие заявки
+                                    команд.
+                                </p>
+                            }
+                            <button
+                                class="button button--primary"
+                                (click)="selectWorkflow('review')"
+                            >
+                                Рассмотреть заявки
+                            </button>
                         } @else {
-                            <div class="team-grid">
-                                @for (team of teams(); track team.id) {
-                                    <article
-                                        class="team-card"
-                                        [class.team-card--selected]="
-                                            selectedTeamIds().has(team.id)
-                                        "
-                                    >
-                                        <label>
-                                            <input
-                                                type="checkbox"
-                                                [checked]="
-                                                    selectedTeamIds().has(
-                                                        team.id
-                                                    )
-                                                "
-                                                [disabled]="
-                                                    store.structureLocked()
-                                                "
-                                                (change)="toggleTeam(team)"
-                                            />
-                                            <span class="team-avatar">
-                                                @if (team.logoUrl) {
-                                                    <img
-                                                        [src]="team.logoUrl"
-                                                        [alt]="team.name"
-                                                    />
-                                                } @else {
-                                                    {{ team.name.slice(0, 1) }}
-                                                }
-                                            </span>
-                                            <span>
-                                                <strong>{{ team.name }}</strong>
-                                                <small>{{
-                                                    team.city ||
-                                                        team.village ||
-                                                        "Без города"
-                                                }}</small>
-                                            </span>
-                                        </label>
-                                    </article>
-                                }
+                            <div class="summary-strip">
+                                <div>
+                                    <strong>{{
+                                        draft().participants.length
+                                    }}</strong>
+                                    <span>выбрано</span>
+                                </div>
+                                <div>
+                                    <strong>{{
+                                        expectedTeamCount() || "—"
+                                    }}</strong>
+                                    <span>ожидается форматом</span>
+                                </div>
+                                <div>
+                                    <strong>
+                                        {{
+                                            draft().participants.length ===
+                                            expectedTeamCount()
+                                                ? "Готово"
+                                                : "Проверьте"
+                                        }}
+                                    </strong>
+                                    <span>комплектность</span>
+                                </div>
                             </div>
+                            <p class="hint">
+                                Команды выбираются из общего каталога. При
+                                сохранении мастер сам создаёт их участие в
+                                турнире и связывает с этапом.
+                            </p>
+                            @if (teamsLoading()) {
+                                <p class="empty-state">Загрузка команд…</p>
+                            } @else {
+                                <div class="team-grid">
+                                    @for (team of teams(); track team.id) {
+                                        <article
+                                            class="team-card"
+                                            [class.team-card--selected]="
+                                                selectedTeamIds().has(team.id)
+                                            "
+                                        >
+                                            <label>
+                                                <input
+                                                    type="checkbox"
+                                                    [checked]="
+                                                        selectedTeamIds().has(
+                                                            team.id
+                                                        )
+                                                    "
+                                                    [disabled]="
+                                                        store.structureLocked()
+                                                    "
+                                                    (change)="toggleTeam(team)"
+                                                />
+                                                <span class="team-avatar">
+                                                    @if (team.logoUrl) {
+                                                        <img
+                                                            [src]="team.logoUrl"
+                                                            [alt]="team.name"
+                                                        />
+                                                    } @else {
+                                                        {{
+                                                            team.name.slice(
+                                                                0,
+                                                                1
+                                                            )
+                                                        }}
+                                                    }
+                                                </span>
+                                                <span>
+                                                    <strong>{{
+                                                        team.name
+                                                    }}</strong>
+                                                    <small>{{
+                                                        team.city ||
+                                                            team.village ||
+                                                            "Без города"
+                                                    }}</small>
+                                                </span>
+                                            </label>
+                                        </article>
+                                    }
+                                </div>
+                            }
                         }
                     }
 
@@ -755,9 +867,7 @@
                                 @if (store.previews().schedule.length > 18) {
                                     <p class="hint">
                                         Показаны первые 18 из
-                                        {{
-                                            store.previews().schedule.length
-                                        }}
+                                        {{ store.previews().schedule.length }}
                                         матчей.
                                     </p>
                                 }
@@ -1075,6 +1185,94 @@
                                             </option>
                                         }
                                     </select>
+                                </label>
+                                <label class="field">
+                                    Матчей в четвертьфинальной паре
+                                    <select
+                                        [ngModel]="
+                                            draft().playoff.quarterFinalLegs ??
+                                            1
+                                        "
+                                        (ngModelChange)="
+                                            updatePlayoff(
+                                                'quarterFinalLegs',
+                                                +$event
+                                            )
+                                        "
+                                        [disabled]="
+                                            store.structureLocked() ||
+                                            draft().playoff.bracketSize < 8
+                                        "
+                                    >
+                                        <option [ngValue]="1">Один матч</option>
+                                        <option [ngValue]="2">
+                                            Два матча — дома и на выезде
+                                        </option>
+                                    </select>
+                                </label>
+                                <label class="field">
+                                    Матчей в полуфинальной паре
+                                    <select
+                                        [ngModel]="
+                                            draft().playoff.semiFinalLegs ?? 1
+                                        "
+                                        (ngModelChange)="
+                                            updatePlayoff(
+                                                'semiFinalLegs',
+                                                +$event
+                                            )
+                                        "
+                                        [disabled]="
+                                            store.structureLocked() ||
+                                            draft().playoff.bracketSize < 4
+                                        "
+                                    >
+                                        <option [ngValue]="1">Один матч</option>
+                                        <option [ngValue]="2">
+                                            Два матча — дома и на выезде
+                                        </option>
+                                    </select>
+                                    <small
+                                        >Проход по сумме голов, без правила
+                                        выездного гола. Финал и матч за третье
+                                        место — одна встреча. Дополнительное
+                                        время и пенальти применяются к ответной
+                                        игре при равенстве суммы.</small
+                                    >
+                                </label>
+                                <label class="field">
+                                    Переход из четвертьфиналов в полуфиналы
+                                    <select
+                                        aria-label="Схема полуфиналов"
+                                        [ngModel]="
+                                            draft().playoff.semiFinalPairing ??
+                                            'adjacent'
+                                        "
+                                        (ngModelChange)="
+                                            updatePlayoff(
+                                                'semiFinalPairing',
+                                                $event
+                                            )
+                                        "
+                                        [disabled]="
+                                            store.structureLocked() ||
+                                            draft().playoff.bracketSize < 8
+                                        "
+                                    >
+                                        <option value="adjacent">
+                                            Соседние пары: 1–2 / 3–4
+                                        </option>
+                                        <option value="cross">
+                                            По положению Дворовой лиги: 1–3 /
+                                            2–4
+                                        </option>
+                                    </select>
+                                    <small
+                                        >Номера четвертьфиналов сохраняются.
+                                        Меняются источники участников
+                                        полуфиналов, включая обе встречи
+                                        двухматчевой пары.</small
+                                    >
                                 </label>
                                 <label class="field">
                                     Посев
@@ -1658,39 +1856,185 @@
                                 class="button button--secondary"
                                 type="button"
                                 [disabled]="operation() !== null"
-                                (click)="validateTournament()"
+                                (click)="
+                                    validateTournament(
+                                        workflowPhase() === 'launch'
+                                            ? 'launch'
+                                            : 'configuration'
+                                    )
+                                "
                             >
                                 {{
                                     operation() === "validate"
                                         ? "Проверяем…"
-                                        : "Предварительная проверка"
+                                        : workflowPhase() === "launch"
+                                          ? "Проверить готовность к запуску"
+                                          : "Проверить структуру и правила"
                                 }}
                             </button>
-                            <button
-                                class="button button--primary"
-                                type="button"
-                                [disabled]="
-                                    operation() !== null ||
-                                    draft().lifecycleStatus !== 'draft'
-                                "
-                                (click)="publishTournament()"
-                            >
-                                {{
-                                    operation() === "publish"
-                                        ? "Публикуем…"
-                                        : "Опубликовать турнир"
-                                }}
-                            </button>
+                            @if (workflowPhase() === "launch") {
+                                <button
+                                    class="button button--primary"
+                                    type="button"
+                                    [disabled]="
+                                        operation() !== null ||
+                                        draft().lifecycleStatus !== 'draft'
+                                    "
+                                    (click)="publishTournament()"
+                                >
+                                    {{
+                                        operation() === "publish"
+                                            ? "Запускаем…"
+                                            : "Запустить турнир"
+                                    }}
+                                </button>
+                            } @else if (draft().tournamentId) {
+                                <button
+                                    class="button button--primary"
+                                    (click)="selectWorkflow('registration')"
+                                    [disabled]="operation() !== null"
+                                >
+                                    Перейти к приёму заявок →
+                                </button>
+                            }
                         </div>
                     }
                 }
             </section>
 
+            @if (workflowPhase() === "preparation") {
+                <section class="step-card preparation-calendar">
+                    <h2>Подготовка календаря</h2>
+                    <p class="hint">
+                        Сначала сохраните распределение команд. После
+                        формирования пар изменение групп блокируется. До запуска
+                        матчи скрыты от зрителей и недоступны для ввода
+                        результатов.
+                    </p>
+                    @if (groupStage()) {
+                        <button
+                            class="button button--primary"
+                            (click)="generateCalendar()"
+                            [disabled]="
+                                operation() !== null ||
+                                draft().registrationStatus !== 'closed' ||
+                                store.structureLocked()
+                            "
+                        >
+                            Сохранить группы и сформировать пары
+                        </button>
+                    }
+                    @if (
+                        draft().registrationStatus !== "closed" &&
+                        !store.structureLocked()
+                    ) {
+                        <p class="field-error">
+                            Перед подготовкой календаря закройте приём заявок в
+                            разделе регистрации.
+                        </p>
+                    }
+                    @if (preparedCalendar(); as calendar) {
+                        @if (
+                            calendar.matches.length && !store.structureLocked()
+                        ) {
+                            <label class="check-field"
+                                ><input
+                                    type="checkbox"
+                                    [(ngModel)]="resetCalendarConfirmed"
+                                />Подтверждаю отмену подготовленных матчей для
+                                изменения групп. Назначенные даты потребуется
+                                указать заново.</label
+                            >
+                            <button
+                                class="button button--secondary"
+                                (click)="resetCalendar()"
+                                [disabled]="
+                                    operation() !== null ||
+                                    !resetCalendarConfirmed
+                                "
+                            >
+                                Сбросить подготовленный календарь
+                            </button>
+                        }
+                        @for (match of calendar.matches; track match.id) {
+                            <div class="calendar-row">
+                                <span
+                                    >{{ match.round }} · {{ match.home }} —
+                                    {{ match.away }}</span
+                                >
+                                <label
+                                    >Дата и время (МСК)<input
+                                        #datetime
+                                        type="datetime-local"
+                                        [value]="
+                                            match.matchDatetime?.slice(0, 16) ||
+                                            ''
+                                        "
+                                        [disabled]="
+                                            operation() !== null ||
+                                            match.status !== 'scheduled'
+                                        "
+                                /></label>
+                                <label
+                                    >Площадка<select
+                                        #venue
+                                        [value]="match.venueId || ''"
+                                        [disabled]="
+                                            operation() !== null ||
+                                            match.status !== 'scheduled'
+                                        "
+                                    >
+                                        <option value="">
+                                            Выберите площадку
+                                        </option>
+                                        @for (
+                                            v of calendar.venues;
+                                            track v.id
+                                        ) {
+                                            <option [value]="v.id">
+                                                {{ v.name }}
+                                            </option>
+                                        }
+                                    </select></label
+                                >
+                                <button
+                                    class="button button--secondary"
+                                    (click)="
+                                        schedulePreparedMatch(
+                                            match.id,
+                                            datetime.value,
+                                            +venue.value
+                                        )
+                                    "
+                                    [disabled]="
+                                        operation() !== null ||
+                                        match.status !== 'scheduled'
+                                    "
+                                >
+                                    Сохранить время и площадку
+                                </button>
+                            </div>
+                        } @empty {
+                            <p class="empty-state">
+                                Матчи пока не сформированы.
+                            </p>
+                        }
+                    }
+                    <button
+                        class="button button--primary"
+                        (click)="selectWorkflow('launch')"
+                        [disabled]="operation() !== null"
+                    >
+                        Перейти к запуску →
+                    </button>
+                </section>
+            }
+
             <footer class="wizard-actions">
                 <button
                     class="button button--ghost"
                     type="button"
-                    [disabled]="activeStep() === 0"
+                    [disabled]="visibleStepIndex() === 0"
                     (click)="previous()"
                 >
                     ← Назад
@@ -1704,10 +2048,12 @@
                     {{
                         operation() === "save"
                             ? "Сохраняем…"
-                            : "Сохранить черновик"
+                            : !draft().tournamentId
+                              ? "Создать турнир"
+                              : "Сохранить настройки"
                     }}
                 </button>
-                @if (activeStep() < steps.length - 1) {
+                @if (visibleStepIndex() < visibleSteps().length - 1) {
                     <button
                         class="button button--primary"
                         type="button"

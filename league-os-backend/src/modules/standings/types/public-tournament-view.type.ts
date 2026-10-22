@@ -60,6 +60,16 @@ export interface PublicCrossGroupRanking {
 }
 
 export interface PublicBracketMatch {
+  tie?: {
+    tiePosition?: string;
+    leg: 1 | 2;
+    legs: 2;
+    home: number;
+    away: number;
+    complete: boolean;
+    completedLegs: number;
+    winnerTeamId?: number;
+  };
   id?: number;
   position: string;
   roundType: MatchRoundType;

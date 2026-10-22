@@ -34,6 +34,7 @@ export class TournamentConfigurationValidationService {
   async validate(
     tournamentId: number,
     config: TournamentRulesConfig,
+    draftOnly = false,
   ): Promise<TournamentValidationResult> {
     const tournament = await this.tournamentRepository.findOne({
       where: { id: tournamentId },
@@ -43,6 +44,7 @@ export class TournamentConfigurationValidationService {
 
     const result = this.rulesValidator.validate(config);
     if (!result.valid) return result;
+    if (draftOnly) return result;
 
     const [stages, groups, participants, teamCount] = await Promise.all([
       this.stageRepository.find({
@@ -76,7 +78,7 @@ export class TournamentConfigurationValidationService {
         errors,
         'INSUFFICIENT_TEAMS',
         '$.teams',
-        'At least two active tournament teams are required',
+        'Для запуска нужны как минимум две команды с принятыми заявками',
       );
     }
     if (stages.length !== config.stages.length) {
@@ -122,7 +124,7 @@ export class TournamentConfigurationValidationService {
           errors,
           'INITIAL_PARTICIPANT_COUNT_MISMATCH',
           `$.stages.${firstStage.key}.participants`,
-          `First stage has ${firstStageCount} participants, tournament has ${teamCount} active teams`,
+          `Распределите все принятые команды по первому этапу: распределено ${firstStageCount} из ${teamCount}`,
         );
       }
     }
@@ -151,7 +153,7 @@ export class TournamentConfigurationValidationService {
           errors,
           'UNASSIGNED_GROUP_PARTICIPANTS',
           `$.stages.${stage.key}.participants`,
-          `${unassigned.length} participants are not assigned to a group in this stage`,
+          `Распределите команды по группам: без группы ${unassigned.length}`,
         );
       }
       if (rule.groups.teamsPerGroup) {
@@ -161,7 +163,7 @@ export class TournamentConfigurationValidationService {
             errors,
             'GROUP_TEAM_COUNT_MISMATCH',
             `$.stages.${stage.key}.groups`,
-            `Groups require ${expected} teams, stage has ${stageParticipants.length}`,
+            `Для выбранного формата нужно ${expected} команд, распределено ${stageParticipants.length}`,
           );
         }
         for (const group of stageGroups) {
@@ -173,7 +175,7 @@ export class TournamentConfigurationValidationService {
               errors,
               'GROUP_CAPACITY_MISMATCH',
               `$.stages.${stage.key}.groups.${group.key}`,
-              `Group has ${count} participants, rules require ${rule.groups.teamsPerGroup}`,
+              `${group.name}: распределено ${count} команд, требуется ${rule.groups.teamsPerGroup}`,
             );
           }
         }
@@ -188,7 +190,7 @@ export class TournamentConfigurationValidationService {
             errors,
             'GROUP_TEAM_COUNT_MISMATCH',
             `$.stages.${stage.key}.groups`,
-            `Groups require ${expected} teams, stage has ${stageParticipants.length}`,
+            `Для выбранного формата нужно ${expected} команд, распределено ${stageParticipants.length}`,
           );
         }
         const orderedGroups = [...stageGroups].sort(
@@ -204,7 +206,7 @@ export class TournamentConfigurationValidationService {
               errors,
               'GROUP_CAPACITY_MISMATCH',
               `$.stages.${stage.key}.groups.${group.key}`,
-              `Group has ${count} participants, rules require ${required}`,
+              `${group.name}: распределено ${count} команд, требуется ${required}`,
             );
           }
         });

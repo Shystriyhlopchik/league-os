@@ -27,12 +27,20 @@ import { PlayerSuspensionsService } from '../player-suspensions/player-suspensio
 import { FeatureFlagGuard } from '../../common/feature-flags/feature-flag.guard';
 import { FeatureFlagsService } from '../../common/feature-flags/feature-flags.service';
 import { PlayoffLaunchService } from './playoff-launch.service';
+import {
+  CommunityMemberEntity,
+  CommunityRole,
+} from '../communities/entities/community-member.entity';
 
 describe('Tournament lifecycle HTTP integration', () => {
   let app: INestApplication;
 
   const tournaments = {
-    findOne: jest.fn(async () => ({ id: 10, ownerUserId: 1 })),
+    findOne: jest.fn(async () => ({
+      id: 10,
+      ownerUserId: 1,
+      season: { competition: { community: { id: 5, isActive: true } } },
+    })),
   } as unknown as Repository<TournamentEntity>;
   const members = {
     findOne: jest.fn(async ({ where }: { where: { userId: number } }) => {
@@ -126,6 +134,21 @@ describe('Tournament lifecycle HTTP integration', () => {
         {
           provide: getRepositoryToken(TournamentMemberEntity),
           useValue: members,
+        },
+        {
+          provide: getRepositoryToken(CommunityMemberEntity),
+          useValue: {
+            findOne: jest.fn(async ({ where }) =>
+              where.communityId === 5 && [1, 2, 3].includes(where.userId)
+                ? {
+                    role:
+                      where.userId === 1
+                        ? CommunityRole.Owner
+                        : CommunityRole.Member,
+                  }
+                : null,
+            ),
+          },
         },
       ],
     })

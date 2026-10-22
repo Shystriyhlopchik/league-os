@@ -39,8 +39,8 @@ export class DashboardPageComponent {
             feature: 'tournamentBuilder',
         },
         {
-            title: 'Трансферы игроков',
-            description: 'Переход игрока из одной команды в другую',
+            title: 'История прежних трансферов',
+            description: 'Новые переходы — в разделе заявок на турниры и составов',
             route: '/dashboard/player-transfers',
             roles: [UserRole.Admin, UserRole.SuperAdmin],
             variant: '#2ECC71',
@@ -65,13 +65,6 @@ export class DashboardPageComponent {
             route: '/dashboard/match-results',
             roles: [UserRole.Referee, UserRole.Admin, UserRole.SuperAdmin],
             variant: '#F04E55',
-        },
-        {
-            title: 'Моя команда',
-            description: 'Регистрация, редактирование общей заявки',
-            route: '/dashboard/team-players',
-            roles: [UserRole.Admin, UserRole.SuperAdmin, UserRole.Captain],
-            variant: '#2ECC71',
         },
         {
             title: 'Регистрация на игру',
@@ -106,7 +99,9 @@ export class DashboardPageComponent {
     readonly availableActions = computed(() => {
         return this.actions.filter(
             (action) =>
-                this.sessionStore.hasAnyRole(...action.roles) &&
+                (action.feature === 'tournamentBuilder'
+                    ? this.sessionStore.canManageCommunityTournaments()
+                    : this.sessionStore.hasAnyRole(...action.roles)) &&
                 (!action.feature || this.featureFlags()[action.feature]),
         );
     });

@@ -50,6 +50,150 @@ describe('KnockoutBracketEngine', () => {
     qualifier(4, 40),
   ];
 
+  it.each([1, 2] as const)(
+    'routes quarter-finals 1–3 / 2–4 into %i-leg semi-finals without renumbering the quarter-finals',
+    (legs) => {
+      const plans = engine.generate(
+        bracketInput(
+          {
+            size: 8,
+            quarterFinalLegs: legs,
+            semiFinalLegs: legs,
+            semiFinalPairing: 'cross',
+            placementMatch: 'third_place',
+            seeding: { type: 'manual' },
+          },
+          Array.from({ length: 8 }, (_, i) => qualifier(i + 1, i % 2)),
+          {
+            manualPairs: Array.from({ length: 4 }, (_, i) => ({
+              homeTournamentTeamId: i + 1,
+              awayTournamentTeamId: 8 - i,
+            })),
+          },
+        ),
+      );
+      const suffix = legs === 2 ? ':L1' : '';
+      const outcome = (position: string) => ({
+        type: 'match_outcome',
+        bracketPosition: position,
+        outcome: 'winner',
+      });
+      expect(
+        plans.find((p) => p.bracketPosition === `QF-1${suffix}`)
+          ?.resolvedAwayTeamId,
+      ).toBe(1008);
+      expect(
+        plans.find((p) => p.bracketPosition === `QF-3${suffix}`)
+          ?.resolvedHomeTeamId,
+      ).toBe(1003);
+      expect(
+        plans.find((p) => p.bracketPosition === `SF-1${suffix}`),
+      ).toMatchObject({
+        homeSource: outcome('QF-1'),
+        awaySource: outcome('QF-3'),
+      });
+      expect(
+        plans.find((p) => p.bracketPosition === `SF-2${suffix}`),
+      ).toMatchObject({
+        homeSource: outcome('QF-2'),
+        awaySource: outcome('QF-4'),
+      });
+      if (legs === 2) {
+        expect(
+          plans.find((p) => p.bracketPosition === 'SF-1:L2'),
+        ).toMatchObject({
+          homeSource: outcome('QF-3'),
+          awaySource: outcome('QF-1'),
+        });
+        expect(
+          plans.find((p) => p.bracketPosition === 'SF-2:L2'),
+        ).toMatchObject({
+          homeSource: outcome('QF-4'),
+          awaySource: outcome('QF-2'),
+        });
+      }
+      expect(plans.find((p) => p.bracketPosition === 'FINAL')).toMatchObject({
+        homeSource: outcome('SF-1'),
+        awaySource: outcome('SF-2'),
+      });
+      expect(
+        plans.find((p) => p.bracketPosition === 'THIRD_PLACE')?.homeSource,
+      ).toEqual({
+        type: 'match_outcome',
+        bracketPosition: 'SF-1',
+        outcome: 'loser',
+      });
+    },
+  );
+
+  it('preserves adjacent routing when the new setting is absent', () => {
+    const plans = engine.generate(
+      bracketInput(
+        {
+          size: 8,
+          seeding: { type: 'standard', ranking: { criteria: ['points'] } },
+        },
+        Array.from({ length: 8 }, (_, i) => qualifier(i + 1, i % 2)),
+      ),
+    );
+    expect(
+      plans.find((p) => p.bracketPosition === 'SF-1')?.awaySource,
+    ).toMatchObject({ bracketPosition: 'QF-2' });
+    expect(
+      plans.find((p) => p.bracketPosition === 'SF-2')?.homeSource,
+    ).toMatchObject({ bracketPosition: 'QF-3' });
+  });
+
+  it('creates fourteen fixtures for two-leg quarter-finals and semi-finals, reversing the return fixtures', () => {
+    const plans = engine.generate(
+      bracketInput(
+        {
+          size: 8,
+          quarterFinalLegs: 2,
+          semiFinalLegs: 2,
+          placementMatch: 'third_place',
+          seeding: { type: 'standard', ranking: { criteria: ['points'] } },
+        },
+        Array.from({ length: 8 }, (_, i) => qualifier(i + 1, i % 2)),
+      ),
+    );
+    expect(plans).toHaveLength(14);
+    expect(new Set(plans.map((p) => p.bracketPosition)).size).toBe(14);
+    expect(plans[0].bracketPosition).toBe('QF-1:L1');
+    expect(plans[1].bracketPosition).toBe('QF-1:L2');
+    expect(plans[1].homeSource).toEqual(plans[0].awaySource);
+    expect(plans[1].awaySource).toEqual(plans[0].homeSource);
+    expect(plans[8].homeSource).toEqual({
+      type: 'match_outcome',
+      bracketPosition: 'QF-1',
+      outcome: 'winner',
+    });
+    expect(plans[9].homeSource).toEqual(plans[8].awaySource);
+    expect(plans.slice(-2).map((p) => p.bracketPosition)).toEqual([
+      'THIRD_PLACE',
+      'FINAL',
+    ]);
+    expect(plans.map((p) => p.order)).toEqual(
+      Array.from({ length: 14 }, (_, i) => i + 1),
+    );
+  });
+
+  it('can make semi-finals two-legged while keeping quarter-finals single-legged', () => {
+    const plans = engine.generate(
+      bracketInput(
+        {
+          size: 8,
+          semiFinalLegs: 2,
+          seeding: { type: 'standard', ranking: { criteria: ['points'] } },
+        },
+        Array.from({ length: 8 }, (_, i) => qualifier(i + 1, i % 2)),
+      ),
+    );
+    expect(plans).toHaveLength(9);
+    expect(plans[0].bracketPosition).toBe('QF-1');
+    expect(plans[4].bracketPosition).toBe('SF-1:L1');
+  });
+
   it('builds standard seeding, final and third-place sources', () => {
     const plans = engine.generate(
       bracketInput(

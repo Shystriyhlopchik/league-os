@@ -80,6 +80,20 @@ services:
     volumes:
        - ../../league-os-backend:/app
        - backend_node_modules:/app/node_modules
+       # Keep watch output separate from host builds, inside a disposable cache.
+       # Mount the parent so Nest can safely clear the nested .dev/dist folder.
+       - backend_dev_cache:/app/.dev
+
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "const req=require('http').get('http://127.0.0.1:3000/api/feature-flags',r=>process.exit(r.statusCode===200?0:1));req.on('error',()=>process.exit(1));req.setTimeout(2000,()=>{req.destroy();process.exit(1)})"
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
 
     networks:
       - league-network
@@ -113,6 +127,7 @@ services:
 volumes:
   postgres_dev_data:
   backend_node_modules:
+  backend_dev_cache:
   frontend_node_modules:
   pgadmin_data:
 

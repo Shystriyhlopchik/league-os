@@ -10,3 +10,8 @@ export class GenerateGroupStageScheduleDto extends PreviewGroupStageScheduleDto 
   @IsIn([GROUP_STAGE_SCHEDULE_RESET_CONFIRMATION])
   resetConfirmation?: typeof GROUP_STAGE_SCHEDULE_RESET_CONFIRMATION;
 }
+
+export class ResetPreparedScheduleDto {
+  @IsIn([GROUP_STAGE_SCHEDULE_RESET_CONFIRMATION])
+  confirmation: typeof GROUP_STAGE_SCHEDULE_RESET_CONFIRMATION;
+}

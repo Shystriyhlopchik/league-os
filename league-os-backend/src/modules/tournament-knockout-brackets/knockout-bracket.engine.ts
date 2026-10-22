@@ -5,7 +5,9 @@ import {
 } from '@nestjs/common';
 
 import { MatchRoundType } from '../matches/enums/match-round-type.enum';
+import { expandKnockoutLegs, knockoutPredecessorPairs } from './knockout-legs';
 import type {
+  BracketRuleV1,
   CrossGroupCriterionV1,
   KnockoutParticipantSourceV1,
   PairingConstraintV1,
@@ -34,10 +36,14 @@ export class KnockoutBracketEngine {
       ]),
     );
     const pairs = this.seedFirstRound(input, drawRanks);
-    return this.buildPlans(
-      pairs,
-      input.qualificationSnapshotId,
-      input.bracket.placementMatch === 'third_place',
+    return expandKnockoutLegs(
+      this.buildPlans(
+        pairs,
+        input.qualificationSnapshotId,
+        input.bracket.placementMatch === 'third_place',
+        input.bracket.semiFinalPairing,
+      ),
+      input.bracket,
     );
   }
 
@@ -344,6 +350,7 @@ export class KnockoutBracketEngine {
     pairs: SeededPair[],
     qualificationSnapshotId: number,
     thirdPlace: boolean,
+    semiFinalPairing?: BracketRuleV1['semiFinalPairing'],
   ): KnockoutMatchPlan[] {
     const plans: KnockoutMatchPlan[] = [];
     let roundType = this.roundTypeForEntrants(pairs.length * 2);
@@ -377,7 +384,12 @@ export class KnockoutBracketEngine {
       roundNumber += 1;
       roundType = this.roundTypeForEntrants(previousPositions.length);
       const nextPositions: string[] = [];
+      const predecessorPairs = knockoutPredecessorPairs(
+        previousPositions,
+        semiFinalPairing,
+      );
       for (let index = 0; index < previousPositions.length; index += 2) {
+        const [homePosition, awayPosition] = predecessorPairs[index / 2];
         const bracketPosition = this.position(roundType, index / 2 + 1);
         if (
           roundType === MatchRoundType.FINAL &&
@@ -389,11 +401,8 @@ export class KnockoutBracketEngine {
             bracketPosition: 'THIRD_PLACE',
             roundType: MatchRoundType.THIRD_PLACE,
             roundNumber,
-            homeSource: this.outcomeSource(previousPositions[index], 'loser'),
-            awaySource: this.outcomeSource(
-              previousPositions[index + 1],
-              'loser',
-            ),
+            homeSource: this.outcomeSource(homePosition, 'loser'),
+            awaySource: this.outcomeSource(awayPosition, 'loser'),
           });
         }
         plans.push({
@@ -401,11 +410,8 @@ export class KnockoutBracketEngine {
           bracketPosition,
           roundType,
           roundNumber,
-          homeSource: this.outcomeSource(previousPositions[index], 'winner'),
-          awaySource: this.outcomeSource(
-            previousPositions[index + 1],
-            'winner',
-          ),
+          homeSource: this.outcomeSource(homePosition, 'winner'),
+          awaySource: this.outcomeSource(awayPosition, 'winner'),
         });
         nextPositions.push(bracketPosition);
       }

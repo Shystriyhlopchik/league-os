@@ -4,6 +4,34 @@ import { createYardLeagueRules } from './yard-league-rules.fixture';
 describe('TournamentRulesConfigValidator', () => {
   const validator = new TournamentRulesConfigValidator();
 
+  it('rejects an unknown semifinal routing and cross-routing without quarter-finals', () => {
+    const config = createYardLeagueRules();
+    const playoff = config.stages.find((stage) => stage.type === 'knockout')!;
+    if (playoff.type !== 'knockout') throw new Error('Missing playoff');
+    playoff.bracket.semiFinalPairing = 'cross';
+    expect(validator.validate(config).errors).toContainEqual(
+      expect.objectContaining({ code: 'INVALID_SEMIFINAL_PAIRING' }),
+    );
+    (playoff.bracket as unknown as Record<string, unknown>).semiFinalPairing =
+      'unknown';
+    expect(validator.validate(config).errors).toContainEqual(
+      expect.objectContaining({ code: 'INVALID_SEMIFINAL_PAIRING' }),
+    );
+  });
+
+  it('accepts optional one/two-leg formats and rejects other leg counts', () => {
+    const config = createYardLeagueRules();
+    const playoff = config.stages.find((stage) => stage.type === 'knockout')!;
+    if (playoff.type !== 'knockout') throw new Error('Missing playoff');
+    playoff.bracket.quarterFinalLegs = 2;
+    playoff.bracket.semiFinalLegs = 2;
+    expect(validator.validate(config).valid).toBe(true);
+    (playoff.bracket as unknown as Record<string, unknown>).semiFinalLegs = 3;
+    expect(validator.validate(config).errors).toContainEqual(
+      expect.objectContaining({ code: 'INVALID_KNOCKOUT_LEGS' }),
+    );
+  });
+
   it('accepts the typed Yard League configuration', () => {
     const config = createYardLeagueRules();
     expect(validator.validate(config)).toEqual({

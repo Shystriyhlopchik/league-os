@@ -25,6 +25,10 @@ import { TournamentEntity } from './entities/tournaments.entity';
 import { TournamentGroupEntity } from '../tournament-groups/entities/tournament-group.entity';
 import { VenueEntity } from '../venues/entities/venue.entity';
 import type { LaunchPlayoffDto } from './dto/launch-playoff.dto';
+import {
+  knockoutLeg,
+  knockoutPredecessorPairs,
+} from '../tournament-knockout-brackets/knockout-legs';
 
 interface PlayoffStructure {
   tournament: TournamentEntity;
@@ -137,6 +141,8 @@ export class PlayoffLaunchService {
       }
     }
 
+    const bracketRules =
+      bracket?.bracketConfig ?? structure.knockoutRules.bracket;
     return {
       tournament: {
         id: structure.tournament.id,
@@ -153,6 +159,18 @@ export class PlayoffLaunchService {
         id: structure.knockoutStage.id,
         name: structure.knockoutStage.name,
         bracketSize: structure.knockoutRules.bracket.size,
+        semiFinalPairing: bracketRules.semiFinalPairing ?? 'adjacent',
+        semiFinalSources:
+          bracketRules.size >= 8
+            ? knockoutPredecessorPairs(
+                ['QF-1', 'QF-2', 'QF-3', 'QF-4'],
+                bracketRules.semiFinalPairing,
+              ).map(([home, away], index) => ({
+                position: `SF-${index + 1}`,
+                home,
+                away,
+              }))
+            : [],
         expectedMatches: this.expectedMatches(structure.knockoutRules),
       },
       groups: groups.map((group) => ({
@@ -197,6 +215,8 @@ export class PlayoffLaunchService {
           .map((plan) => ({
             id: plan.match?.id,
             bracketPosition: plan.bracketPosition,
+            leg: knockoutLeg(plan.bracketPosition).leg,
+            legs: knockoutLeg(plan.bracketPosition).legs,
             homeTeamName: plan.match?.homeTeam?.name,
             awayTeamName: plan.match?.awayTeam?.name,
             matchDatetime: plan.match?.matchDatetime,
@@ -288,7 +308,7 @@ export class PlayoffLaunchService {
       dto.selectedTournamentTeamIds.some((id) => !pairedIds.includes(id))
     ) {
       throw new BadRequestException(
-        'Every selected team must appear in exactly one semifinal pair',
+        'Every selected team must appear in exactly one first-round pair',
       );
     }
 
@@ -367,18 +387,36 @@ export class PlayoffLaunchService {
     if (!knockoutRules) {
       throw new ConflictException('Published rules have no knockout bracket');
     }
-    if (knockoutRules.bracket.size !== 4) {
+    if (![4, 8].includes(knockoutRules.bracket.size)) {
       throw new ConflictException(
-        'The playoff launch screen currently supports four-team semifinals',
+        'Запуск плей-офф поддерживает сетки на четыре или восемь команд',
       );
     }
     return { tournament, groupStage, knockoutStage, knockoutRules };
   }
 
   private expectedMatches(rules: KnockoutStageRulesV1) {
+    const positions: Array<{ bracketPosition: string; label: string }> = [];
+    const addRound = (
+      prefix: string,
+      label: string,
+      count: number,
+      legs = 1,
+    ) => {
+      for (let i = 1; i <= count; i++) {
+        for (let leg = 1; leg <= legs; leg++) {
+          positions.push({
+            bracketPosition: `${prefix}-${i}${legs === 2 ? `:L${leg}` : ''}`,
+            label: `${label} ${i}${legs === 2 ? ` · ${leg === 1 ? 'первый' : 'ответный'} матч` : ''}`,
+          });
+        }
+      }
+    };
+    if (rules.bracket.size === 8)
+      addRound('QF', 'Четвертьфинал', 4, rules.bracket.quarterFinalLegs);
+    addRound('SF', 'Полуфинал', 2, rules.bracket.semiFinalLegs);
     return [
-      { bracketPosition: 'SF-1', label: 'Полуфинал 1' },
-      { bracketPosition: 'SF-2', label: 'Полуфинал 2' },
+      ...positions,
       ...(rules.bracket.placementMatch === 'third_place'
         ? [
             {

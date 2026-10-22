@@ -13,6 +13,20 @@
         ></app-info-card>
 
         <div class="dashboard-page__actions">
+            <a class="dashboard-page__action" routerLink="/dashboard/my-teams">
+                <span class="dashboard-page__action-content"><strong>Мои команды · создание и состав</strong><small>Карточка, логотип, игроки и права управления</small></span><span class="dashboard-page__action-arrow">›</span>
+            </a>
+            <a class="dashboard-page__action" routerLink="/dashboard/tournament-applications">
+                <span class="dashboard-page__action-content"><strong>Заявки на турниры</strong><small>Заявочный лист команды, отправка и решения организатора</small></span>
+                <span class="dashboard-page__action-arrow">›</span>
+            </a>
+            <a class="dashboard-page__action" routerLink="/dashboard/communities">
+                <span class="dashboard-page__action-content">
+                    <strong>Сообщества · участники и права</strong>
+                    <small>Выбор сообщества, управление доступом и турнирами</small>
+                </span>
+                <span class="dashboard-page__action-arrow">›</span>
+            </a>
             @for (action of availableActions(); track action.route) {
                 <a class="dashboard-page__action" [routerLink]="action.route">
                     <span class="dashboard-page__action-content">

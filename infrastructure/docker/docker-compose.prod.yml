@@ -1,4 +1,4 @@
-name: league-os-prod
+name: ${COMPOSE_PROJECT_NAME:-league-os-prod}
 
 x-logging: &default-logging
   driver: json-file
@@ -10,7 +10,7 @@ services:
   database:
     image: postgres:16-alpine
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_BIND_PORT:-5432}:5432"
     restart: unless-stopped
     env_file:
       - ../../.env

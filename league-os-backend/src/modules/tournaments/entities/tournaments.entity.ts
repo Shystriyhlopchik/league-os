@@ -18,11 +18,28 @@ import { TournamentStageEntity } from '../../tournament-stages/entities/tourname
 import { TournamentRuleVersionEntity } from '../../tournament-rules/entities/tournament-rule-version.entity';
 import { TournamentMemberEntity } from '../../tournament-members/entities/tournament-member.entity';
 import { TournamentLifecycleStatus } from '../enums/tournament-lifecycle-status.enum';
+import type { RegistrationPolicy } from '../../registrations/entities/registration.entity';
 
 @Entity('tournaments')
 @Index('IDX_tournaments_owner_user', ['ownerUserId'])
 @Index('IDX_tournaments_active_rule_version', ['activeRuleVersionId'])
 export class TournamentEntity extends BaseEntity {
+  @Column({ name: 'registration_required', default: false })
+  registrationRequired: boolean;
+
+  @Column({ name: 'registration_status', default: 'not_open' })
+  registrationStatus: string;
+
+  @Column({ name: 'registration_policy', type: 'jsonb', nullable: true })
+  registrationPolicy: RegistrationPolicy | null;
+
+  @Column({
+    name: 'registration_opened_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  registrationOpenedAt: Date | null;
+
   @Column({ name: 'season_id' })
   seasonId: number;
 

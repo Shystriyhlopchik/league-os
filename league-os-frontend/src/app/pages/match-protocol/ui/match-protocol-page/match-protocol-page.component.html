@@ -7,12 +7,17 @@
 
     @if (store.isLoading()) {
         <p class="state-text">Загружаем матч...</p>
-    } @else if (store.error()) {
+    } @else if (store.error() && !store.match()) {
         <p class="state-text state-text--error">
             {{ store.error() }}
         </p>
     } @else {
         @if (store.match(); as match) {
+            @if (store.error()) {
+                <p class="state-text state-text--error" role="alert">
+                    {{ store.error() }}
+                </p>
+            }
             <app-info-card
                 title="{{ match.homeTeam.name }} — {{ match.awayTeam.name }}"
                 label="{{ match.matchDatetime | date: 'd MMMM, HH:mm' }}"
@@ -53,6 +58,83 @@
                 </div>
             </section>
 
+            @if (match.knockoutTie; as tie) {
+                <p class="state-text">
+                    {{ tie.tiePosition }} ·
+                    {{ tie.leg === 1 ? "Первый матч" : "Ответный матч" }}.
+                    @if (tie.previousScore) {
+                        Сумма двух встреч: {{ aggregateHome }} :
+                        {{ aggregateAway }} (в порядке команд этого матча).
+                    }
+                </p>
+            }
+            @if (
+                store.session()?.currentHalf === 2 &&
+                (store.isRunning() || store.isPaused())
+            ) {
+                @if (needsExtraTime) {
+                    <section class="controls">
+                        <p>
+                            Счёт дополнительного времени (без основного
+                            времени):
+                        </p>
+                        <label
+                            >{{ match.homeTeam.name }}
+                            <input
+                                type="number"
+                                min="0"
+                                [(ngModel)]="extraHome"
+                        /></label>
+                        <label
+                            >{{ match.awayTeam.name }}
+                            <input
+                                type="number"
+                                min="0"
+                                [(ngModel)]="extraAway"
+                        /></label>
+                    </section>
+                }
+                @if (needsPenalties) {
+                    <section class="controls">
+                        <p>
+                            Серия пенальти:
+                            {{
+                                match.matchRules?.penalties?.initialKicksPerTeam
+                            }}
+                            ударов, затем до преимущества. Голы серии не входят
+                            в счёт матча.
+                        </p>
+                        <label
+                            >{{ match.homeTeam.name }} · забито
+                            <input
+                                type="number"
+                                min="0"
+                                [(ngModel)]="penaltyHome"
+                        /></label>
+                        <label
+                            >Ударов хозяев
+                            <input
+                                type="number"
+                                min="0"
+                                [(ngModel)]="homeKicks"
+                        /></label>
+                        <label
+                            >{{ match.awayTeam.name }} · забито
+                            <input
+                                type="number"
+                                min="0"
+                                [(ngModel)]="penaltyAway"
+                        /></label>
+                        <label
+                            >Ударов гостей
+                            <input
+                                type="number"
+                                min="0"
+                                [(ngModel)]="awayKicks"
+                        /></label>
+                    </section>
+                }
+            }
             @if (visibleActiveRedBall(); as activeRedBall) {
                 <section class="red-ball-panel">
                     <div>
@@ -125,7 +207,7 @@
                     </button>
                 }
 
-                @if (store.session()?.status === 'second_half') {
+                @if (store.session()?.status === "second_half") {
                     <button
                         type="button"
                         class="control-button control-button--danger"
@@ -236,7 +318,8 @@
 
                         @if (goalDraft(); as draft) {
                             <p>
-                                {{ draft.minute }} мин · {{ draft.second }} сек · {{ draft.half }} тайм
+                                {{ draft.minute }} мин · {{ draft.second }} сек
+                                · {{ draft.half }} тайм
                             </p>
                         }
                     </div>
@@ -250,7 +333,7 @@
                     </button>
                 </div>
 
-                @if (goalStep() === 'team') {
+                @if (goalStep() === "team") {
                     <div class="event-modal__section">
                         <h3>Выберите команду</h3>
 
@@ -274,27 +357,30 @@
                     </div>
                 }
 
-                @if (goalStep() === 'scorer') {
+                @if (goalStep() === "scorer") {
                     <div class="event-modal__section">
                         <h3>Автор гола — {{ selectedGoalTeamName() }}</h3>
 
                         <div class="players-list">
-                            @for (player of goalPlayers(); track player.matchRosterPlayerId) {
+                            @for (
+                                player of goalPlayers();
+                                track player.matchRosterPlayerId
+                            ) {
                                 <button
                                     type="button"
                                     class="player-card"
                                     (click)="selectGoalScorer(player.id)"
                                 >
-                                <span>
-                                    {{ getPlayerName(player) }}
-                                </span>
+                                    <span>
+                                        {{ getPlayerName(player) }}
+                                    </span>
                                 </button>
                             }
                         </div>
                     </div>
                 }
 
-                @if (goalStep() === 'assist') {
+                @if (goalStep() === "assist") {
                     <div class="event-modal__section">
                         <h3>Голевая передача</h3>
 
@@ -307,16 +393,19 @@
                         </button>
 
                         <div class="players-list">
-                            @for (player of goalPlayers(); track player.matchRosterPlayerId) {
+                            @for (
+                                player of goalPlayers();
+                                track player.matchRosterPlayerId
+                            ) {
                                 @if (player.id !== goalDraft()?.playerId) {
                                     <button
                                         type="button"
                                         class="player-card"
                                         (click)="selectGoalAssist(player.id)"
                                     >
-                                    <span>
-                                        {{ getPlayerName(player) }}
-                                    </span>
+                                        <span>
+                                            {{ getPlayerName(player) }}
+                                        </span>
                                     </button>
                                 }
                             }
@@ -335,9 +424,8 @@
 
                         @if (cardDraft(); as draft) {
                             <p>
-                                {{ draft.minute }} мин ·
-                                {{ draft.second }} сек ·
-                                {{ draft.half }} тайм
+                                {{ draft.minute }} мин · {{ draft.second }} сек
+                                · {{ draft.half }} тайм
                             </p>
                         }
                     </div>
@@ -351,7 +439,7 @@
                     </button>
                 </div>
 
-                @if (cardStep() === 'team') {
+                @if (cardStep() === "team") {
                     <div class="event-modal__section">
                         <h3>Выберите команду</h3>
 
@@ -375,20 +463,23 @@
                     </div>
                 }
 
-                @if (cardStep() === 'player') {
+                @if (cardStep() === "player") {
                     <div class="event-modal__section">
                         <h3>Игрок — {{ selectedCardTeamName() }}</h3>
 
                         <div class="players-list">
-                            @for (player of cardPlayers(); track player.matchRosterPlayerId) {
+                            @for (
+                                player of cardPlayers();
+                                track player.matchRosterPlayerId
+                            ) {
                                 <button
                                     type="button"
                                     class="player-card"
                                     (click)="selectCardPlayer(player.id)"
                                 >
-                                <span>
-                                    {{ getPlayerName(player) }}
-                                </span>
+                                    <span>
+                                        {{ getPlayerName(player) }}
+                                    </span>
                                 </button>
                             }
                         </div>
@@ -406,9 +497,8 @@
 
                         @if (ownGoalDraft(); as draft) {
                             <p>
-                                {{ draft.minute }} мин ·
-                                {{ draft.second }} сек ·
-                                {{ draft.half }} тайм
+                                {{ draft.minute }} мин · {{ draft.second }} сек
+                                · {{ draft.half }} тайм
                             </p>
                         }
                     </div>
@@ -422,7 +512,7 @@
                     </button>
                 </div>
 
-                @if (ownGoalStep() === 'team') {
+                @if (ownGoalStep() === "team") {
                     <div class="event-modal__section">
                         <h3>Команда игрока, забившего в свои ворота</h3>
 
@@ -446,20 +536,23 @@
                     </div>
                 }
 
-                @if (ownGoalStep() === 'player') {
+                @if (ownGoalStep() === "player") {
                     <div class="event-modal__section">
                         <h3>Игрок — {{ selectedOwnGoalTeamName() }}</h3>
 
                         <div class="players-list">
-                            @for (player of ownGoalPlayers(); track player.matchRosterPlayerId) {
+                            @for (
+                                player of ownGoalPlayers();
+                                track player.matchRosterPlayerId
+                            ) {
                                 <button
                                     type="button"
                                     class="player-card"
                                     (click)="selectOwnGoalPlayer(player.id)"
                                 >
-                                <span>
-                                    {{ getPlayerName(player) }}
-                                </span>
+                                    <span>
+                                        {{ getPlayerName(player) }}
+                                    </span>
                                 </button>
                             }
                         </div>
@@ -522,9 +615,7 @@
         <section class="protocol-sign">
             <h2>Матч завершён</h2>
 
-            <p>
-                Проверьте события матча и подпишите протокол.
-            </p>
+            <p>Проверьте события матча и подпишите протокол.</p>
 
             <button
                 type="button"
@@ -536,7 +627,7 @@
             </button>
         </section>
     }
-    @if (store.session()?.status === 'protocol_signed') {
+    @if (store.session()?.status === "protocol_signed") {
         <section class="protocol-signed">
             <h2>Протокол подписан</h2>
             <p>Матч закрыт. Данные сохранены.</p>
@@ -558,4 +649,3 @@
         </section>
     }
 </div>
-

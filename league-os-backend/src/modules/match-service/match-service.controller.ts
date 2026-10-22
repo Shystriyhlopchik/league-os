@@ -50,9 +50,7 @@ export class MatchServiceController {
   @Get('finished-matches/:matchId/events')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleCode.Admin, RoleCode.SuperAdmin)
-  findFinishedMatchEvents(
-    @Param('matchId', ParseIntPipe) matchId: number,
-  ) {
+  findFinishedMatchEvents(@Param('matchId', ParseIntPipe) matchId: number) {
     return this.matchService.findFinishedMatchEvents(matchId);
   }
 
@@ -206,11 +204,14 @@ export class MatchServiceController {
   }
 
   @Post('matches/:matchId/rosters/:teamId/approve')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.Referee, RoleCode.Admin, RoleCode.SuperAdmin)
   approveRoster(
     @Param('matchId', ParseIntPipe) matchId: number,
     @Param('teamId', ParseIntPipe) teamId: number,
+    @Req() req: { user: { id: number } },
   ): Promise<MatchRosterCheckDto> {
-    return this.matchService.approveRoster(matchId, teamId);
+    return this.matchService.approveRoster(matchId, teamId, req.user.id);
   }
 
   @Get('matches/:matchId/session')

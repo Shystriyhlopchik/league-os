@@ -35,7 +35,10 @@ import { TournamentLifecycleService } from './tournament-lifecycle.service';
 import type { AuthenticatedTournamentRequest } from './types/authenticated-tournament-request.type';
 import { AssignStageGroupsDto } from './dto/assign-stage-groups.dto';
 import { PreviewGroupStageScheduleDto } from './dto/preview-group-stage-schedule.dto';
-import { GenerateGroupStageScheduleDto } from './dto/generate-group-stage-schedule.dto';
+import {
+  GenerateGroupStageScheduleDto,
+  ResetPreparedScheduleDto,
+} from './dto/generate-group-stage-schedule.dto';
 import { TournamentGroupSchedulingService } from './scheduling/tournament-group-scheduling.service';
 import { QualificationService } from '../tournament-qualifications/qualification.service';
 import { PreviewQualificationDto } from './dto/preview-qualification.dto';
@@ -56,6 +59,7 @@ import { FeatureFlagGuard } from '../../common/feature-flags/feature-flag.guard'
 import { RequireFeature } from '../../common/feature-flags/require-feature.decorator';
 import { LaunchPlayoffDto } from './dto/launch-playoff.dto';
 import { PlayoffLaunchService } from './playoff-launch.service';
+import { UpdateCalendarMatchDto } from './dto/update-calendar-match.dto';
 
 @Controller('tournaments')
 export class TournamentsController {
@@ -68,6 +72,24 @@ export class TournamentsController {
     private readonly playerSuspensionsService: PlayerSuspensionsService,
     private readonly playoffLaunchService: PlayoffLaunchService,
   ) {}
+
+  @Get(':tournamentId/calendar-management')
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.READ)
+  calendar(@Param('tournamentId', ParseIntPipe) id: number) {
+    return this.lifecycleService.calendar(id);
+  }
+
+  @Patch(':tournamentId/calendar-management/:matchId')
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  updateCalendar(
+    @Param('tournamentId', ParseIntPipe) id: number,
+    @Param('matchId', ParseIntPipe) matchId: number,
+    @Body() dto: UpdateCalendarMatchDto,
+  ) {
+    return this.lifecycleService.updateCalendarMatch(id, matchId, dto);
+  }
 
   @Get(':tournamentId/playoff-launch')
   @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
@@ -530,6 +552,22 @@ export class TournamentsController {
       tournamentId,
       stageId,
       dto,
+    );
+  }
+
+  @Post(':tournamentId/stages/:stageId/schedule/reset')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  resetPreparedSchedule(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Param('stageId', ParseIntPipe) stageId: number,
+    @Body() _dto: ResetPreparedScheduleDto,
+  ) {
+    return this.groupSchedulingService.resetPreparedSchedule(
+      tournamentId,
+      stageId,
     );
   }
 

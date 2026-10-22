@@ -25,6 +25,10 @@ BEGIN
     RAISE EXCEPTION 'User "shystrik" was not found. Create the user before running this script.';
   END IF;
 
+  INSERT INTO community_members (community_id, user_id, role)
+  SELECT id, v_owner_id, 'admin' FROM communities WHERE slug = 'dvorovaya-liga'
+  ON CONFLICT (community_id, user_id) DO NOTHING;
+
   IF EXISTS (
     SELECT 1
     FROM tournaments
@@ -41,12 +45,14 @@ BEGIN
 
   IF v_competition_id IS NULL THEN
     INSERT INTO competitions (
+      community_id,
       name,
       slug,
       description,
       "isActive"
     )
     VALUES (
+      (SELECT id FROM communities WHERE slug = 'dvorovaya-liga'),
       'Дворовая лига',
       'dvorovaya-liga',
       'Турнир по дворовому футболу.',

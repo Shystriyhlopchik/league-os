@@ -6,8 +6,21 @@ import { UserRole } from './entities/user/model/user-role.type';
 import { guestGuard } from './guards/guest.guard';
 import { matchProtocolLeaveGuard } from './pages/match-protocol/model/match-protocol-leave.guard';
 import { tournamentBuilderFeatureGuard } from './guards/tournament-builder-feature.guard';
+import { communityTournamentGuard } from './guards/community-tournament.guard';
+import { teamWorkspaceLeaveGuard } from './pages/team-workspace/team-workspace-leave.guard';
+import { tournamentApplicationsLeaveGuard } from './pages/tournament-applications/tournament-applications-leave.guard';
 
 export const routes: Routes = [
+    {
+        path: 'dashboard/my-teams', canActivate: [authGuard],
+        canDeactivate: [teamWorkspaceLeaveGuard],
+        loadComponent: () => import('./pages/team-workspace/team-workspace-page.component').then(m => m.TeamWorkspacePageComponent),
+    },
+    {
+        path: 'dashboard/tournament-applications', canActivate: [authGuard],
+        canDeactivate: [tournamentApplicationsLeaveGuard],
+        loadComponent: () => import('./pages/tournament-applications/tournament-applications-page.component').then(m => m.TournamentApplicationsPageComponent),
+    },
     {
         path: '',
         loadComponent: () =>
@@ -129,6 +142,13 @@ export const routes: Routes = [
         path: 'dashboard',
         canActivate: [authGuard],
         children: [
+            {
+                path: 'communities',
+                loadComponent: () =>
+                    import(
+                        './pages/community-access/community-access-page.component'
+                    ).then((m) => m.CommunityAccessPageComponent),
+            },
             {
                 path: '',
                 loadComponent: () =>
@@ -261,7 +281,7 @@ export const routes: Routes = [
                 path: 'tournaments/new',
                 canActivate: [
                     tournamentBuilderFeatureGuard,
-                    roleGuard([UserRole.SuperAdmin, UserRole.Admin]),
+                    communityTournamentGuard,
                 ],
                 loadComponent: () =>
                     import(
@@ -272,7 +292,7 @@ export const routes: Routes = [
                 path: 'playoff-launch',
                 canActivate: [
                     tournamentBuilderFeatureGuard,
-                    roleGuard([UserRole.SuperAdmin, UserRole.Admin]),
+                    communityTournamentGuard,
                 ],
                 loadComponent: () =>
                     import(
@@ -307,7 +327,7 @@ export const routes: Routes = [
                 path: 'tournaments/:tournamentId/edit',
                 canActivate: [
                     tournamentBuilderFeatureGuard,
-                    roleGuard([UserRole.SuperAdmin, UserRole.Admin]),
+                    communityTournamentGuard,
                 ],
                 loadComponent: () =>
                     import(

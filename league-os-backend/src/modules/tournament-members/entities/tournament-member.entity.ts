@@ -37,9 +37,7 @@ export class TournamentMemberEntity extends BaseEntity {
   user: UserEntity;
 
   @Column({
-    type: 'enum',
-    enum: TournamentMemberRole,
-    enumName: 'tournament_member_role_enum',
+    type: 'varchar',
     default: TournamentMemberRole.ORGANIZER,
   })
   role: TournamentMemberRole;

@@ -77,7 +77,9 @@ export class TournamentsService extends BaseCrudService<TournamentEntity> {
       },
     });
 
-    return tournaments.map((tournament) => this.toPublicTournament(tournament));
+    return tournaments
+      .filter((t) => t.lifecycleStatus !== 'draft' || t.registrationOpenedAt)
+      .map((tournament) => this.toPublicTournament(tournament));
   }
 
   async findActive() {
@@ -87,6 +89,10 @@ export class TournamentsService extends BaseCrudService<TournamentEntity> {
       .leftJoinAndSelect('season.competition', 'competition')
       .where('tournament.isActive = :isActive', { isActive: true })
       .andWhere('tournament.status != :cancelled', { cancelled: 'cancelled' })
+      .andWhere(
+        '(tournament.lifecycle_status IS NULL OR tournament.lifecycle_status != :draft)',
+        { draft: 'draft' },
+      )
       .orderBy(
         `CASE
           WHEN tournament.status = 'active' THEN 0

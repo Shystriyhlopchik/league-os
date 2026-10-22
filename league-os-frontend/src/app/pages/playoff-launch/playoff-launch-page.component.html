@@ -4,8 +4,8 @@
         <span class="playoff-page__eyebrow">Организатор</span>
         <h1>Запуск плей-офф</h1>
         <p>
-            Проверьте итоговые таблицы, выберите четыре команды и опубликуйте
-            расписание решающих матчей.
+            Проверьте итоговые таблицы, выберите участников плей-офф и
+            опубликуйте расписание решающих матчей.
         </p>
     </header>
 
@@ -105,6 +105,32 @@
             }
         </div>
 
+        @if (state()!.knockoutStage.bracketSize === 8) {
+            <section class="panel" aria-label="Схема переходов в полуфиналы">
+                <h2>Переход в полуфиналы</h2>
+                <p>
+                    {{
+                        state()!.knockoutStage.semiFinalPairing === "cross"
+                            ? "По положению Дворовой лиги: 1–3 / 2–4"
+                            : "Соседние пары: 1–2 / 3–4"
+                    }}.
+                </p>
+                @for (
+                    route of state()!.knockoutStage.semiFinalSources ?? [];
+                    track route.position;
+                    let i = $index
+                ) {
+                    <p>
+                        Полуфинал {{ i + 1 }}: победитель {{ route.home }} —
+                        победитель {{ route.away }}.
+                    </p>
+                }
+                <p class="hint">
+                    Схема задана в конструкторе до публикации турнира. Она
+                    действует для обеих встреч полуфинала.
+                </p>
+            </section>
+        }
         @if (state()!.launched) {
             <section class="panel published">
                 <span class="step">Опубликовано</span>
@@ -141,7 +167,7 @@
                 <div class="section-title">
                     <div>
                         <span class="step">Шаг 2</span>
-                        <h2>Участники полуфинала</h2>
+                        <h2>Участники плей-офф</h2>
                     </div>
                     <span class="counter"
                         >{{ selectedIds().length }} /
@@ -200,25 +226,45 @@
                 <div class="section-title">
                     <div>
                         <span class="step">Шаг 3</span>
-                        <h2>Полуфинальные пары</h2>
+                        <h2>
+                            {{
+                                state()!.knockoutStage.bracketSize === 8
+                                    ? "Четвертьфинальные"
+                                    : "Полуфинальные"
+                            }}
+                            пары
+                        </h2>
                     </div>
                     <button
                         type="button"
                         class="text-button"
-                        [disabled]="selectedIds().length !== 4"
+                        [disabled]="
+                            selectedIds().length !==
+                            state()!.knockoutStage.bracketSize
+                        "
                         (click)="fillPairs()"
                     >
-                        Заполнить 1–4, 2–3
+                        Заполнить пары автоматически
                     </button>
                 </div>
                 <p class="hint">
-                    Каждая выбранная команда должна встретиться ровно в одном
-                    полуфинале.
+                    Каждая выбранная команда должна встретиться ровно в одной
+                    паре первого раунда. В ответной встрече хозяева и гости
+                    меняются местами. Переход в полуфиналы определяется схемой
+                    турнира; переставлять четвертьфинальные пары для изменения
+                    связей не нужно.
                 </p>
                 <div class="pairings__grid">
                     @for (pair of pairs(); track $index; let index = $index) {
                         <article class="pair-card">
-                            <strong>Полуфинал {{ index + 1 }}</strong>
+                            <strong
+                                >{{
+                                    state()!.knockoutStage.bracketSize === 8
+                                        ? "Четвертьфинал"
+                                        : "Полуфинал"
+                                }}
+                                {{ index + 1 }}</strong
+                            >
                             <select
                                 [ngModel]="pair.homeTournamentTeamId"
                                 (ngModelChange)="

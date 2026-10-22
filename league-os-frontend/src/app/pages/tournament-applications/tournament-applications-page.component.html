@@ -1,0 +1,954 @@
+<main class="applications" [attr.aria-busy]="busy()">
+    <a class="back-link" routerLink="/dashboard">← В кабинет</a>
+    <header class="page-heading">
+        <p class="eyebrow">
+            {{
+                mode() === "application"
+                    ? "Участие команды"
+                    : "Кабинет организатора"
+            }}
+        </p>
+        <h1>
+            {{
+                mode() === "application"
+                    ? "Заявка на турнир"
+                    : "Управление заявками"
+            }}
+        </h1>
+        @if (selectedTournament(); as tournament) {
+            <p class="subtitle">
+                {{ tournament.name }}
+                @if (mode() === "application" && selectedTeam(); as team) {
+                    <span> · {{ team.name }}</span>
+                }
+            </p>
+        } @else {
+            <p class="hint">Выберите турнир для продолжения.</p>
+        }
+    </header>
+    @if (error()) {
+        <p class="error" role="alert">{{ error() }}</p>
+    }
+    @if (notice()) {
+        <p class="notice" role="status">{{ notice() }}</p>
+    }
+    @if (contextError()) {
+        <p class="error" role="alert">
+            {{ contextError() }} Другая заявка автоматически не открывалась.
+        </p>
+    }
+    @if (busy()) {
+        <p class="loading" role="status">Загружаем или сохраняем данные…</p>
+    }
+
+    <div class="context-controls">
+        <label
+            >Турнир<select
+                #tournamentSelect
+                [value]="tournamentId()"
+                (change)="changeTournament(tournamentSelect)"
+                [disabled]="busy()"
+            >
+                <option value="0" disabled>Выберите турнир</option>
+                @for (t of tournaments(); track t.id) {
+                    <option [value]="t.id">{{ t.name }}</option>
+                }
+            </select></label
+        >
+        @if (mode() === "application" && availableTeams().length) {
+            <label
+                >Команда<select
+                    #teamSelect
+                    [value]="teamId()"
+                    (change)="changeTeam(teamSelect)"
+                    [disabled]="busy()"
+                >
+                    <option value="0" disabled>Выберите команду</option>
+                    @for (team of availableTeams(); track team.teamId) {
+                        <option [value]="team.teamId">{{ team.name }}</option>
+                    }
+                </select></label
+            >
+        }
+    </div>
+    @if (selectedTournament()?.canReview && !contextError()) {
+        <nav class="mode-switch" aria-label="Режим работы">
+            <button
+                [attr.aria-current]="mode() === 'application' ? 'page' : null"
+                (click)="selectMode('application')"
+                [disabled]="busy()"
+            >
+                Заявка моей команды
+            </button>
+            <button
+                [attr.aria-current]="mode() === 'management' ? 'page' : null"
+                (click)="selectMode('management')"
+                [disabled]="busy()"
+            >
+                Управление турниром
+            </button>
+        </nav>
+    }
+    @if (loaded() && !tournaments().length) {
+        <section class="card empty-state">
+            <h2>Доступных турниров пока нет</h2>
+            <p class="hint">
+                Подготовьте команду заранее. Когда организатор откроет приём
+                заявок, турнир появится здесь.
+            </p>
+            <a routerLink="/dashboard/my-teams">Перейти к моим командам →</a>
+        </section>
+    }
+    @if (
+        mode() === "application" &&
+        selectedTournament() &&
+        !availableTeams().length &&
+        !contextError()
+    ) {
+        <section class="card empty-state">
+            <h2>Нужна опубликованная команда этого сообщества</h2>
+            <p class="hint">
+                Создайте команду, опубликуйте её карточку или запросите доступ к
+                существующей команде.
+            </p>
+            <a routerLink="/dashboard/my-teams">Открыть «Мои команды» →</a>
+        </section>
+    }
+
+    @if (!contextError()) {
+        @if (mode() === "management") {
+            <fieldset [disabled]="busy()">
+                @if (settings(); as s) {
+                    <app-tournament-workflow
+                        [tournamentId]="tournamentId()"
+                        [current]="section()"
+                        [busy]="busy()"
+                        (selected)="selectWorkflow($event)"
+                    />
+                    @if (section() === "registration") {
+                        <section class="card">
+                            <h2>2. Открыть приём заявок</h2>
+                            <p>
+                                {{ labels[s.tournament.registrationStatus] }}.
+                                После открытия настройки заявки фиксируются.
+                            </p>
+                            <div class="grid">
+                                <label
+                                    >Максимум игроков (до 12)<input
+                                        type="number"
+                                        min="1"
+                                        max="12"
+                                        [(ngModel)]="s.policy.maxPlayers"
+                                        [disabled]="
+                                            !!s.tournament.registrationOpenedAt
+                                        "
+                                /></label>
+                                <label
+                                    >Минимум игроков в заявке<input
+                                        type="number"
+                                        min="1"
+                                        max="12"
+                                        [(ngModel)]="s.policy.minPlayers"
+                                        [disabled]="
+                                            !!s.tournament.registrationOpenedAt
+                                        "
+                                /></label>
+                                <label
+                                    >Максимум представителей (до 2)<input
+                                        type="number"
+                                        min="0"
+                                        max="2"
+                                        [(ngModel)]="
+                                            s.policy.maxRepresentatives
+                                        "
+                                        [disabled]="
+                                            !!s.tournament.registrationOpenedAt
+                                        "
+                                /></label>
+                                <label
+                                    >Минимум игроков в протоколе<input
+                                        type="number"
+                                        min="1"
+                                        max="12"
+                                        [(ngModel)]="s.policy.minMatchPlayers"
+                                        [disabled]="
+                                            !!s.tournament.registrationOpenedAt
+                                        "
+                                /></label>
+                                <label
+                                    >Максимум игроков в протоколе<input
+                                        type="number"
+                                        min="1"
+                                        max="12"
+                                        [(ngModel)]="s.policy.maxMatchPlayers"
+                                        [disabled]="
+                                            !!s.tournament.registrationOpenedAt
+                                        "
+                                /></label>
+                                <label
+                                    >Срок первоначальной заявки (с часовым
+                                    поясом, необязательно)<input
+                                        placeholder="2026-11-01T23:59:00+03:00"
+                                        [(ngModel)]="s.policy.deadline"
+                                        [disabled]="
+                                            !!s.tournament.registrationOpenedAt
+                                        "
+                                /></label>
+                                <label class="check"
+                                    ><input
+                                        type="checkbox"
+                                        [(ngModel)]="s.policy.allowAmendments"
+                                        [disabled]="
+                                            !!s.tournament.registrationOpenedAt
+                                        "
+                                    />Разрешить доработку утверждённого
+                                    состава</label
+                                >
+                            </div>
+                            <div class="actions">
+                                @if (!s.tournament.registrationOpenedAt) {
+                                    <button (click)="savePolicy()">
+                                        Сохранить настройки
+                                    </button>
+                                }
+                                @if (s.tournament.lifecycleStatus === "draft") {
+                                    @if (
+                                        s.tournament.registrationStatus !==
+                                        "open"
+                                    ) {
+                                        <button (click)="registration('open')">
+                                            Открыть приём заявок
+                                        </button>
+                                    } @else {
+                                        <button (click)="registration('close')">
+                                            Закрыть приём заявок
+                                        </button>
+                                    }
+                                }
+                                <a
+                                    [routerLink]="[
+                                        '/dashboard/tournaments',
+                                        tournamentId(),
+                                        'edit',
+                                    ]"
+                                    [queryParams]="{ phase: 'preparation' }"
+                                    >Подготовить запуск: группы и календарь →</a
+                                >
+                            </div>
+                            <p class="hint">
+                                Сохраните настройки перед открытием. Закрытие
+                                регистрации не утверждает заявки автоматически.
+                                До запуска турнира рассмотрите все отправленные
+                                заявки. Доработки принятого состава разрешены до
+                                начала первого матча 4-го тура во всём турнире,
+                                независимо от срока первоначальной регистрации.
+                            </p>
+                        </section>
+                    }
+                    @if (s.canManageMembers) {
+                        <details class="card secondary">
+                            <summary>Администраторы турнира</summary>
+                            <p class="hint">
+                                Могут рассматривать заявки и запускать этот
+                                турнир. Не могут выдавать права в сообществе.
+                            </p>
+                            @for (admin of admins(); track admin.userId) {
+                                <div class="row">
+                                    <span
+                                        >{{ admin.user.lastName }}
+                                        {{ admin.user.firstName }} ({{
+                                            admin.user.username
+                                        }}) · {{ admin.role }}</span
+                                    ><button
+                                        (click)="removeAdmin(admin.userId)"
+                                    >
+                                        Снять доступ к турниру
+                                    </button>
+                                </div>
+                            }
+                            <div class="row">
+                                <input
+                                    aria-label="Поиск участника сообщества"
+                                    placeholder="Имя или логин участника сообщества"
+                                    [(ngModel)]="memberSearch"
+                                /><button (click)="searchMembers()">
+                                    Найти участника
+                                </button>
+                            </div>
+                            @for (
+                                member of memberCandidates();
+                                track member.id
+                            ) {
+                                <div class="row">
+                                    <span
+                                        >{{ member.lastName }}
+                                        {{ member.firstName }} ({{
+                                            member.username
+                                        }})</span
+                                    ><button (click)="setAdmin(member.id)">
+                                        Назначить администратором турнира
+                                    </button>
+                                </div>
+                            }
+                        </details>
+                    }
+                    @if (section() === "review") {
+                        <section class="card">
+                            <h2>3. Рассмотреть заявки</h2>
+                            <p>
+                                Утвердите заявку или верните с комментарием.
+                                Только принятая заявка добавляет команду в
+                                участники турнира.
+                            </p>
+                            @for (app of applications(); track app.id) {
+                                <button
+                                    class="application-row"
+                                    [attr.aria-pressed]="
+                                        detail()?.application?.id === app.id
+                                    "
+                                    (click)="viewApplication(app)"
+                                >
+                                    <strong>{{ app.team.name }}</strong
+                                    ><span
+                                        >{{ labels[app.status]
+                                        }}{{
+                                            app.approvedRevisionId
+                                                ? " · есть действующий состав"
+                                                : ""
+                                        }}
+                                        →</span
+                                    >
+                                </button>
+                            } @empty {
+                                <p>Команды ещё не подали заявки.</p>
+                            }
+                            <button (click)="selectWorkflow('preparation')">
+                                Перейти к подготовке групп и календаря →
+                            </button>
+                        </section>
+                    }
+                }
+
+                @if (reviewing() && detail(); as d) {
+                    <section
+                        class="card review-detail"
+                        aria-label="Рассмотрение заявки"
+                    >
+                        <div class="section-heading">
+                            <div>
+                                <p class="eyebrow">Выбранная заявка</p>
+                                <h2>{{ d.application?.team?.name }}</h2>
+                            </div>
+                            <span
+                                class="badge"
+                                [attr.data-status]="d.application?.status"
+                                >{{ labels[d.application?.status || ""] }}</span
+                            >
+                        </div>
+                        @if (
+                            d.application?.approvedRevisionId &&
+                            d.application?.status !== "approved"
+                        ) {
+                            <p class="notice">
+                                Ранее утверждённый состав действует до принятия
+                                новой версии.
+                            </p>
+                        }
+                        @if (currentRevision(); as revision) {
+                            <h3>
+                                Версия {{ revision.version }} ·
+                                {{ revision.snapshot.players.length }} игроков
+                            </h3>
+                            <ng-container
+                                [ngTemplateOutlet]="revisionContent"
+                                [ngTemplateOutletContext]="{
+                                    $implicit: revision,
+                                }"
+                            />
+                        } @else {
+                            <p class="hint">
+                                Сохранённая версия не найдена. Обновите список
+                                заявок.
+                            </p>
+                        }
+                        @if (cutoffReached()) {
+                            <p class="warning">{{ editBlockedReason() }}</p>
+                        }
+                        @if (
+                            d.canReview && d.application?.status === "submitted"
+                        ) {
+                            <label
+                                >Комментарий к решению<textarea
+                                    [(ngModel)]="comment"
+                                    maxlength="2000"
+                                    placeholder="Обязателен при возврате на доработку"
+                                ></textarea>
+                            </label>
+                            <div class="actions">
+                                <button
+                                    class="primary"
+                                    (click)="review('approve')"
+                                    [disabled]="
+                                        cutoffReached() ||
+                                        d.tournament.lifecycleStatus ===
+                                            'completed'
+                                    "
+                                >
+                                    Утвердить заявку
+                                </button>
+                                <button
+                                    (click)="review('return')"
+                                    [disabled]="!comment.trim()"
+                                >
+                                    Вернуть на доработку
+                                </button>
+                            </div>
+                        }
+                        @if (returnComment()) {
+                            <p class="warning">
+                                Причина возврата: {{ returnComment() }}
+                            </p>
+                        }
+                        <ng-container
+                            [ngTemplateOutlet]="applicationHistory"
+                            [ngTemplateOutletContext]="{ $implicit: d }"
+                        />
+                    </section>
+                }
+                @if (transfers().length) {
+                    <details class="card secondary">
+                        <summary>
+                            Переходы игроков в сообществе ·
+                            {{ transfers().length }}
+                        </summary>
+                        <label
+                            >Комментарий к решению<textarea
+                                [(ngModel)]="transferComment"
+                                maxlength="2000"
+                            ></textarea>
+                        </label>
+                        @for (r of transfers(); track r.id) {
+                            <div class="row">
+                                <span
+                                    >{{ r.player.lastName }}
+                                    {{ r.player.firstName }}:
+                                    {{ r.fromTeam?.name }} →
+                                    {{ r.toTeam.name }}</span
+                                ><button
+                                    (click)="reviewTransfer(r.id, 'approve')"
+                                >
+                                    Подтвердить переход</button
+                                ><button
+                                    (click)="reviewTransfer(r.id, 'reject')"
+                                    [disabled]="!transferComment.trim()"
+                                >
+                                    Отклонить
+                                </button>
+                            </div>
+                        }
+                        <p class="hint">
+                            Решение меняет только текущую принадлежность. Допуск
+                            к турнирам изменяется отдельно через доработку
+                            заявки.
+                        </p>
+                    </details>
+                }
+            </fieldset>
+        } @else {
+            @if (detail(); as d) {
+                <section class="card application-status">
+                    <div class="section-heading">
+                        <div>
+                            <p class="eyebrow">Состояние заявки</p>
+                            <h2>
+                                {{
+                                    d.application
+                                        ? labels[d.application.status]
+                                        : "Заявка ещё не создана"
+                                }}
+                            </h2>
+                        </div>
+                        <button
+                            (click)="refreshApplication()"
+                            [disabled]="busy()"
+                        >
+                            Обновить заявку
+                        </button>
+                    </div>
+                    @switch (d.application?.status) {
+                        @case ("submitted") {
+                            <p class="hint">
+                                Состав отправлен организатору. Дождитесь решения
+                                — редактирование на время рассмотрения
+                                недоступно.
+                            </p>
+                        }
+                        @case ("approved") {
+                            <p class="hint">
+                                Команда допущена к турниру. Ниже показан
+                                утверждённый заявочный лист.
+                            </p>
+                        }
+                        @case ("changes_requested") {
+                            <p class="warning" role="status">
+                                <strong>Комментарий организатора</strong
+                                ><br />{{
+                                    returnComment() ||
+                                        "Заявка возвращена на доработку. Проверьте историю решения."
+                                }}
+                            </p>
+                        }
+                        @case ("draft") {
+                            <p class="hint">
+                                Черновик сохранён. Организатор рассмотрит заявку
+                                только после отправки.
+                            </p>
+                        }
+                        @default {
+                            <p class="hint">
+                                Выберите игроков и при необходимости укажите
+                                представителей. Участие в турнире начнётся после
+                                утверждения организатором.
+                            </p>
+                        }
+                    }
+                    @if (
+                        d.application?.approvedRevisionId &&
+                        d.application?.status !== "approved"
+                    ) {
+                        <p class="notice">
+                            Ранее утверждённый состав продолжает действовать.
+                            Этот черновик или доработка его пока не заменяет.
+                        </p>
+                    }
+                    @if (editBlockedReason()) {
+                        <p class="warning" role="status">
+                            {{ editBlockedReason() }}
+                        </p>
+                    }
+                    <dl class="deadlines">
+                        <div>
+                            <dt>Приём новых заявок</dt>
+                            <dd>
+                                {{ labels[d.tournament.registrationStatus] }}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>Срок первоначальной заявки</dt>
+                            <dd>
+                                {{
+                                    d.policy.deadline
+                                        ? (d.policy.deadline
+                                              | date
+                                                  : "dd.MM.yyyy HH:mm"
+                                                  : "+0300") + " (МСК)"
+                                        : "Отдельный срок не установлен"
+                                }}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>Изменения утверждённого состава</dt>
+                            <dd>
+                                @if (!d.policy.allowAmendments) {
+                                    Запрещены регламентом
+                                } @else if (d.editing.locksAt) {
+                                    До
+                                    {{
+                                        d.editing.locksAt
+                                            | date: "dd.MM.yyyy HH:mm" : "+0300"
+                                    }}
+                                    (МСК)
+                                } @else {
+                                    До начала 4-го тура; дата появится после
+                                    назначения матчей
+                                }
+                            </dd>
+                        </div>
+                    </dl>
+                </section>
+
+                @if (isEditing()) {
+                    <div class="application-layout">
+                        <div>
+                            <section class="card">
+                                <div class="section-heading">
+                                    <div>
+                                        <p class="eyebrow">
+                                            1. Игровой состав турнира
+                                        </p>
+                                        <h2>Выберите игроков</h2>
+                                    </div>
+                                    <span class="badge"
+                                        >{{ selectedPlayers.length }} выбрано ·
+                                        максимум {{ d.policy.maxPlayers }}</span
+                                    >
+                                </div>
+                                <p class="hint">
+                                    Выбор действует только для этого турнира.
+                                    Номера и капитан берутся из текущего состава
+                                    при сохранении новой версии.
+                                </p>
+                                <fieldset [disabled]="busy()">
+                                    @for (
+                                        player of unavailableSelectedPlayers();
+                                        track player.playerId
+                                    ) {
+                                        <label class="player-check unavailable"
+                                            ><input
+                                                type="checkbox"
+                                                [checked]="true"
+                                                (change)="
+                                                    togglePlayer(
+                                                        player.playerId,
+                                                        false
+                                                    )
+                                                "
+                                            />
+                                            <span class="grow"
+                                                ><strong>{{
+                                                    player.name
+                                                }}</strong
+                                                ><small
+                                                    >Больше не в текущем составе
+                                                    — снимите выбор для новой
+                                                    версии</small
+                                                ></span
+                                            ></label
+                                        >
+                                    }
+                                    @for (link of roster(); track link.id) {
+                                        <label class="player-check"
+                                            ><input
+                                                type="checkbox"
+                                                [checked]="
+                                                    selectedPlayers.includes(
+                                                        link.playerId
+                                                    )
+                                                "
+                                                (change)="
+                                                    togglePlayer(
+                                                        link.playerId,
+                                                        $any($event.target)
+                                                            .checked
+                                                    )
+                                                "
+                                                [disabled]="
+                                                    !selectedPlayers.includes(
+                                                        link.playerId
+                                                    ) &&
+                                                    selectedPlayers.length >=
+                                                        d.policy.maxPlayers
+                                                "
+                                            />
+                                            <span class="shirt-number">{{
+                                                link.shirtNumber || "—"
+                                            }}</span>
+                                            <span class="grow"
+                                                ><strong
+                                                    >{{ link.player.lastName }}
+                                                    {{ link.player.firstName }}
+                                                    {{
+                                                        link.player.middleName
+                                                    }}</strong
+                                                >
+                                                <small>{{
+                                                    link.player.birthDate
+                                                        ? link.player.birthDate.slice(
+                                                              0,
+                                                              4
+                                                          ) + " г. р."
+                                                        : "Дата рождения не указана"
+                                                }}</small></span
+                                            >
+                                            @if (link.isCaptain) {
+                                                <span class="badge captain"
+                                                    >Капитан</span
+                                                >
+                                            }
+                                        </label>
+                                    } @empty {
+                                        <p class="hint">
+                                            Текущий состав пока пуст. Добавьте
+                                            игроков в кабинете команды.
+                                        </p>
+                                    }
+                                </fieldset>
+                                <div class="inset">
+                                    <p class="hint">
+                                        Нужного игрока нет, нужно исправить
+                                        номер или выбрать капитана?
+                                    </p>
+                                    <a
+                                        routerLink="/dashboard/my-teams"
+                                        [queryParams]="{
+                                            teamId: teamId(),
+                                            communityId:
+                                                selectedTournament()
+                                                    ?.communityId,
+                                        }"
+                                        >Изменить состав команды →</a
+                                    >
+                                    <small class="hint"
+                                        >Перед переходом сохраните черновик.
+                                        После возвращения обновите
+                                        заявку.</small
+                                    >
+                                </div>
+                            </section>
+                            <section class="card">
+                                <p class="eyebrow">2. Необязательно</p>
+                                <h2>Представители команды</h2>
+                                <p class="hint">
+                                    Не играют и не входят в лимит игроков.
+                                    Представители не получают доступ к
+                                    управлению командой.
+                                </p>
+                                <fieldset [disabled]="busy()">
+                                    @for (
+                                        name of representatives;
+                                        track $index;
+                                        let i = $index
+                                    ) {
+                                        @if (i < d.policy.maxRepresentatives) {
+                                            <label
+                                                >Представитель {{ i + 1
+                                                }}<input
+                                                    maxlength="200"
+                                                    [(ngModel)]="
+                                                        representatives[i]
+                                                    "
+                                                    placeholder="ФИО"
+                                            /></label>
+                                        }
+                                    }
+                                    @if (!d.policy.maxRepresentatives) {
+                                        <p class="hint">
+                                            Представители не предусмотрены
+                                            правилами этого турнира.
+                                        </p>
+                                    }
+                                </fieldset>
+                            </section>
+                        </div>
+                        <aside
+                            class="card readiness-card"
+                            aria-label="Готовность заявки"
+                        >
+                            <p class="eyebrow">3. Проверка и отправка</p>
+                            <h2>
+                                {{
+                                    readyToSubmit()
+                                        ? "Можно отправлять"
+                                        : "Проверьте заявку"
+                                }}
+                            </h2>
+                            <ul class="checklist">
+                                @for (item of readiness(); track item.text) {
+                                    <li [class.ok]="item.ok">
+                                        <span aria-hidden="true">{{
+                                            item.ok ? "✓" : "○"
+                                        }}</span
+                                        ><span
+                                            ><span class="sr-only">{{
+                                                item.ok
+                                                    ? "Выполнено: "
+                                                    : "Требует проверки: "
+                                            }}</span
+                                            >{{ item.text }}</span
+                                        >
+                                    </li>
+                                }
+                            </ul>
+                            <p class="hint">
+                                {{
+                                    applicationDirty()
+                                        ? "Есть несохранённые изменения"
+                                        : d.application
+                                          ? "Показана сохранённая версия"
+                                          : "Заявка ещё не сохранена"
+                                }}
+                            </p>
+                            <div class="submit-actions">
+                                <button
+                                    class="primary"
+                                    (click)="save(true)"
+                                    [disabled]="busy() || !readyToSubmit()"
+                                >
+                                    Отправить на рассмотрение
+                                </button>
+                                <button
+                                    (click)="save()"
+                                    [disabled]="
+                                        busy() ||
+                                        (!!d.application && !applicationDirty())
+                                    "
+                                >
+                                    Сохранить черновик
+                                </button>
+                                @if (
+                                    applicationDirty() ||
+                                    d.application?.status === "approved"
+                                ) {
+                                    <button
+                                        class="text-button"
+                                        (click)="cancelEditing()"
+                                        [disabled]="busy()"
+                                    >
+                                        Отменить изменения
+                                    </button>
+                                }
+                            </div>
+                            <p class="hint">
+                                Черновик доступен только для подготовки. Участие
+                                команды подтверждает организатор.
+                            </p>
+                        </aside>
+                    </div>
+                } @else {
+                    <section class="card">
+                        <div class="section-heading">
+                            <h2>
+                                {{
+                                    d.application?.status === "approved"
+                                        ? "Утверждённый состав турнира"
+                                        : "Заявочный лист"
+                                }}
+                            </h2>
+                            @if (
+                                d.application?.status === "approved" &&
+                                !editBlockedReason()
+                            ) {
+                                <button
+                                    (click)="beginAmendment()"
+                                    [disabled]="busy()"
+                                >
+                                    Подготовить изменения
+                                </button>
+                            }
+                        </div>
+                        @if (currentRevision(); as revision) {
+                            <ng-container
+                                [ngTemplateOutlet]="revisionContent"
+                                [ngTemplateOutletContext]="{
+                                    $implicit: revision,
+                                }"
+                            />
+                        } @else {
+                            <p class="hint">
+                                {{
+                                    d.application
+                                        ? "Состояние заявки сохранено. Для просмотра состава нажмите «Обновить заявку»."
+                                        : "Сохранённой заявки пока нет."
+                                }}
+                            </p>
+                        }
+                        @if (d.application?.approvedRevisionId) {
+                            <a routerLink="/dashboard/match-registrations"
+                                >Оформить отдельную заявку на матч →</a
+                            >
+                        }
+                    </section>
+                }
+                @if (approvedRevision(); as revision) {
+                    @if (d.application?.status !== "approved" || isEditing()) {
+                        <details class="card">
+                            <summary>
+                                Действующий утверждённый состав · версия
+                                {{ revision.version }}
+                            </summary>
+                            <ng-container
+                                [ngTemplateOutlet]="revisionContent"
+                                [ngTemplateOutletContext]="{
+                                    $implicit: revision,
+                                }"
+                            />
+                        </details>
+                    }
+                }
+                <ng-container
+                    [ngTemplateOutlet]="applicationHistory"
+                    [ngTemplateOutletContext]="{ $implicit: d }"
+                />
+            }
+        }
+    }
+    @if (
+        mode() === "application" &&
+        selectedTournament() &&
+        teamId() &&
+        !detail() &&
+        !busy() &&
+        !contextError()
+    ) {
+        <section class="card">
+            <p class="hint">Не удалось открыть заявку.</p>
+            <button (click)="refreshApplication()">Повторить загрузку</button>
+        </section>
+    }
+
+    <ng-template #revisionContent let-revision>
+        <div class="snapshot-list">
+            @for (player of revision.snapshot.players; track player.playerId) {
+                <div class="snapshot-row">
+                    <span class="shirt-number">{{
+                        player.shirtNumber || "—"
+                    }}</span
+                    ><strong class="grow">{{ player.name }}</strong>
+                    @if (player.isCaptain) {
+                        <span class="badge captain">Капитан</span>
+                    }
+                </div>
+            } @empty {
+                <p class="hint">В этой версии нет игроков.</p>
+            }
+        </div>
+        <h3>Неиграющие представители</h3>
+        @for (
+            representative of revision.snapshot.representatives;
+            track $index
+        ) {
+            <p>{{ representative.name }}</p>
+        } @empty {
+            <p class="hint">Не указаны.</p>
+        }
+    </ng-template>
+    <ng-template #applicationHistory let-d>
+        @if (d.revisions.length || d.events.length) {
+            <details class="card history">
+                <summary>История заявки и предыдущие версии</summary>
+                @for (event of d.events; track event.id) {
+                    <p>
+                        {{
+                            event.createdAt | date: "dd.MM.yyyy HH:mm" : "+0300"
+                        }}
+                        (МСК) · {{ labels[event.action] || event.action }}
+                        @if (event.comment) {
+                            <strong> — {{ event.comment }}</strong>
+                        }
+                    </p>
+                }
+                @for (revision of d.revisions; track revision.id) {
+                    <details class="inset">
+                        <summary>
+                            Версия {{ revision.version
+                            }}{{
+                                revision.id ===
+                                d.application?.approvedRevisionId
+                                    ? " · утверждённый состав"
+                                    : ""
+                            }}{{
+                                revision.id === d.application?.currentRevisionId
+                                    ? " · текущая"
+                                    : ""
+                            }}
+                        </summary>
+                        <ng-container
+                            [ngTemplateOutlet]="revisionContent"
+                            [ngTemplateOutletContext]="{ $implicit: revision }"
+                        />
+                    </details>
+                }
+            </details>
+        }
+    </ng-template>
+</main>

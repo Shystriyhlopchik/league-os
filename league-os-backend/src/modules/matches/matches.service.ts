@@ -11,6 +11,7 @@ import { formatLocalDateTime } from './helper/formatLocalDateTime';
 import { MatchRosterPlayerEntity } from '../match-rosters/entities/match-roster-player.entity';
 import { MatchRosterEntity } from '../match-rosters/entities/match-roster.entity';
 import { MatchStatus } from './enums/match-status.enum';
+import { TournamentLifecycleStatus } from '../tournaments/enums/tournament-lifecycle-status.enum';
 
 const ERR_MESSAGE = 'Команды в матче не могут быть одинаковыми';
 
@@ -73,6 +74,9 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
         (match) =>
           Boolean(match.homeTeam) &&
           Boolean(match.awayTeam) &&
+          match.status !== MatchStatus.CANCELLED &&
+          match.tournament?.lifecycleStatus !==
+            TournamentLifecycleStatus.DRAFT &&
           Boolean(match.matchDatetime),
       )
       .map((match) => ({
@@ -162,6 +166,9 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
         (match) =>
           Boolean(match.homeTeam) &&
           Boolean(match.awayTeam) &&
+          match.status !== MatchStatus.CANCELLED &&
+          match.tournament?.lifecycleStatus !==
+            TournamentLifecycleStatus.DRAFT &&
           Boolean(match.matchDatetime),
       )
       .map((match) => ({

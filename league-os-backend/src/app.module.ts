@@ -30,6 +30,7 @@ import { TournamentMembersModule } from './modules/tournament-members/tournament
 import { TournamentStageParticipantsModule } from './modules/tournament-stage-participants/tournament-stage-participants.module';
 import { FeatureFlagsModule } from './common/feature-flags/feature-flags.module';
 import { TeamRankingsModule } from './modules/team-rankings/team-rankings.module';
+import { CommunitiesModule } from './modules/communities/communities.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { TeamRankingsModule } from './modules/team-rankings/team-rankings.module
       isGlobal: true,
     }),
     FeatureFlagsModule,
+    CommunitiesModule,
     TypeOrmModule.forRootAsync({
       imports: undefined,
       inject: [ConfigService],

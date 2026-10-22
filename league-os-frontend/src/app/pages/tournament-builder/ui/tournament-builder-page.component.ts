@@ -13,8 +13,17 @@ import {
     signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { CommunityApi } from '../../../entities/community/community.api';
+import {
+    ManagedCalendar,
+    TournamentApplicationApi,
+} from '../../../entities/tournament-application/tournament-application.api';
+import {
+    TournamentWorkflowComponent,
+    TournamentWorkflowStep,
+} from '../../../shared/ui/tournament-workflow/tournament-workflow.component';
 
 import { Team } from '../../../entities/team/model/team.types';
 import { TeamsApi } from '../../../entities/team/api/teams.api';
@@ -65,6 +74,7 @@ const STEP_ERROR_HINTS: string[][] = [
         RouterLink,
         DragDropModule,
         TournamentWizardStepperComponent,
+        TournamentWorkflowComponent,
     ],
     providers: [TournamentBuilderStore],
     templateUrl: './tournament-builder-page.component.html',
@@ -76,20 +86,68 @@ export class TournamentBuilderPageComponent implements OnInit {
     private readonly route = inject(ActivatedRoute);
     private readonly teamsApi = inject(TeamsApi);
     private readonly api = inject(TournamentBuilderApi);
+    private readonly communitiesApi = inject(CommunityApi);
+    private readonly registrationsApi = inject(TournamentApplicationApi);
+    private readonly router = inject(Router);
+    readonly workflowPhase = signal<'setup' | 'preparation' | 'launch'>(
+        'setup',
+    );
+    readonly preparedCalendar = signal<ManagedCalendar | null>(null);
+    resetCalendarConfirmed = false;
+    readonly availableCommunities = signal<{ id: number; name: string }[]>([]);
+    readonly availableSeasons = signal<
+        {
+            id: number;
+            name: string;
+            communityId: number;
+            competitionName: string;
+        }[]
+    >([]);
+    readonly selectedCommunityId = signal(0);
+    readonly communitySeasons = computed(() =>
+        this.availableSeasons().filter(
+            (s) => s.communityId === this.selectedCommunityId(),
+        ),
+    );
 
     readonly templates = TOURNAMENT_TEMPLATES;
     readonly steps: TournamentWizardStep[] = [
         { shortTitle: 'Основное', title: 'Основная информация' },
         { shortTitle: 'Этапы', title: 'Формат и этапы' },
-        { shortTitle: 'Команды', title: 'Участники' },
+        { shortTitle: 'Команды', title: 'Принятые заявки' },
         { shortTitle: 'Группы', title: 'Распределение по группам' },
         { shortTitle: 'Таблица', title: 'Очки и тай-брейки' },
         { shortTitle: 'Отбор', title: 'Правила квалификации' },
         { shortTitle: 'Плей-офф', title: 'Формат и посев' },
         { shortTitle: 'Матч', title: 'Определение победителя' },
         { shortTitle: 'Карточки', title: 'Дисциплина' },
-        { shortTitle: 'Проверка', title: 'Проверка и публикация' },
+        { shortTitle: 'Проверка', title: 'Проверка настроек и создание' },
     ];
+    readonly visibleSteps = computed(() =>
+        this.steps
+            .map((step, index) => ({ ...step, index }))
+            .filter((step) =>
+                this.workflowPhase() === 'launch'
+                    ? step.index === 9
+                    : this.workflowPhase() === 'preparation'
+                      ? [2, 3].includes(step.index)
+                      : ![2, 3].includes(step.index),
+            ),
+    );
+    readonly visibleStepIndex = computed(() =>
+        Math.max(
+            0,
+            this.visibleSteps().findIndex((s) => s.index === this.activeStep()),
+        ),
+    );
+    readonly visibleErrorSteps = computed(() =>
+        this.visibleSteps()
+            .map((s, i) => (this.stepIssueCount(s.index) > 0 ? i : -1))
+            .filter((i) => i >= 0),
+    );
+    readonly applicationsRequired = computed(
+        () => this.draft().registrationRequired ?? !this.draft().tournamentId,
+    );
     readonly tieBreakerOptions: Array<{
         value: TieBreakerType;
         label: string;
@@ -108,7 +166,9 @@ export class TournamentBuilderPageComponent implements OnInit {
 
     readonly teams = signal<Team[]>([]);
     readonly teamsLoading = signal(false);
-    readonly operation = signal<'save' | 'validate' | 'publish' | null>(null);
+    readonly operation = signal<
+        'save' | 'validate' | 'publish' | 'calendar' | null
+    >(null);
     readonly savedDrafts = signal<SavedTournamentDraftSummary[]>([]);
     readonly selectedCloneKey = signal('');
     readonly cloneTournamentId = signal<number | null>(null);
@@ -145,11 +205,80 @@ export class TournamentBuilderPageComponent implements OnInit {
         const tournamentId =
             this.route.snapshot.paramMap.get('tournamentId') ?? undefined;
         const restored = this.store.initialize(tournamentId);
+        const phase = this.route.snapshot.queryParamMap.get('phase');
+        if (phase === 'preparation' || phase === 'launch') {
+            this.workflowPhase.set(phase);
+            this.store.mutate((d) => {
+                d.currentStep = phase === 'preparation' ? 3 : 9;
+            });
+        } else if ([2, 3].includes(this.activeStep())) this.goToStep(0);
+        void this.loadCommunitySeasons();
         this.savedDrafts.set(this.store.listSavedDrafts());
         this.loadTeams();
         this.refreshLocalPreviews();
         if (tournamentId && !restored) {
             void this.loadServerDraft(Number(tournamentId));
+        } else if (tournamentId) {
+            void this.refreshAcceptedTeams(Number(tournamentId));
+        }
+    }
+
+    selectCommunity(id: number): void {
+        if (this.store.structureLocked() || this.draft().tournamentId) return;
+        this.selectedCommunityId.set(id);
+        this.updateDetails('seasonId', this.communitySeasons()[0]?.id ?? 0);
+    }
+
+    private async loadCommunitySeasons(): Promise<void> {
+        try {
+            const communities = (
+                await firstValueFrom(this.communitiesApi.list())
+            ).filter((c) => c.canManageTournaments);
+            this.availableCommunities.set(communities);
+            const contexts = await Promise.all(
+                communities.map((c) =>
+                    firstValueFrom(this.communitiesApi.context(c.id)),
+                ),
+            );
+            this.availableSeasons.set(
+                contexts.flatMap((context) =>
+                    context.competitions.flatMap((c) =>
+                        c.seasons.map((s) => ({
+                            id: s.id,
+                            name: s.name,
+                            communityId: context.community.id,
+                            competitionName: c.name,
+                        })),
+                    ),
+                ),
+            );
+            const query = this.route.snapshot.queryParamMap;
+            const requestedCommunityId = !this.draft().tournamentId
+                ? Number(query.get('communityId'))
+                : 0;
+            const seasonId =
+                !this.draft().tournamentId && query.has('seasonId')
+                    ? Number(query.get('seasonId'))
+                    : this.draft().details.seasonId;
+            const matchingSeason = this.availableSeasons().find(
+                (s) => s.id === seasonId,
+            );
+            const selectedId = communities.some(
+                (c) => c.id === requestedCommunityId,
+            )
+                ? requestedCommunityId
+                : (matchingSeason?.communityId ?? communities[0]?.id ?? 0);
+            this.selectedCommunityId.set(selectedId);
+            if (!this.draft().tournamentId)
+                this.updateDetails(
+                    'seasonId',
+                    this.communitySeasons().find((s) => s.id === seasonId)
+                        ?.id ??
+                        this.communitySeasons()[0]?.id ??
+                        0,
+                );
+        } catch (error) {
+            this.applyBackendError(error);
         }
     }
 
@@ -160,11 +289,141 @@ export class TournamentBuilderPageComponent implements OnInit {
     }
 
     next(): void {
-        this.goToStep(this.activeStep() + 1);
+        this.goToStep(
+            this.visibleSteps()[this.visibleStepIndex() + 1]?.index ??
+                this.activeStep(),
+        );
     }
 
     previous(): void {
-        this.goToStep(this.activeStep() - 1);
+        this.goToStep(
+            this.visibleSteps()[this.visibleStepIndex() - 1]?.index ??
+                this.activeStep(),
+        );
+    }
+
+    async selectWorkflow(step: TournamentWorkflowStep): Promise<void> {
+        if (this.operation()) return;
+        if (step === 'registration' || step === 'review') {
+            if (this.store.dirty()) await this.saveDraft();
+            if (!this.draft().tournamentId || this.store.dirty()) return;
+            await this.router.navigate(['/dashboard/tournament-applications'], {
+                queryParams: {
+                    tournamentId: this.draft().tournamentId,
+                    section: step,
+                },
+            });
+            return;
+        }
+        this.workflowPhase.set(step);
+        this.goToStep(step === 'setup' ? 0 : step === 'preparation' ? 3 : 9);
+        if (step === 'preparation') await this.loadPreparationCalendar();
+    }
+
+    selectVisibleStep(index: number): void {
+        this.goToStep(this.visibleSteps()[index]?.index ?? 0);
+    }
+
+    private async loadPreparationCalendar(): Promise<void> {
+        if (
+            !this.draft().tournamentId ||
+            this.workflowPhase() !== 'preparation'
+        )
+            return;
+        try {
+            this.preparedCalendar.set(
+                await firstValueFrom(
+                    this.registrationsApi.calendar(this.draft().tournamentId!),
+                ),
+            );
+        } catch (error) {
+            this.applyBackendError(error);
+        }
+    }
+
+    async generateCalendar(): Promise<void> {
+        if (this.operation()) return;
+        await this.saveDraft();
+        const stage = this.groupStage();
+        if (
+            this.store.dirty() ||
+            !this.draft().tournamentId ||
+            !stage?.serverId
+        )
+            return;
+        this.operation.set('calendar');
+        try {
+            await firstValueFrom(
+                this.registrationsApi.generateSchedule(
+                    this.draft().tournamentId!,
+                    stage.serverId,
+                    stage.legs,
+                ),
+            );
+            await this.loadPreparationCalendar();
+            this.store.notice.set(
+                'Пары сформированы. Назначьте всем матчам дату, время и площадку. До запуска они скрыты из публичного календаря.',
+            );
+        } catch (error) {
+            this.applyBackendError(error);
+        } finally {
+            this.operation.set(null);
+        }
+    }
+
+    async resetCalendar(): Promise<void> {
+        if (
+            !this.resetCalendarConfirmed ||
+            this.operation() ||
+            !this.groupStage()?.serverId ||
+            !this.draft().tournamentId
+        )
+            return;
+        this.operation.set('calendar');
+        try {
+            await firstValueFrom(
+                this.registrationsApi.resetCalendar(
+                    this.draft().tournamentId!,
+                    this.groupStage()!.serverId!,
+                ),
+            );
+            this.resetCalendarConfirmed = false;
+            await this.loadPreparationCalendar();
+            this.store.notice.set(
+                'Подготовленные матчи отменены и скрыты. Можно изменить группы и сформировать новые пары. История матчей сохранена.',
+            );
+        } catch (error) {
+            this.applyBackendError(error);
+        } finally {
+            this.operation.set(null);
+        }
+    }
+
+    async schedulePreparedMatch(
+        matchId: number,
+        datetime: string,
+        venueId: number,
+    ): Promise<void> {
+        if (this.operation() || !this.draft().tournamentId) return;
+        this.operation.set('calendar');
+        try {
+            await firstValueFrom(
+                this.registrationsApi.schedule(
+                    this.draft().tournamentId!,
+                    matchId,
+                    datetime,
+                    venueId,
+                ),
+            );
+            await this.loadPreparationCalendar();
+            this.store.notice.set(
+                'Дата и площадка сохранены. Матч появится в публичном календаре после запуска турнира.',
+            );
+        } catch (error) {
+            this.applyBackendError(error);
+        } finally {
+            this.operation.set(null);
+        }
     }
 
     applyTemplate(templateId: TournamentBuilderDraft['templateId']): void {
@@ -300,7 +559,11 @@ export class TournamentBuilderPageComponent implements OnInit {
             );
             if (!stage) return;
             const capacity = stage.groups[0]?.capacity ?? 4;
-            stage.groups = this.createGroups(stage.key, safeCount, capacity);
+            stage.groups = this.createGroups(
+                stage.key,
+                safeCount,
+                capacity,
+            ).map((group, i) => stage.groups[i] ?? group);
             for (const participant of draft.participants) {
                 if (
                     participant.groupKey &&
@@ -332,6 +595,12 @@ export class TournamentBuilderPageComponent implements OnInit {
     }
 
     toggleTeam(team: Team): void {
+        if (this.draft().registrationRequired ?? !this.draft().tournamentId) {
+            this.store.notice.set(
+                'Участники появятся после утверждения заявок. Сохраните турнир и откройте раздел заявок',
+            );
+            return;
+        }
         if (this.store.structureLocked()) return;
         this.store.mutate((draft) => {
             const index = draft.participants.findIndex(
@@ -473,6 +742,7 @@ export class TournamentBuilderPageComponent implements OnInit {
 
     async saveDraft(): Promise<void> {
         if (this.operation()) return;
+        const creating = !this.draft().tournamentId;
         this.operation.set('save');
         this.store.saving.set(true);
         this.store.notice.set(null);
@@ -501,6 +771,9 @@ export class TournamentBuilderPageComponent implements OnInit {
                 : this.compact({
                       ...draft.details,
                       seasonId: Number(draft.details.seasonId),
+                      communityId: this.availableSeasons().find(
+                          (s) => s.id === Number(draft.details.seasonId),
+                      )?.communityId,
                   });
             const tournament = draft.tournamentId
                 ? await firstValueFrom(
@@ -513,6 +786,16 @@ export class TournamentBuilderPageComponent implements OnInit {
                       this.api.createTournament(detailsPayload),
                   );
 
+            this.store.patch({
+                registrationRequired: tournament.registrationRequired,
+                registrationStatus:
+                    tournament.registrationStatus ??
+                    this.draft().registrationStatus ??
+                    'not_open',
+                registrationOpenedAt:
+                    tournament.registrationOpenedAt ??
+                    this.draft().registrationOpenedAt,
+            });
             this.store.bindTournament(
                 tournament.id,
                 tournament.lifecycleStatus ?? this.draft().lifecycleStatus,
@@ -524,6 +807,21 @@ export class TournamentBuilderPageComponent implements OnInit {
                 return;
             }
 
+            const serverSnapshot = await firstValueFrom(
+                this.api.loadBuilder(tournament.id),
+            );
+            for (const obsolete of serverSnapshot.stages.filter(
+                (stage) =>
+                    !this.draft().stages.some(
+                        (item) =>
+                            item.serverId === stage.id ||
+                            item.key === stage.key,
+                    ),
+            )) {
+                await firstValueFrom(
+                    this.api.removeStage(tournament.id, obsolete.id),
+                );
+            }
             for (const stage of this.draft()
                 .stages.slice()
                 .sort((a, b) => a.order - b.order)) {
@@ -536,17 +834,28 @@ export class TournamentBuilderPageComponent implements OnInit {
                     endDate: stage.endDate,
                     configuration: stageConfiguration(stage),
                 });
-                const savedStage = stage.serverId
-                    ? await firstValueFrom(
-                          this.api.updateStage(
-                              tournament.id,
-                              stage.serverId,
-                              payload,
-                          ),
-                      )
-                    : await firstValueFrom(
-                          this.api.createStage(tournament.id, payload),
-                      );
+                stage.serverId ??= serverSnapshot.stages.find(
+                    (item) => item.key === stage.key,
+                )?.id;
+                const storedStage = serverSnapshot.stages.find(
+                    (s) => s.id === stage.serverId,
+                );
+                const savedStage =
+                    stage.serverId &&
+                    storedStage &&
+                    this.payloadMatches(payload, storedStage)
+                        ? storedStage
+                        : stage.serverId
+                          ? await firstValueFrom(
+                                this.api.updateStage(
+                                    tournament.id,
+                                    stage.serverId,
+                                    payload,
+                                ),
+                            )
+                          : await firstValueFrom(
+                                this.api.createStage(tournament.id, payload),
+                            );
                 this.store.mutate((current) => {
                     const target = current.stages.find(
                         (item) => item.clientKey === stage.clientKey,
@@ -554,29 +863,59 @@ export class TournamentBuilderPageComponent implements OnInit {
                     if (target) target.serverId = savedStage.id;
                 });
 
+                const serverStage = serverSnapshot.stages.find(
+                    (item) => item.id === savedStage.id,
+                );
+                for (const obsolete of (serverStage?.groups ?? []).filter(
+                    (group) =>
+                        !stage.groups.some(
+                            (item) =>
+                                item.serverId === group.id ||
+                                item.key === group.key,
+                        ),
+                )) {
+                    await firstValueFrom(
+                        this.api.removeGroup(
+                            tournament.id,
+                            savedStage.id,
+                            obsolete.id,
+                        ),
+                    );
+                }
                 for (const group of stage.groups) {
+                    group.serverId ??= serverStage?.groups.find(
+                        (item) => item.key === group.key,
+                    )?.id;
                     const groupPayload = this.compact({
                         key: group.key,
                         name: group.name,
                         order: group.order,
                         capacity: group.capacity,
                     });
-                    const savedGroup = group.serverId
-                        ? await firstValueFrom(
-                              this.api.updateGroup(
-                                  tournament.id,
-                                  savedStage.id,
-                                  group.serverId,
-                                  groupPayload,
-                              ),
-                          )
-                        : await firstValueFrom(
-                              this.api.createGroup(
-                                  tournament.id,
-                                  savedStage.id,
-                                  groupPayload,
-                              ),
-                          );
+                    const storedGroup = serverStage?.groups.find(
+                        (g) => g.id === group.serverId,
+                    );
+                    const savedGroup =
+                        group.serverId &&
+                        storedGroup &&
+                        this.payloadMatches(groupPayload, storedGroup)
+                            ? storedGroup
+                            : group.serverId
+                              ? await firstValueFrom(
+                                    this.api.updateGroup(
+                                        tournament.id,
+                                        savedStage.id,
+                                        group.serverId,
+                                        groupPayload,
+                                    ),
+                                )
+                              : await firstValueFrom(
+                                    this.api.createGroup(
+                                        tournament.id,
+                                        savedStage.id,
+                                        groupPayload,
+                                    ),
+                                );
                     this.store.mutate((current) => {
                         const targetStage = current.stages.find(
                             (item) => item.clientKey === stage.clientKey,
@@ -611,16 +950,31 @@ export class TournamentBuilderPageComponent implements OnInit {
                   );
             this.store.patch({ ruleVersionId: rule.id });
             this.store.setIssues([]);
-            this.store.markSaved();
+            this.store.markSaved(
+                creating
+                    ? 'Турнир создан без команд. Следующий шаг — открыть приём заявок.'
+                    : 'Настройки турнира сохранены',
+            );
+            if (creating)
+                await this.router.navigate(
+                    ['/dashboard/tournaments', tournament.id, 'edit'],
+                    { replaceUrl: true },
+                );
         } catch (error) {
             this.applyBackendError(error);
+            if (creating && this.draft().tournamentId)
+                this.store.notice.set(
+                    `Турнир №${this.draft().tournamentId} уже создан, но настройки сохранены не полностью. Исправьте ошибку и повторите сохранение — новый турнир создавать не нужно.`,
+                );
         } finally {
             this.operation.set(null);
             this.store.saving.set(false);
         }
     }
 
-    async validateTournament(): Promise<void> {
+    async validateTournament(
+        mode: 'configuration' | 'launch' = 'configuration',
+    ): Promise<void> {
         if (this.operation()) return;
         const localIssues = this.localValidation();
         this.store.setIssues(localIssues);
@@ -636,12 +990,15 @@ export class TournamentBuilderPageComponent implements OnInit {
                 this.api.validate(
                     this.draft().tournamentId!,
                     buildTournamentRules(this.draft()),
+                    mode,
                 ),
             );
             this.store.setIssues(result.errors ?? []);
             this.store.notice.set(
                 result.valid
-                    ? 'Проверка пройдена: турнир готов к публикации'
+                    ? mode === 'configuration'
+                        ? 'Структура и правила корректны. Команды для создания турнира не нужны.'
+                        : 'Строгая проверка пройдена: турнир готов к запуску'
                     : 'Найдены настройки, которые нужно исправить',
             );
         } catch (error) {
@@ -653,13 +1010,15 @@ export class TournamentBuilderPageComponent implements OnInit {
 
     async publishTournament(): Promise<void> {
         if (this.operation()) return;
+        await this.saveDraft();
+        if (this.store.dirty()) return;
         if (!this.draft().tournamentId || !this.draft().ruleVersionId) {
             this.store.notice.set(
-                'Перед публикацией сохраните черновик и версию правил',
+                'Перед запуском сохраните настройки турнира и версию правил',
             );
             return;
         }
-        await this.validateTournament();
+        await this.validateTournament('launch');
         if (this.store.validationIssues().length > 0) return;
         this.operation.set('publish');
         try {
@@ -672,7 +1031,9 @@ export class TournamentBuilderPageComponent implements OnInit {
             this.store.patch({
                 lifecycleStatus: result.lifecycleStatus ?? 'published',
             });
-            this.store.markSaved('Турнир опубликован');
+            this.store.markSaved(
+                'Турнир запущен. Подготовленные матчи доступны в публичном календаре.',
+            );
         } catch (error) {
             this.applyBackendError(error);
         } finally {
@@ -721,8 +1082,25 @@ export class TournamentBuilderPageComponent implements OnInit {
         key: keyof TournamentBuilderDraft['playoff'],
         value: unknown,
     ): void {
+        if (this.store.structureLocked()) return;
         this.store.mutate((draft) => {
             (draft.playoff as unknown as Record<string, unknown>)[key] = value;
+            if (key === 'bracketSize') {
+                for (const stage of draft.stages.filter(
+                    (stage) => stage.type === 'knockout',
+                )) {
+                    stage.bracketSize = draft.playoff.bracketSize;
+                }
+                if (draft.playoff.bracketSize < 8)
+                    draft.playoff.semiFinalPairing = 'adjacent';
+            }
+            if (key === 'thirdPlaceMatch') {
+                for (const stage of draft.stages.filter(
+                    (stage) => stage.type === 'knockout',
+                )) {
+                    stage.thirdPlaceMatch = draft.playoff.thirdPlaceMatch;
+                }
+            }
         });
         this.refreshLocalPreviews();
     }
@@ -774,8 +1152,15 @@ export class TournamentBuilderPageComponent implements OnInit {
                 this.api.loadBuilder(tournamentId),
             );
             this.store.replace(this.fromSnapshot(snapshot));
+            if (this.workflowPhase() !== 'setup')
+                this.goToStep(this.workflowPhase() === 'preparation' ? 3 : 9);
+            const season = this.availableSeasons().find(
+                (s) => s.id === snapshot.tournament.seasonId,
+            );
+            if (season) this.selectedCommunityId.set(season.communityId);
             this.store.markSaved('Черновик турнира загружен');
             this.refreshLocalPreviews();
+            await this.loadPreparationCalendar();
         } catch (error) {
             this.applyBackendError(error);
         } finally {
@@ -784,6 +1169,10 @@ export class TournamentBuilderPageComponent implements OnInit {
     }
 
     private async ensureTournamentTeams(tournamentId: number): Promise<void> {
+        if (this.draft().registrationRequired) {
+            await this.refreshAcceptedTeams(tournamentId);
+            return;
+        }
         for (const participant of this.draft().participants) {
             if (participant.tournamentTeamId) continue;
             const saved = await firstValueFrom(
@@ -798,9 +1187,56 @@ export class TournamentBuilderPageComponent implements OnInit {
         }
     }
 
+    private async refreshAcceptedTeams(tournamentId: number): Promise<void> {
+        try {
+            const snapshot = await firstValueFrom(
+                this.api.loadBuilder(tournamentId),
+            );
+            if (snapshot.tournament.registrationRequired)
+                this.store.mutate((draft) => {
+                    draft.registrationRequired = true;
+                    draft.registrationStatus =
+                        snapshot.tournament.registrationStatus;
+                    draft.registrationOpenedAt =
+                        snapshot.tournament.registrationOpenedAt;
+                    for (const accepted of snapshot.tournamentTeams) {
+                        if (
+                            !draft.participants.some(
+                                (p) => p.teamId === accepted.teamId,
+                            )
+                        )
+                            draft.participants.push({
+                                teamId: accepted.teamId,
+                                tournamentTeamId: accepted.id,
+                                name:
+                                    accepted.team?.name ??
+                                    `Команда ${accepted.teamId}`,
+                                shortName: accepted.team?.shortName,
+                                logoUrl: accepted.team?.logoUrl,
+                            });
+                    }
+                    draft.participants = draft.participants.filter((p) =>
+                        snapshot.tournamentTeams.some(
+                            (t) => t.teamId === p.teamId,
+                        ),
+                    );
+                });
+            await this.loadPreparationCalendar();
+        } catch (error) {
+            this.applyBackendError(error);
+            throw error;
+        }
+    }
+
     private async saveStageParticipants(tournamentId: number): Promise<void> {
         const stage = this.groupStage() ?? this.draft().stages[0];
         if (!stage?.serverId) return;
+        const snapshot = await firstValueFrom(
+            this.api.loadBuilder(tournamentId),
+        );
+        const serverStage = snapshot.stages.find(
+            (s) => s.id === stage.serverId,
+        );
         for (const participantId of this.draft().removedStageParticipantIds) {
             await firstValueFrom(
                 this.api.removeStageParticipant(
@@ -813,14 +1249,28 @@ export class TournamentBuilderPageComponent implements OnInit {
         this.store.patch({ removedStageParticipantIds: [] });
         for (const participant of this.draft().participants) {
             if (!participant.tournamentTeamId) continue;
+            participant.stageParticipantId ??= serverStage?.participants.find(
+                (p) => p.tournamentTeamId === participant.tournamentTeamId,
+            )?.id;
             const groupId = stage.groups.find(
                 (group) => group.key === participant.groupKey,
             )?.serverId;
             const payload = this.compact({
                 tournamentTeamId: participant.tournamentTeamId,
-                groupId,
+                groupId: groupId ?? null,
                 seedNumber: participant.seedNumber,
             });
+            const storedParticipant = serverStage?.participants.find(
+                (p) => p.id === participant.stageParticipantId,
+            );
+            if (
+                storedParticipant &&
+                this.payloadMatches(payload, {
+                    ...storedParticipant,
+                    groupId: storedParticipant.groupId ?? null,
+                })
+            )
+                continue;
             const saved = participant.stageParticipantId
                 ? await firstValueFrom(
                       this.api.updateStageParticipant(
@@ -945,6 +1395,25 @@ export class TournamentBuilderPageComponent implements OnInit {
         if (ruleVersion?.config) {
             this.applyConfig(draft, ruleVersion.config);
         }
+        draft.registrationRequired = tournament.registrationRequired;
+        draft.registrationStatus = tournament.registrationStatus;
+        draft.registrationOpenedAt = tournament.registrationOpenedAt;
+        if (tournament.registrationRequired)
+            for (const accepted of snapshot.tournamentTeams) {
+                if (
+                    !draft.participants.some(
+                        (p) => p.teamId === accepted.teamId,
+                    )
+                )
+                    draft.participants.push({
+                        teamId: accepted.teamId,
+                        tournamentTeamId: accepted.id,
+                        name:
+                            accepted.team?.name ?? `Команда ${accepted.teamId}`,
+                        shortName: accepted.team?.shortName,
+                        logoUrl: accepted.team?.logoUrl,
+                    });
+            }
         draft.removedStageParticipantIds = [];
         return draft;
     }
@@ -1024,6 +1493,14 @@ export class TournamentBuilderPageComponent implements OnInit {
                 | Record<string, unknown>
                 | undefined;
             draft.playoff.bracketSize = this.asBracketSize(bracket?.['size']);
+            draft.playoff.quarterFinalLegs =
+                bracket?.['quarterFinalLegs'] === 2 ? 2 : 1;
+            draft.playoff.semiFinalLegs =
+                bracket?.['semiFinalLegs'] === 2 ? 2 : 1;
+            draft.playoff.semiFinalPairing =
+                bracket?.['semiFinalPairing'] === 'cross'
+                    ? 'cross'
+                    : 'adjacent';
             draft.playoff.thirdPlaceMatch =
                 bracket?.['placementMatch'] === 'third_place';
             const seedingType = seeding?.['type'];
@@ -1161,41 +1638,59 @@ export class TournamentBuilderPageComponent implements OnInit {
               ]
             : [];
         const size = this.draft().playoff.bracketSize;
-        const bracket =
-            size === 4
-                ? [
-                      {
-                          position: 'SF-1',
-                          home: 'Лучший доступный победитель группы',
-                          away: 'Лучшая вторая команда',
-                      },
-                      {
-                          position: 'SF-2',
-                          home: 'Оставшийся победитель',
-                          away: 'Оставшийся победитель',
-                      },
-                      ...(this.draft().playoff.thirdPlaceMatch
-                          ? [
-                                {
-                                    position: 'THIRD_PLACE',
-                                    home: 'Проигравший SF-1',
-                                    away: 'Проигравший SF-2',
-                                },
-                            ]
-                          : []),
-                      {
-                          position: 'FINAL',
-                          home: 'Победитель SF-1',
-                          away: 'Победитель SF-2',
-                      },
-                  ]
-                : [
-                      {
-                          position: `ROUND-OF-${size}`,
-                          home: 'Посев 1',
-                          away: `Посев ${size}`,
-                      },
-                  ];
+        const bracket: Array<{ position: string; home: string; away: string }> =
+            [];
+        let previous: string[] = [];
+        for (let entrants: number = size; entrants >= 2; entrants /= 2) {
+            const prefix =
+                entrants === 2
+                    ? 'FINAL'
+                    : entrants === 4
+                      ? 'SF'
+                      : entrants === 8
+                        ? 'QF'
+                        : `R${entrants}`;
+            if (
+                entrants === 2 &&
+                previous.length === 2 &&
+                this.draft().playoff.thirdPlaceMatch
+            ) {
+                bracket.push({
+                    position: 'THIRD_PLACE',
+                    home: `Проигравший ${previous[0]}`,
+                    away: `Проигравший ${previous[1]}`,
+                });
+            }
+            const positions: string[] = [];
+            for (let i = 0; i < entrants / 2; i++) {
+                const position =
+                    entrants === 2 ? 'FINAL' : `${prefix}-${i + 1}`;
+                positions.push(position);
+                const cross =
+                    entrants === 4 &&
+                    this.draft().playoff.semiFinalPairing === 'cross';
+                const home = previous.length
+                    ? `Победитель ${previous[cross ? i : i * 2]}`
+                    : `Посев ${i + 1}`;
+                const away = previous.length
+                    ? `Победитель ${previous[cross ? i + 2 : i * 2 + 1]}`
+                    : `Посев ${entrants - i}`;
+                const legs =
+                    entrants === 8
+                        ? (this.draft().playoff.quarterFinalLegs ?? 1)
+                        : entrants === 4
+                          ? (this.draft().playoff.semiFinalLegs ?? 1)
+                          : 1;
+                for (let leg = 1; leg <= legs; leg++) {
+                    bracket.push({
+                        position: `${position}${legs === 2 ? `:L${leg}` : ''}`,
+                        home: leg === 2 ? away : home,
+                        away: leg === 2 ? home : away,
+                    });
+                }
+            }
+            previous = positions;
+        }
         this.store.setPreview({ schedule, qualification, bracket });
     }
 
@@ -1293,7 +1788,7 @@ export class TournamentBuilderPageComponent implements OnInit {
             const unassigned = draft.participants.filter(
                 (participant) => !participant.groupKey,
             );
-            if (unassigned.length) {
+            if (unassigned.length && this.workflowPhase() !== 'setup') {
                 issues.push({
                     path: '$.participants.groups',
                     message: `${unassigned.length} команд не распределены по группам`,
@@ -1383,6 +1878,29 @@ export class TournamentBuilderPageComponent implements OnInit {
             Object.entries(value).filter(
                 ([, item]) => item !== '' && item !== undefined,
             ),
+        );
+    }
+
+    private payloadMatches(
+        payload: Record<string, unknown>,
+        stored: object,
+    ): boolean {
+        const normalize = (value: unknown): unknown =>
+            Array.isArray(value)
+                ? value.map(normalize)
+                : value && typeof value === 'object'
+                  ? Object.fromEntries(
+                        Object.entries(value)
+                            .sort(([a], [b]) => a.localeCompare(b))
+                            .map(([key, v]) => [key, normalize(v)]),
+                    )
+                  : value;
+        return Object.entries(payload).every(
+            ([key, value]) =>
+                JSON.stringify(normalize(value)) ===
+                JSON.stringify(
+                    normalize((stored as Record<string, unknown>)[key]),
+                ),
         );
     }
 

@@ -4,7 +4,37 @@ League OS состоит из NestJS backend, Angular frontend и PostgreSQL. Pr
 окружение запускается через Docker Compose из файла
 `infrastructure/docker/docker-compose.prod.yml`.
 
+## Локальная разработка: backend
+
+Dev-контейнер публикует API на `http://localhost:4000/api`, frontend — на
+`http://localhost:4200`. При запуске используется `tsconfig.dev.json`: Nest watch
+собирает код в `.dev/dist`, а обычная проверочная/production-сборка — в `dist`.
+В Docker каталог `.dev` дополнительно изолирован томом `backend_dev_cache`.
+Поэтому локальный `npm run build` больше не очищает файлы работающего dev-backend.
+
+После изменения dev-конфигурации пересоздайте только backend (для текущего
+Compose-проекта `docker`; если использовали другое имя, укажите его вместо `docker`):
+
+```bash
+docker compose -p docker --env-file .env -f infrastructure/docker/docker-compose.dev.yml up -d --no-deps backend
+docker compose -p docker --env-file .env -f infrastructure/docker/docker-compose.dev.yml logs --tail 50 backend
+```
+
+Проверка доступности: `http://localhost:4000/api/feature-flags` напрямую и
+`http://localhost:4200/api/feature-flags` через frontend. Контейнер имеет HTTP
+healthcheck: статус `Up` без `healthy` сам по себе не подтверждает работу API,
+поскольку Nest watch может оставаться запущенным после падения приложения.
+Том `backend_dev_cache` содержит только пересоздаваемую сборку, не данные БД.
+
 ## Обновление production
+
+Самостоятельная регистрация, карточка и управление командой: [кабинет команды](docs/team-self-service.md).
+Двухматчевые четвертьфиналы и полуфиналы: [настройка и проведение](docs/two-leg-knockout.md).
+Для нового функционала требуется миграция `1792627200000-team-self-service.ts`.
+
+Новый процесс регистрации команд и состава: [заявки на турниры](docs/tournament-applications.md).
+Пять этапов от создания без команд до запуска: [инструкция организатора](docs/tournament-workflow.md).
+Перед обновлением прочитайте раздел о миграции и проверке старых связей игроков.
 
 Инструкция рассчитана на уже развёрнутый сервер, где репозиторий находится в
 `~/league-os`, а production-настройки записаны в корневом файле `.env`.
@@ -167,6 +197,10 @@ git pull --ff-only
 ```
 
 ## Полезные команды
+
+Назначение администраторов внутри сообществ, запуск миграции и назначение первого
+владельца описаны в [инструкции «Сообщества, участники и права»](docs/community-access.md).
+Раздел кабинета: `/dashboard/communities`.
 
 Перезапустить только backend после изменения `.env`:
 

@@ -13,6 +13,7 @@ export class TeamsService {
     return this.teamsRepository.find({
       where: {
         isActive: true,
+        profileStatus: 'published',
       },
       order: {
         name: 'ASC',
@@ -37,6 +38,7 @@ export class TeamsService {
       where: {
         id: teamId,
         isActive: true,
+        profileStatus: 'published',
       },
       select: {
         id: true,

@@ -1,6 +1,7 @@
 import type { DataSource, Repository } from 'typeorm';
 
 import { MatchEntity } from '../../matches/entities/match.entity';
+import { MatchStatus } from '../../matches/enums/match-status.enum';
 import { TournamentGroupEntity } from '../../tournament-groups/entities/tournament-group.entity';
 import { TournamentStageParticipantEntity } from '../../tournament-stage-participants/entities/tournament-stage-participant.entity';
 import { TournamentStageEntity } from '../../tournament-stages/entities/tournament-stage.entity';
@@ -9,6 +10,7 @@ import { TournamentStageType } from '../../tournament-stages/enums/tournament-st
 import { TournamentTeamEntity } from '../../tournament-teams/entities/tournament-teams.entity';
 import { TournamentTeamStatus } from '../../tournament-teams/enums/tournament-team-status.enum';
 import { TournamentEntity } from '../entities/tournaments.entity';
+import { TournamentLifecycleStatus } from '../enums/tournament-lifecycle-status.enum';
 import { GROUP_STAGE_SCHEDULE_RESET_CONFIRMATION } from '../dto/generate-group-stage-schedule.dto';
 import { GroupAssignmentStrategyService } from './group-assignment-strategy.service';
 import { RoundRobinGenerator } from './round-robin-generator';
@@ -112,6 +114,8 @@ describe('TournamentGroupSchedulingService', () => {
     jest.clearAllMocks();
     storedMatches.splice(0);
     stage.status = TournamentStageStatus.PENDING;
+    tournament.lifecycleStatus = TournamentLifecycleStatus.PUBLISHED;
+    tournament.registrationRequired = false;
   });
 
   it('previews exactly 30 matches for three groups of five', async () => {
@@ -156,5 +160,19 @@ describe('TournamentGroupSchedulingService', () => {
 
     expect(regenerated.createdMatches).toBe(60);
     expect(matchRepository.update).toHaveBeenCalledTimes(1);
+  });
+  it('soft-cancels a preparation calendar only before launch', async () => {
+    tournament.lifecycleStatus = TournamentLifecycleStatus.DRAFT;
+    await service.generateSchedule(10, 20, { legs: 1 });
+    expect(await service.resetPreparedSchedule(10, 20)).toEqual({
+      cancelledMatches: 30,
+    });
+    expect(matchRepository.update).toHaveBeenCalledWith(expect.anything(), {
+      status: MatchStatus.CANCELLED,
+    });
+    tournament.lifecycleStatus = TournamentLifecycleStatus.PUBLISHED;
+    await expect(service.resetPreparedSchedule(10, 20)).rejects.toThrow(
+      'только до запуска',
+    );
   });
 });

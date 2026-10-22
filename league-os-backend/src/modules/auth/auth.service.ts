@@ -22,6 +22,7 @@ import { PlayerEntity } from '../players/entities/player.entity';
 import { TeamPlayerEntity } from '../team-players/entities/team-players.entity';
 import { ConfirmPlayerLinkDto } from './dto/confirm-player-link.dto';
 import { UserEntity } from '../users/entities/user.entity';
+import { CommunityMemberEntity } from '../communities/entities/community-member.entity';
 
 @Injectable()
 export class AuthService {
@@ -38,6 +39,9 @@ export class AuthService {
 
     @InjectRepository(TeamPlayerEntity)
     private readonly teamPlayersRepository: Repository<TeamPlayerEntity>,
+
+    @InjectRepository(CommunityMemberEntity)
+    private readonly communityMembersRepository: Repository<CommunityMemberEntity>,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -226,6 +230,10 @@ export class AuthService {
   }
 
   private async buildUserResponse(user: UserEntity) {
+    const memberships = await this.communityMembersRepository.find({
+      where: { userId: user.id, isActive: true, community: { isActive: true } },
+      relations: { community: true },
+    });
     const linkedPlayer = await this.playersRepository.findOne({
       where: {
         userId: user.id,
@@ -256,6 +264,12 @@ export class AuthService {
       lastName: user.lastName,
       middleName: user.middleName ?? null,
       roles: user.roles?.map((role) => role.code) ?? [],
+      communities: memberships.map((m) => ({
+        id: m.communityId,
+        name: m.community.name,
+        slug: m.community.slug,
+        role: m.role,
+      })),
       linkedPlayer: linkedPlayer
         ? {
             id: linkedPlayer.id,

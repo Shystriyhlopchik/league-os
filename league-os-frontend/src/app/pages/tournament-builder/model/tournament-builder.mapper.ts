@@ -141,6 +141,9 @@ function stageRules(
             ...base,
             bracket: {
                 size: stage.bracketSize ?? draft.playoff.bracketSize,
+                quarterFinalLegs: draft.playoff.quarterFinalLegs ?? 1,
+                semiFinalLegs: draft.playoff.semiFinalLegs ?? 1,
+                semiFinalPairing: draft.playoff.semiFinalPairing ?? 'adjacent',
                 ...(stage.thirdPlaceMatch || draft.playoff.thirdPlaceMatch
                     ? { placementMatch: 'third_place' }
                     : {}),

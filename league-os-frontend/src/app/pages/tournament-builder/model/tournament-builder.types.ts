@@ -105,6 +105,9 @@ export interface QualificationDraft {
 export interface PlayoffDraft {
     enabled: boolean;
     bracketSize: 2 | 4 | 8 | 16 | 32;
+    quarterFinalLegs?: 1 | 2;
+    semiFinalLegs?: 1 | 2;
+    semiFinalPairing?: 'adjacent' | 'cross';
     seeding: 'standard' | 'random_draw' | 'manual' | 'best_eligible_opponent';
     avoidSameSourceGroup: boolean;
     constraintMode: 'required' | 'best_effort';
@@ -142,6 +145,9 @@ export interface DisciplineDraft {
 }
 
 export interface TournamentBuilderDraft {
+    registrationRequired?: boolean;
+    registrationStatus?: string;
+    registrationOpenedAt?: string | null;
     draftSchemaVersion: 1;
     localId: string;
     tournamentId?: number;

@@ -15,6 +15,7 @@ import { TeamPlayerEntity } from '../team-players/entities/team-players.entity';
 import { PasswordResetTokenEntity } from './entities/password-reset-token.entity';
 import { PasswordResetService } from './password-reset.service';
 import { PasswordResetMailerService } from './password-reset-mailer.service';
+import { CommunityMemberEntity } from '../communities/entities/community-member.entity';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { PasswordResetMailerService } from './password-reset-mailer.service';
       PasswordResetTokenEntity,
       PlayerEntity,
       TeamPlayerEntity,
+      CommunityMemberEntity,
     ]),
     RolesModule,
     UsersModule,
