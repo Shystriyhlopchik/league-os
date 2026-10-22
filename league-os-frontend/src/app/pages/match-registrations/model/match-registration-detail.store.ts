@@ -19,12 +19,15 @@ export class MatchRegistrationDetailStore {
     readonly message = signal<string | null>(null);
     readonly selectedCount = computed(() => this.selectedIds().size);
 
-    load(matchId: number, teamId: number): void {
+    load(matchId: number, teamId: number, correctionMode = false): void {
         this.isLoading.set(true);
         this.error.set(null);
 
-        this.api
-            .getMatchRegistration(matchId, teamId)
+        const request = correctionMode
+            ? this.api.getFinishedMatchRegistration(matchId, teamId)
+            : this.api.getMatchRegistration(matchId, teamId);
+
+        request
             .pipe(
                 tap((registration) => this.applyRegistration(registration)),
                 catchError((error) => {
@@ -48,17 +51,45 @@ export class MatchRegistrationDetailStore {
         this.message.set(null);
     }
 
-    save(matchId: number, teamId: number): void {
+    save(
+        matchId: number,
+        teamId: number,
+        correctionMode = false,
+        officialMode = false,
+        onSuccess?: () => void,
+    ): void {
         this.isSaving.set(true);
         this.error.set(null);
         this.message.set(null);
 
-        this.api
-            .saveMatchRegistration(matchId, teamId, [...this.selectedIds()])
+        const request = correctionMode
+            ? this.api.saveFinishedMatchRegistration(
+                  matchId,
+                  teamId,
+                  [...this.selectedIds()],
+              )
+            : officialMode
+              ? this.api.saveMatchRegistrationByOfficial(
+                    matchId,
+                    teamId,
+                    [...this.selectedIds()],
+                )
+            : this.api.saveMatchRegistration(matchId, teamId, [
+                  ...this.selectedIds(),
+              ]);
+
+        request
             .pipe(
                 tap((registration) => {
                     this.applyRegistration(registration);
-                    this.message.set('Заявка сохранена');
+                    this.message.set(
+                        correctionMode
+                            ? 'Протокол участников сохранён'
+                            : officialMode
+                              ? 'Состав команды сохранён и утверждён'
+                            : 'Заявка сохранена',
+                    );
+                    onSuccess?.();
                 }),
                 catchError((error) => {
                     this.error.set(
@@ -85,7 +116,7 @@ export class MatchRegistrationDetailStore {
                 ),
                 tap((registration) => {
                     this.applyRegistration(registration);
-                    this.message.set('Заявка утверждена и отправлена судье');
+                    this.message.set('Заявка отправлена судье');
                 }),
                 catchError((error) => {
                     this.error.set(

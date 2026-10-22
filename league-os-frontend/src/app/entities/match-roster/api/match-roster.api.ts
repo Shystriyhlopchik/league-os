@@ -1,13 +1,21 @@
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { MatchRosterCheck } from '../model/match-roster.types';
+import {
+    MatchRosterCheck,
+    PenaltyShootoutResult,
+} from '../model/match-roster.types';
 import { environment } from '../../../../environments/environment';
 import { HttpClient } from '@angular/common/http';
+import type { FinalizePlayedMatch } from '../../match-service/model/match-service.types';
 
 export type ManualMatchEventType =
     | 'goal'
+    | 'own_goal'
+    | 'penalty_goal'
+    | 'penalty_missed'
     | 'yellow_card'
+    | 'second_yellow_card'
     | 'red_card'
     | 'red_ball';
 
@@ -20,6 +28,7 @@ export interface ManualMatchEvent {
     half: 1 | 2;
     playerId?: number;
     assistPlayerId?: number;
+    goalValue?: number;
 }
 
 export interface CreateManualMatchEvent {
@@ -36,6 +45,20 @@ export interface SignedManualProtocol {
     status: 'finished';
     homeScore: number;
     awayScore: number;
+    winnerTeamId?: number;
+    resolutionType?: 'regular_time' | 'extra_time' | 'penalties' | 'technical';
+    technicalResultReason?: string;
+}
+
+export interface SignPenaltyShootoutRequest {
+    resolutionType: 'penalties';
+    penalties: PenaltyShootoutResult;
+}
+
+export interface SignTechnicalLossRequest {
+    resolutionType: 'technical';
+    winnerTeamId: number;
+    technicalResultReason: string;
 }
 
 @Injectable({
@@ -51,7 +74,10 @@ export class MatchRosterApi {
         );
     }
 
-    approveRoster(matchId: number, teamId: number): Observable<MatchRosterCheck> {
+    approveRoster(
+        matchId: number,
+        teamId: number,
+    ): Observable<MatchRosterCheck> {
         return this.http.post<MatchRosterCheck>(
             `${this.apiUrl}/match-service/matches/${matchId}/rosters/${teamId}/approve`,
             {},
@@ -83,10 +109,48 @@ export class MatchRosterApi {
         );
     }
 
-    signManualProtocol(matchId: number): Observable<SignedManualProtocol> {
+    getFinishedMatchEvents(matchId: number): Observable<ManualMatchEvent[]> {
+        return this.http.get<ManualMatchEvent[]>(
+            `${this.apiUrl}/match-service/finished-matches/${matchId}/events`,
+        );
+    }
+
+    createFinishedMatchEvent(
+        matchId: number,
+        dto: CreateManualMatchEvent,
+    ): Observable<ManualMatchEvent> {
+        return this.http.post<ManualMatchEvent>(
+            `${this.apiUrl}/match-service/finished-matches/${matchId}/events`,
+            dto,
+        );
+    }
+
+    cancelFinishedMatchEvent(
+        matchId: number,
+        eventId: number,
+    ): Observable<{ id: number; isCancelled: true }> {
+        return this.http.delete<{ id: number; isCancelled: true }>(
+            `${this.apiUrl}/match-service/finished-matches/${matchId}/events/${eventId}`,
+        );
+    }
+
+    signManualProtocol(
+        matchId: number,
+        dto: SignPenaltyShootoutRequest | FinalizePlayedMatch = {},
+    ): Observable<SignedManualProtocol> {
         return this.http.post<SignedManualProtocol>(
             `${this.apiUrl}/match-service/matches/${matchId}/manual-protocol/sign`,
-            {},
+            dto,
+        );
+    }
+
+    signTechnicalLoss(
+        matchId: number,
+        dto: SignTechnicalLossRequest,
+    ): Observable<SignedManualProtocol> {
+        return this.http.post<SignedManualProtocol>(
+            `${this.apiUrl}/match-service/matches/${matchId}/manual-protocol/sign`,
+            dto,
         );
     }
 }

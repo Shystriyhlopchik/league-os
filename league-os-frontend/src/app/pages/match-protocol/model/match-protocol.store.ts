@@ -5,6 +5,7 @@ import { catchError, finalize, tap } from 'rxjs/operators';
 import { MatchServiceApi } from '../../../entities/match-service/api/match-service.api';
 import {
     CreateMatchServiceEventDto,
+    FinalizePlayedMatch,
     MatchEventType,
     MatchProtocolData,
     MatchProtocolEvent,
@@ -56,10 +57,12 @@ export class MatchProtocolStore {
     });
 
     readonly redBalls = computed(() => {
-        return this.data()?.redBalls ?? {
-            active: [],
-            usedTeamIds: [],
-        };
+        return (
+            this.data()?.redBalls ?? {
+                active: [],
+                usedTeamIds: [],
+            }
+        );
     });
 
     readonly activeRedBall = computed(() => {
@@ -103,16 +106,16 @@ export class MatchProtocolStore {
         this.runSessionAction(() => this.api.resumeMatch(matchId));
     }
 
-    finishHalf(matchId: number): void {
-        this.runSessionAction(() => this.api.finishHalf(matchId));
+    finishHalf(matchId: number, result: FinalizePlayedMatch = {}): void {
+        this.runSessionAction(() => this.api.finishHalf(matchId, result));
     }
 
     startSecondHalf(matchId: number): void {
         this.runSessionAction(() => this.api.startSecondHalf(matchId));
     }
 
-    finishMatch(matchId: number): void {
-        this.runSessionAction(() => this.api.finishMatch(matchId));
+    finishMatch(matchId: number, result: FinalizePlayedMatch = {}): void {
+        this.runSessionAction(() => this.api.finishMatch(matchId, result));
     }
 
     startEventRecording(
@@ -211,7 +214,8 @@ export class MatchProtocolStore {
                 }),
                 catchError((error) => {
                     this.error.set(
-                        error?.error?.message ?? 'Не удалось отменить фиксацию события',
+                        error?.error?.message ??
+                            'Не удалось отменить фиксацию события',
                     );
 
                     return EMPTY;
@@ -240,7 +244,7 @@ export class MatchProtocolStore {
                 catchError((error) => {
                     this.error.set(
                         error?.error?.message ??
-                        'Не удалось активировать красный мяч',
+                            'Не удалось активировать красный мяч',
                     );
 
                     return EMPTY;

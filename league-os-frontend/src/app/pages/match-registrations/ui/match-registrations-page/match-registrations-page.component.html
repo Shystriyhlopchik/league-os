@@ -1,13 +1,13 @@
 <div class="match-service-page">
     <app-page-header
         title="Регистрация на игру"
-        description="Ближайшие матчи команд, которыми вы управляете"
+        description="Матчи команд, которыми вы управляете"
         (back)="goBack()"
     />
 
     <app-info-card
         title="Заявка команды"
-        label="Ближайшие игры"
+        label="Игры команды"
         description="Выберите матч для формирования заявки команды"
     ></app-info-card>
 
@@ -18,7 +18,7 @@
             {{ store.error() }}
         </p>
     } @else if (store.isEmpty()) {
-        <p class="state-text">У ваших команд пока нет предстоящих игр</p>
+        <p class="state-text">У ваших команд пока нет доступных игр</p>
     } @else {
         <section class="matches-list">
             @for (match of store.matches(); track match.id) {

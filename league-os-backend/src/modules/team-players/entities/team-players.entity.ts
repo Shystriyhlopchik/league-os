@@ -7,6 +7,9 @@ import { BaseEntity } from '../../../common/base/base.entity';
 
 @Entity('team_players')
 export class TeamPlayerEntity extends BaseEntity {
+  @Column({ name: 'community_id' })
+  communityId: number;
+
   @Column({ name: 'team_id' })
   teamId: number;
 

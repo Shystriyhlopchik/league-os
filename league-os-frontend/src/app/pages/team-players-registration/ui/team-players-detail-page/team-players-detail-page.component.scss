@@ -71,6 +71,10 @@
             background: #1a0f0f;
         }
     }
+
+    &__delete-error {
+        margin-bottom: 16px;
+    }
 }
 
 .team-players-table {
@@ -82,10 +86,10 @@
     &__head,
     &__row {
         display: grid;
-        grid-template-columns: 56px 64px minmax(180px, 1fr) 130px 120px minmax(130px, 180px) 90px 126px;
+        grid-template-columns: 56px 64px minmax(180px, 1fr) 130px 120px minmax(130px, 180px) 90px 190px;
         gap: 16px;
         align-items: center;
-        min-width: 1120px;
+        min-width: 1180px;
         padding: 14px 16px;
     }
 
@@ -145,21 +149,47 @@
         display: none;
     }
 
-    &__edit-button {
+    &__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    &__edit-button,
+    &__delete-button {
         min-height: 34px;
         padding: 0 12px;
-        border: 1px solid #444;
         border-radius: 999px;
-        color: #fff;
         font-size: 12px;
         font-weight: 600;
         background: transparent;
         cursor: pointer;
 
-        &:hover {
+        &:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+    }
+
+    &__edit-button {
+        border: 1px solid #444;
+        color: #fff;
+
+        &:hover:not(:disabled) {
             color: #050505;
             border-color: #fff;
             background: #fff;
+        }
+    }
+
+    &__delete-button {
+        border: 1px solid #8f3434;
+        color: #ff8a8a;
+
+        &:hover:not(:disabled) {
+            color: #fff;
+            border-color: #c94444;
+            background: #8f3434;
         }
     }
 }

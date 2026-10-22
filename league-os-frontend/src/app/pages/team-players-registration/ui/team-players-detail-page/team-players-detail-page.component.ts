@@ -4,6 +4,13 @@ import { TeamPlayersDetailStore } from '../../model/team-players-detail.store';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import { TeamPlayer } from '../../../../entities/team-player/model/team-player.types';
 
+const ALLOWED_PLAYER_PHOTO_TYPES = new Set([
+    'image/png',
+    'image/jpeg',
+    'image/jpg',
+    'image/webp',
+]);
+
 @Component({
     selector: 'app-team-players-detail-page',
     imports: [ReactiveFormsModule, RouterLink],
@@ -27,11 +34,12 @@ export class TeamPlayersDetailPageComponent implements OnInit {
         firstName: ['', Validators.required],
         middleName: [''],
         shirtNumber: this.fb.control<number | null>(null, [
+            Validators.required,
             Validators.min(1),
             Validators.max(99),
         ]),
         position: [''],
-        birthDate: [''],
+        birthDate: ['', Validators.required],
         preferredFoot: [''],
         photo: this.fb.control<File | null>(null),
         isCaptain: [false],
@@ -76,6 +84,27 @@ export class TeamPlayersDetailPageComponent implements OnInit {
         });
     }
 
+    removePlayer(teamPlayer: TeamPlayer): void {
+        if (this.store.deletingPlayerId() !== null) {
+            return;
+        }
+
+        const playerName = this.getPlayerFullName(teamPlayer);
+        if (
+            !confirm(
+                `Удалить игрока «${playerName}» из состава команды? Исторические данные матчей сохранятся.`,
+            )
+        ) {
+            return;
+        }
+
+        this.store.removePlayer(this.teamId, teamPlayer.id, () => {
+            if (this.editingPlayer()?.id === teamPlayer.id) {
+                this.closeForm();
+            }
+        });
+    }
+
     closeForm(): void {
         this.isFormOpened.set(false);
         this.editingPlayer.set(null);
@@ -98,16 +127,18 @@ export class TeamPlayersDetailPageComponent implements OnInit {
         const input = event.target as HTMLInputElement;
         const file = input.files?.[0] ?? null;
 
-        if (file && file.type !== 'image/png') {
+        if (file && !ALLOWED_PLAYER_PHOTO_TYPES.has(file.type)) {
             this.form.controls.photo.setValue(null);
+            this.form.controls.photo.markAsTouched();
             this.photoName.set(null);
-            this.photoError.set('Выберите файл в формате PNG');
+            this.photoError.set('Выберите файл в формате PNG, JPEG или WebP');
             input.value = '';
             return;
         }
 
         if (file && file.size > 5 * 1024 * 1024) {
             this.form.controls.photo.setValue(null);
+            this.form.controls.photo.markAsTouched();
             this.photoName.set(null);
             this.photoError.set('Размер файла не должен превышать 5 МБ');
             input.value = '';
@@ -115,6 +146,8 @@ export class TeamPlayersDetailPageComponent implements OnInit {
         }
 
         this.form.controls.photo.setValue(file);
+        this.form.controls.photo.markAsTouched();
+        this.form.controls.photo.updateValueAndValidity();
         this.photoName.set(file?.name ?? null);
         this.photoError.set(null);
     }
@@ -192,4 +225,5 @@ export class TeamPlayersDetailPageComponent implements OnInit {
 
         return preferredFoot ? labels[preferredFoot] : '—';
     }
+
 }

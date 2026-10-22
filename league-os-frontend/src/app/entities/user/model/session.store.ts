@@ -3,7 +3,7 @@ import { TokenStorage } from '../../../shared/lib/storage/token-storage';
 import { User } from './user.types';
 import { AuthResponse } from './auth.types';
 import { AuthApi } from '../api/auth.api';
-import {finalize} from 'rxjs';
+import { finalize } from 'rxjs';
 
 @Injectable({
     providedIn: 'root',
@@ -23,6 +23,18 @@ export class SessionStore {
     readonly roles = computed(() => {
         return this.user()?.roles ?? [];
     });
+
+    readonly canManageCommunityTournaments = computed(
+        () =>
+            this.hasRole('super_admin') ||
+            (this.user()?.communities ?? []).some(
+                (c) => c.role === 'owner' || c.role === 'admin',
+            ),
+    );
+
+    updateUser(user: User): void {
+        this.user.set(user);
+    }
 
     init(): void {
         const token = this.tokenStorage.getAccessToken();

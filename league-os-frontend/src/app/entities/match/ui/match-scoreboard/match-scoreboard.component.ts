@@ -10,6 +10,7 @@ import {DatePipe} from '@angular/common';
 })
 export class MatchScoreboardComponent {
     readonly match = input.required<MatchScoreboardVm>();
+    DEFAULT_IMG = 'images/logo/logo_team_def.png';
 
     getTeamName(teamName: string, shortName?: string | null): string {
         return shortName || teamName;

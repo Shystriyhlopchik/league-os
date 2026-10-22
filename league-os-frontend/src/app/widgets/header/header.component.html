@@ -3,8 +3,8 @@
         <a class="header__logo" routerLink="/" aria-label="Арман Лига">
             <img
                 class="header__logo-image"
-                src="images/Arman_liga.png"
-                alt="Арман Лига"
+                src="images/logo/dvor-liga.png"
+                alt="Дворовая Лига"
             />
         </a>
 
@@ -21,10 +21,38 @@
             </a>
             <a
                 class="header__nav-link"
+                routerLink="/players"
+                (click)="closeMenu()"
+            >
+                Игроки
+            </a>
+            <a
+                class="header__nav-link"
                 routerLink="/matches"
                 (click)="closeMenu()"
             >
                 Матчи
+            </a>
+            <a
+                class="header__nav-link"
+                routerLink="/statistics"
+                (click)="closeMenu()"
+            >
+                Таблица
+            </a>
+            <a
+                class="header__nav-link"
+                routerLink="/ranking"
+                (click)="closeMenu()"
+            >
+                Рейтинг
+            </a>
+            <a
+                class="header__nav-link"
+                routerLink="/champion"
+                (click)="closeMenu()"
+            >
+                Чемпион
             </a>
             <a
                 class="header__nav-link"
@@ -33,19 +61,23 @@
             >
                 Новости
             </a>
-            <a class="header__nav-link" routerLink="/" (click)="closeMenu()">
+            <a
+                class="header__nav-link"
+                routerLink="/regulations"
+                (click)="closeMenu()"
+            >
                 Регламент соревнований
             </a>
-            <a class="header__nav-link" routerLink="/" (click)="closeMenu()">
-                О лиге
-            </a>
+            <!--            <a class="header__nav-link" routerLink="/" (click)="closeMenu()">-->
+            <!--                О лиге-->
+            <!--            </a>-->
         </nav>
 
         <div class="header__actions">
             <div class="header__socials" aria-label="Социальные сети">
                 <a
                     class="header__social-link"
-                    href="https://vk.com/arman_football.league"
+                    href="https://vk.ru/liga_dvora_cheb"
                     aria-label="ВКонтакте"
                 >
                     <img
@@ -54,28 +86,28 @@
                         alt=""
                     />
                 </a>
-                <a
-                    class="header__social-link"
-                    href="https://t.me/ArmanLiga"
-                    aria-label="Telegram"
-                >
-                    <img
-                        class="header__social-icon"
-                        src="images/telegram.png"
-                        alt=""
-                    />
-                </a>
-                <a
-                    class="header__social-link"
-                    href="https://max.ru/join/2pBzTFTbrv1mc6L4flPIxiKCrurt3P3SUVxCU7BeIfc"
-                    aria-label="Instagram"
-                >
-                    <img
-                        class="header__social-icon header__social-icon--sm"
-                        src="images/Max_logo_black.svg"
-                        alt=""
-                    />
-                </a>
+                <!--                <a-->
+                <!--                    class="header__social-link"-->
+                <!--                    href="https://t.me/ArmanLiga"-->
+                <!--                    aria-label="Telegram"-->
+                <!--                >-->
+                <!--                    <img-->
+                <!--                        class="header__social-icon"-->
+                <!--                        src="images/telegram.png"-->
+                <!--                        alt=""-->
+                <!--                    />-->
+                <!--                </a>-->
+                <!--                <a-->
+                <!--                    class="header__social-link"-->
+                <!--                    href="https://max.ru/join/2pBzTFTbrv1mc6L4flPIxiKCrurt3P3SUVxCU7BeIfc"-->
+                <!--                    aria-label="Instagram"-->
+                <!--                >-->
+                <!--                    <img-->
+                <!--                        class="header__social-icon header__social-icon&#45;&#45;sm"-->
+                <!--                        src="images/Max_logo_black.svg"-->
+                <!--                        alt=""-->
+                <!--                    />-->
+                <!--                </a>-->
             </div>
 
             <a
@@ -92,6 +124,7 @@
 
             <button
                 class="header__action header__action--menu"
+                [class.header__action--menu-open]="isMenuOpen()"
                 type="button"
                 [attr.aria-label]="menuIconLabel()"
                 [attr.aria-expanded]="isMenuOpen()"
@@ -116,17 +149,17 @@
             >
             <a
                 class="header__nav-link"
-                routerLink="/tournaments"
-                (click)="closeMenu()"
-            >
-                Турниры
-            </a>
-            <a
-                class="header__nav-link"
-                routerLink="/teams"
+                routerLink="/team"
                 (click)="closeMenu()"
             >
                 Команды
+            </a>
+            <a
+                class="header__nav-link"
+                routerLink="/players"
+                (click)="closeMenu()"
+            >
+                Игроки
             </a>
             <a
                 class="header__nav-link"
@@ -137,10 +170,38 @@
             </a>
             <a
                 class="header__nav-link"
+                routerLink="/statistics"
+                (click)="closeMenu()"
+            >
+                Таблица
+            </a>
+            <a
+                class="header__nav-link"
+                routerLink="/ranking"
+                (click)="closeMenu()"
+            >
+                Рейтинг
+            </a>
+            <a
+                class="header__nav-link"
+                routerLink="/champion"
+                (click)="closeMenu()"
+            >
+                Чемпион
+            </a>
+            <a
+                class="header__nav-link"
                 routerLink="/news"
                 (click)="closeMenu()"
             >
                 Новости
+            </a>
+            <a
+                class="header__nav-link"
+                routerLink="/regulations"
+                (click)="closeMenu()"
+            >
+                Регламент соревнований
             </a>
             <a
                 class="header__nav-link"

@@ -11,9 +11,16 @@ import { environment } from '../../../../environments/environment';
 export class TournamentStatsSummaryApi {
     private readonly http = inject(HttpClient);
 
-    getStatsSummary(tournamentId: number): Observable<StatsSummaryData> {
+    getStatsSummary(
+        tournamentId: number,
+        groupId?: number,
+    ): Observable<StatsSummaryData> {
         return this.http.get<StatsSummaryData>(
             `${environment.apiUrl}/tournaments/${tournamentId}/stats-summary`,
+            {
+                params:
+                    groupId === undefined ? {} : { groupId: String(groupId) },
+            },
         );
     }
 }

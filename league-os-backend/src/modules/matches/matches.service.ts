@@ -11,6 +11,7 @@ import { formatLocalDateTime } from './helper/formatLocalDateTime';
 import { MatchRosterPlayerEntity } from '../match-rosters/entities/match-roster-player.entity';
 import { MatchRosterEntity } from '../match-rosters/entities/match-roster.entity';
 import { MatchStatus } from './enums/match-status.enum';
+import { TournamentLifecycleStatus } from '../tournaments/enums/tournament-lifecycle-status.enum';
 
 const ERR_MESSAGE = 'Команды в матче не могут быть одинаковыми';
 
@@ -68,57 +69,72 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
       },
     });
 
-    return matches.map((match) => ({
-      id: match.id,
-      tournamentId: match.tournamentId,
+    return matches
+      .filter(
+        (match) =>
+          Boolean(match.homeTeam) &&
+          Boolean(match.awayTeam) &&
+          match.status !== MatchStatus.CANCELLED &&
+          match.tournament?.lifecycleStatus !==
+            TournamentLifecycleStatus.DRAFT &&
+          Boolean(match.matchDatetime),
+      )
+      .map((match) => ({
+        id: match.id,
+        tournamentId: match.tournamentId,
 
-      round: match.round,
-      status: match.status,
-      matchDateTime: formatLocalDateTime(match.matchDatetime),
+        round: match.round,
+        status: match.status,
+        matchDateTime: formatLocalDateTime(match.matchDatetime),
 
-      tournament: {
-        id: match.tournament.id,
-        name: match.tournament.name,
+        tournament: {
+          id: match.tournament.id,
+          name: match.tournament.name,
+          logoUrl:
+            match.tournament.logoUrl ??
+            match.tournament.season.competition.logoUrl,
 
-        season: {
-          id: match.tournament.season.id,
-          name: match.tournament.season.name,
-          year: match.tournament.season.year,
+          season: {
+            id: match.tournament.season.id,
+            name: match.tournament.season.name,
+            year: match.tournament.season.year,
+          },
+
+          competition: {
+            id: match.tournament.season.competition.id,
+            name: match.tournament.season.competition.name,
+            slug: match.tournament.season.competition.slug,
+            logoUrl: match.tournament.season.competition.logoUrl,
+            colorPrimary: match.tournament.season.competition.colorPrimary,
+          },
         },
 
-        competition: {
-          id: match.tournament.season.competition.id,
-          name: match.tournament.season.competition.name,
-          logoUrl: match.tournament.season.competition.logoUrl,
+        homeTeam: {
+          id: match.homeTeam.id,
+          name: match.homeTeam.name,
+          shortName: match.homeTeam.shortName,
+          logoUrl: match.homeTeam.logoUrl,
         },
-      },
 
-      homeTeam: {
-        id: match.homeTeam.id,
-        name: match.homeTeam.name,
-        shortName: match.homeTeam.shortName,
-        logoUrl: match.homeTeam.logoUrl,
-      },
+        awayTeam: {
+          id: match.awayTeam.id,
+          name: match.awayTeam.name,
+          shortName: match.awayTeam.shortName,
+          logoUrl: match.awayTeam.logoUrl,
+        },
 
-      awayTeam: {
-        id: match.awayTeam.id,
-        name: match.awayTeam.name,
-        shortName: match.awayTeam.shortName,
-        logoUrl: match.awayTeam.logoUrl,
-      },
+        score: {
+          home: match.homeScore,
+          away: match.awayScore,
+        },
 
-      score: {
-        home: match.homeScore,
-        away: match.awayScore,
-      },
-
-      venue: match.venue
-        ? {
-            id: match.venue.id,
-            name: match.venue.name,
-          }
-        : null,
-    }));
+        venue: match.venue
+          ? {
+              id: match.venue.id,
+              name: match.venue.name,
+            }
+          : null,
+      }));
   }
 
   async findBySeason(seasonId: number) {
@@ -134,7 +150,9 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
         venue: true,
 
         tournament: {
-          season: true,
+          season: {
+            competition: true,
+          },
         },
       },
       order: {
@@ -143,47 +161,71 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
       },
     });
 
-    return matches.map((match) => ({
-      id: match.id,
-      tournamentId: match.tournamentId,
-      round: match.round,
-      status: match.status,
-      matchDateTime: formatLocalDateTime(match.matchDatetime),
+    return matches
+      .filter(
+        (match) =>
+          Boolean(match.homeTeam) &&
+          Boolean(match.awayTeam) &&
+          match.status !== MatchStatus.CANCELLED &&
+          match.tournament?.lifecycleStatus !==
+            TournamentLifecycleStatus.DRAFT &&
+          Boolean(match.matchDatetime),
+      )
+      .map((match) => ({
+        id: match.id,
+        tournamentId: match.tournamentId,
+        round: match.round,
+        status: match.status,
+        matchDateTime: formatLocalDateTime(match.matchDatetime),
 
-      tournament: {
-        id: match.tournament.id,
-        name: match.tournament.name,
-        logoUrl: match.tournament.logoUrl,
+        tournament: {
+          id: match.tournament.id,
+          name: match.tournament.name,
+          logoUrl:
+            match.tournament.logoUrl ??
+            match.tournament.season.competition.logoUrl,
 
-        season: match.tournament.season,
-      },
+          season: {
+            id: match.tournament.season.id,
+            name: match.tournament.season.name,
+            year: match.tournament.season.year,
+          },
 
-      homeTeam: {
-        id: match.homeTeam.id,
-        name: match.homeTeam.name,
-        shortName: match.homeTeam.shortName,
-        logoUrl: match.homeTeam.logoUrl,
-      },
+          competition: {
+            id: match.tournament.season.competition.id,
+            name: match.tournament.season.competition.name,
+            slug: match.tournament.season.competition.slug,
+            logoUrl: match.tournament.season.competition.logoUrl,
+            colorPrimary: match.tournament.season.competition.colorPrimary,
+          },
+        },
 
-      awayTeam: {
-        id: match.awayTeam.id,
-        name: match.awayTeam.name,
-        shortName: match.awayTeam.shortName,
-        logoUrl: match.awayTeam.logoUrl,
-      },
+        homeTeam: {
+          id: match.homeTeam.id,
+          name: match.homeTeam.name,
+          shortName: match.homeTeam.shortName,
+          logoUrl: match.homeTeam.logoUrl,
+        },
 
-      score: {
-        home: match.homeScore,
-        away: match.awayScore,
-      },
+        awayTeam: {
+          id: match.awayTeam.id,
+          name: match.awayTeam.name,
+          shortName: match.awayTeam.shortName,
+          logoUrl: match.awayTeam.logoUrl,
+        },
 
-      venue: match.venue
-        ? {
-            id: match.venue.id,
-            name: match.venue.name,
-          }
-        : null,
-    }));
+        score: {
+          home: match.homeScore,
+          away: match.awayScore,
+        },
+
+        venue: match.venue
+          ? {
+              id: match.venue.id,
+              name: match.venue.name,
+            }
+          : null,
+      }));
   }
 
   async findProtocol(matchId: number) {
@@ -222,6 +264,7 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
     }
 
     const rosters = await this.getProtocolRosters(match);
+    const activeEvents = match.events.filter((event) => !event.isCancelled);
 
     return {
       match: {
@@ -233,6 +276,7 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
         tournament: {
           id: match.tournament.id,
           name: match.tournament.name,
+          logoUrl: match.tournament.logoUrl ?? null,
 
           season: {
             id: match.tournament.season.id,
@@ -269,6 +313,36 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
           logoUrl: match.awayTeam.logoUrl,
           score: match.awayScore,
         },
+
+        result: {
+          regularTime: {
+            home: match.regularTimeHomeScore ?? match.homeScore,
+            away: match.regularTimeAwayScore ?? match.awayScore,
+          },
+          extraTime:
+            match.extraTimeHomeScore != null && match.extraTimeAwayScore != null
+              ? {
+                  home: match.extraTimeHomeScore,
+                  away: match.extraTimeAwayScore,
+                }
+              : null,
+          penalties:
+            match.penaltyHomeScore != null &&
+            match.penaltyAwayScore != null &&
+            match.penaltyHomeKicksTaken != null &&
+            match.penaltyAwayKicksTaken != null
+              ? {
+                  home: match.penaltyHomeScore,
+                  away: match.penaltyAwayScore,
+                  homeKicksTaken: match.penaltyHomeKicksTaken,
+                  awayKicksTaken: match.penaltyAwayKicksTaken,
+                }
+              : null,
+          resolutionType: match.resolutionType ?? null,
+          winnerTeamId: match.winnerTeamId ?? null,
+          loserTeamId: match.loserTeamId ?? null,
+          officialAt: match.resultOfficialAt ?? null,
+        },
       },
 
       officials: match.officials.map((official) => ({
@@ -277,7 +351,7 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
         role: official.role,
       })),
 
-      events: match.events.map((event) => ({
+      events: activeEvents.map((event) => ({
         id: event.id,
         type: event.eventType,
 

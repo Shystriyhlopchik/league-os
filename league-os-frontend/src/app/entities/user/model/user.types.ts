@@ -6,6 +6,12 @@ export interface User {
     lastName: string;
     middleName?: string | null;
     roles: string[];
+    communities?: {
+        id: number;
+        name: string;
+        slug: string;
+        role: 'owner' | 'admin' | 'member';
+    }[];
     linkedPlayer?: LinkedPlayer | null;
     captainTeamIds?: number[];
     manageableTeamIds?: number[];

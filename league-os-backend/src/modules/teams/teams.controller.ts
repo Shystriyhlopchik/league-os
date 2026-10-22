@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -34,6 +35,11 @@ export class TeamsController {
     return this.teamsService.findMany();
   }
 
+  @Get(':teamId')
+  findOne(@Param('teamId', ParseIntPipe) teamId: number) {
+    return this.teamsService.findPublicById(teamId);
+  }
+
   @Get(':teamId/players')
   findPlayersByTeam(@Param('teamId', ParseIntPipe) teamId: number) {
     return this.teamPlayersService.findByTeam(teamId);
@@ -46,9 +52,11 @@ export class TeamsController {
       storage: memoryStorage(),
       limits: { fileSize: PLAYER_PHOTO_MAX_SIZE },
       fileFilter: (_request, file, callback) => {
-        if (file.mimetype !== 'image/png') {
+        if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.mimetype)) {
           return callback(
-            new BadRequestException('Фото игрока должно быть в формате PNG'),
+            new BadRequestException(
+              'Фото игрока должно быть в формате PNG, JPEG или WebP',
+            ),
             false,
           );
         }
@@ -73,9 +81,11 @@ export class TeamsController {
       storage: memoryStorage(),
       limits: { fileSize: PLAYER_PHOTO_MAX_SIZE },
       fileFilter: (_request, file, callback) => {
-        if (file.mimetype !== 'image/png') {
+        if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.mimetype)) {
           return callback(
-            new BadRequestException('Фото игрока должно быть в формате PNG'),
+            new BadRequestException(
+              'Фото игрока должно быть в формате PNG, JPEG или WebP',
+            ),
             false,
           );
         }
@@ -97,6 +107,20 @@ export class TeamsController {
       dto,
       req.user.id,
       photo,
+    );
+  }
+
+  @Delete(':teamId/players/:teamPlayerId')
+  @UseGuards(JwtAuthGuard)
+  removePlayerFromTeam(
+    @Param('teamId', ParseIntPipe) teamId: number,
+    @Param('teamPlayerId', ParseIntPipe) teamPlayerId: number,
+    @Req() req: any,
+  ) {
+    return this.teamPlayersService.removeFromTeam(
+      teamId,
+      teamPlayerId,
+      req.user.id,
     );
   }
 }

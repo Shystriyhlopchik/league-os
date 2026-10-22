@@ -12,6 +12,11 @@ import { MatchEventEntity } from '../match-events/entities/match-event.entity';
 import { PlayerTournamentStatsModule } from '../player-tournament-stats/player-tournament-stats.module';
 import { MatchRedBallActivationEntity } from './entities/match-red-ball-activation.entity';
 import { UsersModule } from '../users/users.module';
+import { TournamentsModule } from '../tournaments/tournaments.module';
+import { MatchResultResolver } from '../matches/match-result.resolver';
+import { PlayerSuspensionsModule } from '../player-suspensions/player-suspensions.module';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { RegistrationsModule } from '../registrations/registrations.module';
 
 @Module({
   imports: [
@@ -26,9 +31,12 @@ import { UsersModule } from '../users/users.module';
       MatchRedBallActivationEntity,
     ]),
     PlayerTournamentStatsModule,
+    PlayerSuspensionsModule,
     UsersModule,
+    TournamentsModule,
+    RegistrationsModule,
   ],
   controllers: [MatchServiceController],
-  providers: [MatchServiceService],
+  providers: [MatchServiceService, MatchResultResolver, RolesGuard],
 })
 export class MatchServiceModule {}

@@ -12,13 +12,19 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserAuthAccountEntity } from './entities/user-auth-account.entity';
 import { PlayerEntity } from '../players/entities/player.entity';
 import { TeamPlayerEntity } from '../team-players/entities/team-players.entity';
+import { PasswordResetTokenEntity } from './entities/password-reset-token.entity';
+import { PasswordResetService } from './password-reset.service';
+import { PasswordResetMailerService } from './password-reset-mailer.service';
+import { CommunityMemberEntity } from '../communities/entities/community-member.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       UserAuthAccountEntity,
+      PasswordResetTokenEntity,
       PlayerEntity,
       TeamPlayerEntity,
+      CommunityMemberEntity,
     ]),
     RolesModule,
     UsersModule,
@@ -27,7 +33,7 @@ import { TeamPlayerEntity } from '../team-players/entities/team-players.entity';
       useFactory: (configService: ConfigService): JwtModuleOptions => {
         const secret = configService.getOrThrow<string>('JWT_SECRET');
         const expiresIn =
-            configService.get<StringValue>('JWT_EXPIRES_IN') ?? '7d';
+          configService.get<StringValue>('JWT_EXPIRES_IN') ?? '7d';
 
         return {
           secret,
@@ -35,10 +41,15 @@ import { TeamPlayerEntity } from '../team-players/entities/team-players.entity';
             expiresIn,
           },
         };
-      }
+      },
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    PasswordResetService,
+    PasswordResetMailerService,
+  ],
 })
 export class AuthModule {}

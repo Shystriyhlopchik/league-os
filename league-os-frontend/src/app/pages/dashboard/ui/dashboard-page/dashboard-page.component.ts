@@ -3,7 +3,9 @@ import { SessionStore } from '../../../../entities/user/model/session.store';
 import { DashboardAction } from '../../model/dashboard-action.model';
 import { Router, RouterLink } from '@angular/router';
 import { UserRole } from '../../../../entities/user/model/user-role.type';
-import {InfoCardComponent} from '../../../../shared/ui/info-card/info-card.component';
+import { InfoCardComponent } from '../../../../shared/ui/info-card/info-card.component';
+import { FeatureFlagsApi } from '../../../../shared/api/feature-flags.api';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 @Component({
     selector: 'app-dashboard-page',
@@ -14,13 +16,31 @@ import {InfoCardComponent} from '../../../../shared/ui/info-card/info-card.compo
 export class DashboardPageComponent {
     private readonly sessionStore = inject(SessionStore);
     private readonly router = inject(Router);
+    private readonly featureFlagsApi = inject(FeatureFlagsApi);
 
     readonly user = this.sessionStore.user;
 
     readonly actions: DashboardAction[] = [
         {
-            title: 'Трансферы игроков',
-            description: 'Переход игрока из одной команды в другую',
+            title: 'Конструктор турниров',
+            description: 'Создание формата, этапов, групп, правил и плей-офф',
+            route: '/dashboard/tournaments/new',
+            roles: [UserRole.Admin, UserRole.SuperAdmin],
+            variant: '#72DF9C',
+            feature: 'tournamentBuilder',
+        },
+        {
+            title: 'Запуск плей-офф',
+            description:
+                'Проверка таблиц, выбор участников, формирование пар и публикация матчей',
+            route: '/dashboard/playoff-launch',
+            roles: [UserRole.Admin, UserRole.SuperAdmin],
+            variant: '#FFD91A',
+            feature: 'tournamentBuilder',
+        },
+        {
+            title: 'История прежних трансферов',
+            description: 'Новые переходы — в разделе заявок на турниры и составов',
             route: '/dashboard/player-transfers',
             roles: [UserRole.Admin, UserRole.SuperAdmin],
             variant: '#2ECC71',
@@ -47,24 +67,42 @@ export class DashboardPageComponent {
             variant: '#F04E55',
         },
         {
-            title: 'Моя команда',
-            description: 'Регистрация, редактирование общей заявки',
-            route: '/dashboard/team-players',
-            roles: [UserRole.Admin, UserRole.SuperAdmin, UserRole.Captain],
-            variant: '#2ECC71',
-        },
-        {
             title: 'Регистрация на игру',
             description: 'Заявка команды на игру',
             route: '/dashboard/match-registrations',
             roles: [UserRole.Admin, UserRole.SuperAdmin, UserRole.Captain],
             variant: '#2ECC71',
         },
+        {
+            title: 'Написать новость',
+            description: 'Создание, редактирование и публикация новостей сайта',
+            route: '/dashboard/new-news',
+            roles: [UserRole.Admin, UserRole.SuperAdmin],
+            variant: '#2ECC71',
+        },
+        {
+            title: 'Редактирование протокола',
+            description: 'Редактирование уже подписанных протоколов',
+            route: '/dashboard/editing-protocol',
+            roles: [UserRole.Admin, UserRole.SuperAdmin],
+            variant: '#2ECC71',
+        },
     ];
 
+    readonly featureFlags = toSignal(this.featureFlagsApi.get(), {
+        initialValue: {
+            tournamentBuilder: false,
+            multiStagePublicView: false,
+        },
+    });
+
     readonly availableActions = computed(() => {
-        return this.actions.filter((action) =>
-            this.sessionStore.hasAnyRole(...action.roles),
+        return this.actions.filter(
+            (action) =>
+                (action.feature === 'tournamentBuilder'
+                    ? this.sessionStore.canManageCommunityTournaments()
+                    : this.sessionStore.hasAnyRole(...action.roles)) &&
+                (!action.feature || this.featureFlags()[action.feature]),
         );
     });
 

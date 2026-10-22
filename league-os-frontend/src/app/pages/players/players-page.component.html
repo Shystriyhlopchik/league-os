@@ -1,0 +1,297 @@
+<main class="players-page">
+    <header class="players-page__header">
+        <div>
+            <p class="players-page__eyebrow">Рейтинги игроков</p>
+            <h1>Игроки</h1>
+            @if (tournamentName()) {
+                <p>{{ tournamentName() }} · версия рейтинга 1</p>
+            }
+        </div>
+        <p class="players-page__intro">
+            Рейтинги рассчитаны относительно игроков той же позиции по
+            завершённым матчам турнира.
+        </p>
+    </header>
+
+    <section class="rating-explainer" aria-labelledby="rating-explainer-title">
+        <div>
+            <p class="rating-explainer__eyebrow">Как формируется рейтинг</p>
+            <h2 id="rating-explainer-title">На основе протоколов матчей</h2>
+        </div>
+        <ol>
+            <li>
+                Учитываются только завершённые матчи активного турнира, составы
+                и зарегистрированные события.
+            </li>
+            <li>
+                Голы, ассисты, форма, опыт и дисциплина сравниваются с
+                показателями игроков той же позиции.
+            </li>
+            <li>
+                Для футболистов с небольшой игровой практикой применяется
+                сглаживание, а итоговый OVR рассчитывается с учётом позиции.
+            </li>
+        </ol>
+    </section>
+
+    <section class="players-toolbar" aria-label="Фильтры игроков">
+        <label class="players-search">
+            <span>Поиск</span>
+            <input
+                type="search"
+                placeholder="Игрок или команда"
+                [ngModel]="search()"
+                (ngModelChange)="setSearch($event)"
+            />
+        </label>
+
+        <div class="position-filter" aria-label="Позиция игрока">
+            @for (filter of positionFilters; track filter.value) {
+                <button
+                    type="button"
+                    [class.position-filter__button--active]="
+                        position() === filter.value
+                    "
+                    [attr.aria-pressed]="position() === filter.value"
+                    (click)="setPosition(filter.value)"
+                >
+                    {{ filter.label }}
+                </button>
+            }
+        </div>
+    </section>
+
+    @if (isLoading()) {
+        <p class="players-state" role="status">Рассчитываем рейтинги...</p>
+    } @else if (error()) {
+        <div class="players-state players-state--error" role="alert">
+            <p>{{ error() }}</p>
+            <button type="button" (click)="loadCards()">Повторить</button>
+        </div>
+    } @else if (isEmpty()) {
+        <p class="players-state">
+            По выбранным условиям карточки игроков не найдены.
+        </p>
+    } @else {
+        <section class="players-grid" aria-label="Карточки игроков">
+            @for (card of visibleCards(); track card.playerId) {
+                <article
+                    class="player-card"
+                    [class]="'player-card player-card--' + cardTier(card.ratings.ovr)"
+                >
+                    <div class="player-card__shine"></div>
+
+                    <header class="player-card__identity">
+                        <div class="player-card__overall">
+                            <strong>{{ card.ratings.ovr }}</strong>
+                            <span
+                                class="rating-help"
+                                tabindex="0"
+                                [attr.data-tooltip]="ratingDescriptions.ovr"
+                                [attr.title]="ratingDescriptions.ovr"
+                                [attr.aria-label]="
+                                    'OVR. ' + ratingDescriptions.ovr
+                                "
+                            >
+                                OVR
+                            </span>
+                        </div>
+
+                        <div class="player-card__portrait">
+                            @if (
+                                card.photoUrl &&
+                                !failedPhotoIds().has(card.playerId)
+                            ) {
+                                <img
+                                    [src]="getPhotoUrl(card.photoUrl)"
+                                    [alt]="card.name"
+                                    (error)="markPhotoAsFailed(card.playerId)"
+                                />
+                            } @else {
+                                <span>{{ getInitials(card.name) }}</span>
+                            }
+                        </div>
+
+                        <div class="player-card__team-mark">
+                            @if (card.team.logoUrl) {
+                                <img
+                                    [src]="getPhotoUrl(card.team.logoUrl)"
+                                    alt=""
+                                />
+                            }
+                        </div>
+                    </header>
+
+                    <div class="player-card__name">
+                        <strong>{{ card.name }}</strong>
+                        <span>{{ card.position }}</span>
+                    </div>
+
+                    <dl class="player-card__ratings">
+                        <div>
+                            <dt>
+                                <span
+                                    class="rating-help"
+                                    tabindex="0"
+                                    [attr.data-tooltip]="
+                                        ratingDescriptions.att
+                                    "
+                                    [attr.title]="ratingDescriptions.att"
+                                    [attr.aria-label]="
+                                        'ATT. ' + ratingDescriptions.att
+                                    "
+                                >
+                                    ATT
+                                </span>
+                            </dt>
+                            <dd>{{ card.ratings.att }}</dd>
+                        </div>
+                        <div>
+                            <dt>
+                                <span
+                                    class="rating-help"
+                                    tabindex="0"
+                                    [attr.data-tooltip]="
+                                        ratingDescriptions.cre
+                                    "
+                                    [attr.title]="ratingDescriptions.cre"
+                                    [attr.aria-label]="
+                                        'CRE. ' + ratingDescriptions.cre
+                                    "
+                                >
+                                    CRE
+                                </span>
+                            </dt>
+                            <dd>{{ card.ratings.cre }}</dd>
+                        </div>
+                        <div>
+                            <dt>
+                                <span
+                                    class="rating-help"
+                                    tabindex="0"
+                                    [attr.data-tooltip]="
+                                        ratingDescriptions.form
+                                    "
+                                    [attr.title]="ratingDescriptions.form"
+                                    [attr.aria-label]="
+                                        'FORM. ' + ratingDescriptions.form
+                                    "
+                                >
+                                    FORM
+                                </span>
+                            </dt>
+                            <dd>{{ card.ratings.form }}</dd>
+                        </div>
+                        <div>
+                            <dt>
+                                <span
+                                    class="rating-help"
+                                    tabindex="0"
+                                    [attr.data-tooltip]="
+                                        ratingDescriptions.exp
+                                    "
+                                    [attr.title]="ratingDescriptions.exp"
+                                    [attr.aria-label]="
+                                        'EXP. ' + ratingDescriptions.exp
+                                    "
+                                >
+                                    EXP
+                                </span>
+                            </dt>
+                            <dd>{{ card.ratings.exp }}</dd>
+                        </div>
+                        <div>
+                            <dt>
+                                <span
+                                    class="rating-help"
+                                    tabindex="0"
+                                    [attr.data-tooltip]="
+                                        ratingDescriptions.disc
+                                    "
+                                    [attr.title]="ratingDescriptions.disc"
+                                    [attr.aria-label]="
+                                        'DISC. ' + ratingDescriptions.disc
+                                    "
+                                >
+                                    DISC
+                                </span>
+                            </dt>
+                            <dd>{{ card.ratings.disc }}</dd>
+                        </div>
+                        <div>
+                            <dt>
+                                <span
+                                    class="rating-help"
+                                    tabindex="0"
+                                    [attr.data-tooltip]="
+                                        ratingDescriptions.imp
+                                    "
+                                    [attr.title]="ratingDescriptions.imp"
+                                    [attr.aria-label]="
+                                        'IMP. ' + ratingDescriptions.imp
+                                    "
+                                >
+                                    IMP
+                                </span>
+                            </dt>
+                            <dd>{{ card.ratings.imp }}</dd>
+                        </div>
+                    </dl>
+
+                    <footer class="player-card__footer">
+                        <p>
+                            {{ card.team.name }} · №{{
+                                card.shirtNumber ?? "—"
+                            }}
+                            · {{ card.preferredFootName }}
+                        </p>
+                        <p>
+                            {{ card.stats.matches }}
+                            {{
+                                pluralForm(
+                                    card.stats.matches,
+                                    "матч",
+                                    "матча",
+                                    "матчей"
+                                )
+                            }}
+                            · {{ card.stats.goals }}
+                            {{
+                                pluralForm(
+                                    card.stats.goals,
+                                    "гол",
+                                    "гола",
+                                    "голов"
+                                )
+                            }}
+                            · {{ card.stats.assists }}
+                            {{
+                                pluralForm(
+                                    card.stats.assists,
+                                    "ассист",
+                                    "ассиста",
+                                    "ассистов"
+                                )
+                            }}
+                        </p>
+                        @if (card.hasLimitedData) {
+                            <small>Мало данных: сыграно менее 3 матчей</small>
+                        }
+                    </footer>
+                </article>
+            }
+        </section>
+
+        @if (hasMoreCards()) {
+            <div class="players-load-more">
+                <button type="button" (click)="showMore()">
+                    Показать ещё
+                    <span>
+                        {{ visibleCards().length }} из
+                        {{ filteredCards().length }}
+                    </span>
+                </button>
+            </div>
+        }
+    }
+</main>

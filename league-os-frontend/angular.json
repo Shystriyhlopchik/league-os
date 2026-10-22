@@ -33,7 +33,8 @@
             "styles": [
               "node_modules/swiper/swiper-bundle.min.css",
               "src/custom-theme.scss",
-              "src/styles.scss"
+              "src/styles.scss",
+              "src/app/pages/tournament-builder/ui/tournament-builder.global.scss"
             ],
             "scripts": []
           },
@@ -47,8 +48,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "4kB",
-                  "maximumError": "8kB"
+                  "maximumWarning": "9kB",
+                  "maximumError": "10kB"
                 }
               ],
               "outputHashing": "all"
@@ -100,12 +101,16 @@
               }
             ],
             "styles": [
-              "src/styles.scss"
+              "src/styles.scss",
+              "src/app/pages/tournament-builder/ui/tournament-builder.global.scss"
             ],
             "scripts": []
           }
         }
       }
     }
+  },
+  "cli": {
+    "analytics": "d508df8c-df6c-43e6-a789-5b8dd458b30e"
   }
 }

@@ -3,7 +3,7 @@ import {
     LOCALE_ID,
     provideZoneChangeDetection,
 } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import localeRu from '@angular/common/locales/ru';
 
 import { routes } from './app.routes';
@@ -16,7 +16,13 @@ registerLocaleData(localeRu, 'ru');
 export const appConfig: ApplicationConfig = {
     providers: [
         provideZoneChangeDetection({ eventCoalescing: true }),
-        provideRouter(routes),
+        provideRouter(
+            routes,
+            withInMemoryScrolling({
+                anchorScrolling: 'enabled',
+                scrollPositionRestoration: 'enabled',
+            }),
+        ),
         {
             provide: LOCALE_ID,
             useValue: 'ru',

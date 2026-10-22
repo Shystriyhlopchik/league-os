@@ -19,7 +19,7 @@
         <div class="match-card__team">
             <img
                 class="match-card__logo"
-                [src]="match().homeTeam.logoUrl"
+                [src]="match().homeTeam.logoUrl ?? DEFAULT_IMG"
                 [alt]="'Логотип команды ' + match().homeTeam.name"
             />
 
@@ -56,7 +56,7 @@
         <div class="match-card__team">
             <img
                 class="match-card__logo"
-                [src]="match().awayTeam.logoUrl"
+                [src]="match().awayTeam.logoUrl ?? DEFAULT_IMG"
                 [alt]="'Логотип команды ' + match().awayTeam.name"
             />
 

@@ -6,11 +6,13 @@ import { TeamPlayerEntity } from './entities/team-players.entity';
 import { TeamEntity } from '../teams/entities/team.entity';
 import { PlayerEntity } from '../players/entities/player.entity';
 import { UsersModule } from '../users/users.module';
+import { RegistrationsModule } from '../registrations/registrations.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([TeamPlayerEntity, TeamEntity, PlayerEntity]),
     UsersModule,
+    RegistrationsModule,
   ],
   controllers: [TeamPlayersController],
   providers: [TeamPlayersService],

@@ -10,4 +10,5 @@ export interface DashboardAction {
     roles: UserRole[];
 
     variant: string;
+    feature?: 'tournamentBuilder';
 }

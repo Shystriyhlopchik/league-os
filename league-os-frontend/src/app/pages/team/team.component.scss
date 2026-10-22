@@ -1,7 +1,7 @@
 :host {
     display: block;
     min-height: calc(100vh - 217px);
-    background: #16191A;
+    background: #16191a;
     color: #ffffff;
 }
 
@@ -16,7 +16,7 @@
 
 .teams-page__title {
     font-family: Play, Arial, sans-serif;
-    color: #27AE60;
+    color: #f61129;
 
     margin: 16px 0 40px;
     font-size: 32px;
@@ -34,13 +34,67 @@
     list-style: none;
 }
 
+.teams-page__state {
+    display: grid;
+    justify-items: start;
+    gap: 16px;
+    margin: 0;
+    padding: 24px;
+    border: 1px solid #313738;
+    background: #202526;
+    font-size: 18px;
+}
+
+.teams-page__state p {
+    margin: 0;
+}
+
+.teams-page__state--error {
+    border-color: #e63946;
+}
+
+.teams-page__state button {
+    min-height: 42px;
+    padding: 8px 24px;
+    border: 1px solid #27ae60;
+    background: transparent;
+    color: #ffffff;
+    font: inherit;
+    cursor: pointer;
+}
+
+.teams-page__state button:hover,
+.teams-page__state button:focus-visible {
+    background: #27ae60;
+    color: #16191a;
+}
+
 .team-card {
     min-width: 0;
+}
+
+.team-card__link {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 14px;
+    color: inherit;
+    text-decoration: none;
     text-align: center;
+    transition:
+        color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.team-card__link:hover,
+.team-card__link:focus-visible {
+    color: #f61129;
+    transform: translateY(-4px);
+}
+
+.team-card__link:focus-visible {
+    outline: 2px solid #f61129;
+    outline-offset: 8px;
 }
 
 .team-card__logo-wrap {
@@ -56,6 +110,7 @@
     height: 96px;
     display: block;
     object-fit: contain;
+    transition: filter 0.2s ease;
 }
 
 .team-card__name {

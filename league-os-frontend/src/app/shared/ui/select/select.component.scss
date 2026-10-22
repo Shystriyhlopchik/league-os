@@ -1,0 +1,135 @@
+:host {
+    display: block;
+    min-width: 0;
+}
+
+.select-field {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+    color: #f5f5f5;
+    font-family: Roboto, "Helvetica Neue", sans-serif;
+}
+
+.select-field__label {
+    color: #cbd1cf;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.select-field__control {
+    position: relative;
+    display: block;
+    min-width: 0;
+}
+
+.select-field__trigger {
+    position: relative;
+    width: 100%;
+    border: 1px solid #46504e;
+    color: #f5f5f5;
+    background: #2b3133;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.select-field__trigger:focus-visible {
+    border-color: #f84356;
+    outline: 0;
+    box-shadow: 0 0 0 3px rgba(223, 32, 41, 0.2);
+}
+
+.select-field--small .select-field__trigger {
+    min-height: 48px;
+    padding: 10px 48px 10px 14px;
+    font-size: 16px;
+}
+
+.select-field--large .select-field__trigger {
+    min-height: 56px;
+    padding: 8px 52px 8px 16px;
+    font-family: Oswald, Arial, sans-serif;
+    font-size: 24px;
+    line-height: 1.2;
+}
+
+.select-field__chevron {
+    position: absolute;
+    top: 50%;
+    right: 18px;
+    width: 13px;
+    height: 13px;
+    border-right: 3px solid #9aa5ad;
+    border-bottom: 3px solid #9aa5ad;
+    pointer-events: none;
+    transform: translateY(-70%) rotate(45deg);
+}
+
+.select-field--large .select-field__chevron {
+    border-width: 4px;
+}
+
+.select-field__menu {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 1px);
+    right: 0;
+    left: 0;
+    display: grid;
+    overflow-y: auto;
+    max-height: 280px;
+    border: 1px solid #46504e;
+    background: #2b3133;
+}
+
+.select-field__option {
+    width: 100%;
+    border: 0;
+    padding: 10px 16px;
+    color: #f5f5f5;
+    background: transparent;
+    font-family: Play, Arial, sans-serif;
+    font-size: 20px;
+    line-height: 1.2;
+    text-align: left;
+    cursor: pointer;
+}
+
+.select-field__option:hover,
+.select-field__option:focus-visible,
+.select-field__option--active {
+    color: #f61129;
+    background: transparent;
+    outline: 0;
+}
+
+.select-field__option:disabled {
+    opacity: 0.45;
+    color: #8f9b97;
+    cursor: not-allowed;
+}
+
+.select-field__message {
+    color: #8f9b97;
+    font-size: 12px;
+}
+
+.select-field--error .select-field__trigger {
+    border-color: #f04e55;
+}
+
+.select-field__message--error {
+    color: #ff9ca1;
+}
+
+.select-field--disabled {
+    opacity: 0.55;
+}
+
+.select-field__trigger:disabled {
+    cursor: not-allowed;
+}

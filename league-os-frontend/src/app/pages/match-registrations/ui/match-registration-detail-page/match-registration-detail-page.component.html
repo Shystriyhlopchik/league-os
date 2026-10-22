@@ -1,7 +1,7 @@
 <div class="registration-page">
     <app-page-header
-        title="Формирование заявки"
-        description="Выберите игроков команды для участия в матче"
+        [title]="pageTitle"
+        [description]="pageDescription"
         (back)="goBack()"
     />
 
@@ -28,9 +28,39 @@
             </div>
         </section>
 
-        @if (registration.isApproved) {
+        @if (registration.isApproved && !isCorrectionMode) {
             <div class="approved-message">
-                Заявка утверждена и передана судье. Редактирование недоступно.
+                @if (isRefereeFlow) {
+                    Состав утверждён. При необходимости судья может добавить
+                    забытого игрока или скорректировать список.
+                } @else {
+                    Заявка подтверждена судьёй. Редактирование недоступно.
+                }
+            </div>
+        }
+        @if (!isRefereeFlow && registration.isSubmitted && !registration.isApproved) {
+            <div class="approved-message">
+                Заявка передана судье. До подтверждения судьёй состав можно
+                изменять.
+            </div>
+        }
+        @if (isRefereeFlow && !registration.isSubmitted) {
+            <div class="approved-message">
+                Капитан не оформил заявку на матч. Выберите минимум 5 игроков
+                — состав будет сохранён и утверждён от имени судьи.
+            </div>
+        }
+        @if (isRefereeFlow && registration.isSubmitted && !registration.isApproved) {
+            <div class="approved-message">
+                Капитан передал заявку. Проверьте состав и подтвердите его
+                сохранением.
+            </div>
+        }
+        @if (isCorrectionMode) {
+            <div class="approved-message">
+                Изменения применяются к протоколу завершённого матча.
+                Игрока с зарегистрированными событиями сначала необходимо
+                удалить из событий.
             </div>
         }
 
@@ -44,7 +74,11 @@
                     <input
                         type="checkbox"
                         [checked]="store.selectedIds().has(player.teamPlayerId)"
-                        [disabled]="registration.isApproved"
+                        [disabled]="
+                            registration.isApproved &&
+                            !isCorrectionMode &&
+                            !(isRefereeFlow && isEditing())
+                        "
                         (change)="onPlayerToggle(player, $event)"
                     />
 
@@ -105,22 +139,65 @@
         }
 
         <div class="form-actions">
-            <button
-                class="form-actions__save"
-                type="button"
-                [disabled]="registration.isApproved || store.isSaving() || store.isApproving()"
-                (click)="save()"
-            >
-                {{ store.isSaving() ? 'Сохраняем...' : 'Сохранить' }}
-            </button>
-            <button
-                class="form-actions__approve"
-                type="button"
-                [disabled]="registration.isApproved || store.selectedCount() < 5 || store.isSaving() || store.isApproving()"
-                (click)="approve()"
-            >
-                {{ store.isApproving() ? 'Утверждаем...' : 'Утвердить заявку' }}
-            </button>
+            @if (isRefereeFlow && registration.isApproved && !isEditing()) {
+                <button
+                    class="form-actions__edit"
+                    type="button"
+                    (click)="startEditing()"
+                >
+                    Редактировать
+                </button>
+            } @else {
+                @if (isRefereeFlow && isEditing()) {
+                    <button
+                        class="form-actions__cancel"
+                        type="button"
+                        [disabled]="store.isSaving()"
+                        (click)="cancelEditing()"
+                    >
+                        Отмена
+                    </button>
+                }
+                <button
+                    class="form-actions__save"
+                    type="button"
+                    [disabled]="
+                        (registration.isApproved &&
+                            !isCorrectionMode &&
+                            !(isRefereeFlow && isEditing())) ||
+                        store.selectedCount() < 5 ||
+                        store.isSaving() ||
+                        store.isApproving()
+                    "
+                    (click)="save()"
+                >
+                    {{
+                        store.isSaving()
+                            ? "Сохраняем..."
+                            : isCorrectionMode
+                              ? "Сохранить протокол участников"
+                              : isRefereeFlow
+                                ? "Сохранить состав"
+                                : "Сохранить"
+                    }}
+                </button>
+                @if (!isCorrectionMode && !isRefereeFlow) {
+                    <button
+                        class="form-actions__approve"
+                        type="button"
+                        [disabled]="registration.isSubmitted || registration.isApproved || store.selectedCount() < 5 || store.isSaving() || store.isApproving()"
+                        (click)="approve()"
+                    >
+                        {{
+                            store.isApproving()
+                                ? 'Отправляем...'
+                                : registration.isSubmitted
+                                  ? 'Заявка отправлена судье'
+                                  : 'Отправить заявку судье'
+                        }}
+                    </button>
+                }
+            }
         </div>
       } @else if (store.error()) {
         <p class="state-text state-text--error">{{ store.error() }}</p>

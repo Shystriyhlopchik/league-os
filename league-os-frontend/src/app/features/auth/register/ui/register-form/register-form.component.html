@@ -1,13 +1,17 @@
 @if (store.hasPlayerLinkCandidates()) {
     <section class="player-link">
-        <h3 class="player-link__title">
-            Подтверждение игрока
-        </h3>
+        <h3 class="player-link__title">Подтверждение игрока</h3>
 
-        @for (candidate of store.playerLinkCandidates(); track candidate.teamPlayerId) {
+        @for (
+            candidate of store.playerLinkCandidates();
+            track candidate.teamPlayerId
+        ) {
             <div class="player-link__card">
                 <p class="player-link__question">
-                    Являетесь ли вы игроком {{ getPlayerFullName(candidate) }} команды "{{ candidate.teamName }}"?
+                    Являетесь ли вы игроком
+                    {{ getPlayerFullName(candidate) }} команды "{{
+                        candidate.teamName
+                    }}"?
                 </p>
 
                 <button
@@ -37,11 +41,7 @@
         </button>
     </section>
 } @else {
-    <form
-        class="register-form"
-        [formGroup]="form"
-        (ngSubmit)="submit()"
-    >
+    <form class="register-form" [formGroup]="form" (ngSubmit)="submit()">
         <label class="register-form__field">
             <span class="register-form__label">Фамилия *</span>
             <input
@@ -79,7 +79,7 @@
         </label>
 
         <label class="register-form__field">
-            <span class="register-form__label">E-mail</span>
+            <span class="register-form__label">E-mail *</span>
             <input
                 class="register-form__input"
                 type="email"
@@ -98,7 +98,9 @@
 
         <label
             class="register-form__field"
-            [class.register-form__field--error]="form.controls.passwordConfirmation.hasError('passwordMismatch')"
+            [class.register-form__field--error]="
+                form.controls.passwordConfirmation.hasError('passwordMismatch')
+            "
         >
             <span class="register-form__label">Повторите пароль *</span>
             <input
@@ -108,10 +110,8 @@
             />
         </label>
 
-        @if (form.controls.passwordConfirmation.hasError('passwordMismatch')) {
-            <p class="register-form__error">
-                Пароли не совпадают
-            </p>
+        @if (form.controls.passwordConfirmation.hasError("passwordMismatch")) {
+            <p class="register-form__error">Пароли не совпадают</p>
         }
 
         @if (store.error()) {
@@ -125,13 +125,10 @@
             type="submit"
             [disabled]="store.isLoading()"
         >
-            {{ store.isLoading() ? 'Регистрируем...' : 'Зарегистрироваться' }}
+            {{ store.isLoading() ? "Регистрируем..." : "Зарегистрироваться" }}
         </button>
 
-        <a
-            class="register-form__login"
-            routerLink="/login"
-        >
+        <a class="register-form__login" routerLink="/login">
             Уже есть аккаунт? Войти
         </a>
     </form>

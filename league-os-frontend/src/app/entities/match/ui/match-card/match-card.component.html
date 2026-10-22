@@ -6,7 +6,7 @@
     (keydown.enter)="onCardClick()"
     (keydown.space)="onCardClick()"
 >
-    <header class="match-card__header">
+    <div class="match-card__header">
         <div class="match-card__season">
             <img
                 [src]="match().competitionLogoUrl"
@@ -18,7 +18,7 @@
         <time class="match-card__date">
             {{ match().matchDateTime | date: "d MMMM, HH:mm" }}
         </time>
-    </header>
+    </div>
 
     <div class="match-card__content">
         <div class="match-card__team">
@@ -76,7 +76,7 @@
         </div>
     </div>
 
-    <footer class="match-card__venue">
+    <div class="match-card__venue">
         {{ match().venueName }}
-    </footer>
+    </div>
 </article>

@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { StandingRow } from '../../model/standings-row.model';
 
 @Component({
@@ -8,5 +8,16 @@ import { StandingRow } from '../../model/standings-row.model';
     styleUrl: './standings-table.component.scss',
 })
 export class StandingsTableComponent {
-    readonly rows = input.required<StandingRow[]>();
+    DEFAULT_IMAGE = 'images/logo/dvor-liga.png';
+
+    readonly sourceRows = input.required<readonly StandingRow[]>({
+        alias: 'rows',
+    });
+
+    readonly rows = computed(() =>
+        [...this.sourceRows()].sort(
+            (left, right) =>
+                left.position - right.position || left.team.id - right.team.id,
+        ),
+    );
 }

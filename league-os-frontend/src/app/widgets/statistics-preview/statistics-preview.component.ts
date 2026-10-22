@@ -1,69 +1,65 @@
-import { Component, inject, signal } from '@angular/core';
+import {
+    Component,
+    computed,
+    effect,
+    inject,
+    input,
+    signal,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { StandingsTableComponent } from '../../entities/standings/ui/standings-table/standings-table.component';
-import { CompetitionTabsComponent } from '../../features/select-competition/ui/competition-tabs/competition-tabs.component';
-import { StandingRow } from '../../entities/standings/model/standings-row.model';
 import { StandingsApi } from '../../entities/standings/api/standings.api';
-import { CompetitionApi } from '../../entities/competition/api/competition.api';
-import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { of, switchMap, tap } from 'rxjs';
-import {TournamentsApi} from '../../entities/tournaments/api/tournaments.api';
-import {Tournament} from '../../entities/tournaments/model/tournaments.model';
-import {SectionTitleComponent} from '../../shared/ui/section-title/section-title.component';
-import {SlantedLinkComponent} from '../../shared/ui/slanted-link/slanted-link.component';
+import { PublicTournamentView } from '../../entities/standings/model/public-tournament-view.model';
+import { SectionTitleComponent } from '../../shared/ui/section-title/section-title.component';
+import { SlantedLinkComponent } from '../../shared/ui/slanted-link/slanted-link.component';
+import { StandingsTableComponent } from '../../entities/standings/ui/standings-table/standings-table.component';
 
 @Component({
     selector: 'app-statistics-preview',
     standalone: true,
     imports: [
         RouterLink,
-        StandingsTableComponent,
-        CompetitionTabsComponent,
         SectionTitleComponent,
         SlantedLinkComponent,
+        StandingsTableComponent,
     ],
     templateUrl: './statistics-preview.component.html',
     styleUrl: './statistics-preview.component.scss',
 })
 export class StatisticsPreviewComponent {
-    private readonly competitionApi = inject(CompetitionApi);
     private readonly standingsApi = inject(StandingsApi);
-    private readonly tournamentApi = inject(TournamentsApi);
 
-    readonly selectedTournamentId = signal<number | string>(1);
+    readonly tournamentId = input.required<number>();
+    readonly groupId = input<number | null>(null);
+    readonly tournamentView = signal<PublicTournamentView | null>(null);
 
-    readonly tournaments = toSignal(
-        /* TODO ID сезона будет вставлять по выбору пользователя*/
-        this.tournamentApi.getTournamentsSeason(1).pipe(
-            tap((tournaments) => {
-                if (tournaments.length) {
-                    this.selectedTournamentId.set(tournaments[0].id);
-                }
-            }),
-        ),
-        {
-            initialValue: [] as Tournament[],
-        },
-    );
+    readonly rows = computed(() => {
+        const tournamentView = this.tournamentView();
+        const groupId = this.groupId();
+        if (!tournamentView || groupId === null) return [];
 
-    readonly rows = toSignal(
-        toObservable(this.selectedTournamentId).pipe(
-            switchMap((competitionId) => {
-                if (!competitionId) {
-                    return of([] as StandingRow[]);
-                }
+        for (const stage of tournamentView.stages) {
+            const group = stage.groups.find(
+                (candidate) => candidate.id === groupId,
+            );
+            if (group) return group.standings;
+        }
 
-                return this.standingsApi.getStandingsByCompetition(
-                    competitionId,
-                );
-            }),
-        ),
-        {
-            initialValue: [] as StandingRow[],
-        },
-    );
+        return [];
+    });
 
-    selectCompetition(id: number | string): void {
-        this.selectedTournamentId.set(id);
+    constructor() {
+        effect((onCleanup) => {
+            const tournamentId = this.tournamentId();
+            this.tournamentView.set(null);
+
+            const subscription = this.standingsApi
+                .getPublicTournamentView(tournamentId)
+                .subscribe({
+                    next: (view) => this.tournamentView.set(view),
+                    error: () => this.tournamentView.set(null),
+                });
+
+            onCleanup(() => subscription.unsubscribe());
+        });
     }
 }

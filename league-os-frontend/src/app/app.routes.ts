@@ -1,12 +1,26 @@
 import { Routes } from '@angular/router';
 import { MainComponent } from './features/main/main.component';
-import {authGuard} from './guards/auth.guard';
-import {roleGuard} from './guards/role.guard';
-import {UserRole} from './entities/user/model/user-role.type';
-import {guestGuard} from './guards/guest.guard';
-import {matchProtocolLeaveGuard} from './pages/match-protocol/model/match-protocol-leave.guard';
+import { authGuard } from './guards/auth.guard';
+import { roleGuard } from './guards/role.guard';
+import { UserRole } from './entities/user/model/user-role.type';
+import { guestGuard } from './guards/guest.guard';
+import { matchProtocolLeaveGuard } from './pages/match-protocol/model/match-protocol-leave.guard';
+import { tournamentBuilderFeatureGuard } from './guards/tournament-builder-feature.guard';
+import { communityTournamentGuard } from './guards/community-tournament.guard';
+import { teamWorkspaceLeaveGuard } from './pages/team-workspace/team-workspace-leave.guard';
+import { tournamentApplicationsLeaveGuard } from './pages/tournament-applications/tournament-applications-leave.guard';
 
 export const routes: Routes = [
+    {
+        path: 'dashboard/my-teams', canActivate: [authGuard],
+        canDeactivate: [teamWorkspaceLeaveGuard],
+        loadComponent: () => import('./pages/team-workspace/team-workspace-page.component').then(m => m.TeamWorkspacePageComponent),
+    },
+    {
+        path: 'dashboard/tournament-applications', canActivate: [authGuard],
+        canDeactivate: [tournamentApplicationsLeaveGuard],
+        loadComponent: () => import('./pages/tournament-applications/tournament-applications-page.component').then(m => m.TournamentApplicationsPageComponent),
+    },
     {
         path: '',
         loadComponent: () =>
@@ -20,9 +34,37 @@ export const routes: Routes = [
             ),
     },
     {
+        path: 'regulations',
+        loadComponent: () =>
+            import(
+                './pages/competition-regulations/competition-regulations-page.component'
+            ).then((m) => m.CompetitionRegulationsPageComponent),
+    },
+    {
         path: 'team',
         loadComponent: () =>
             import('./pages/team/team.component').then((m) => m.TeamComponent),
+    },
+    {
+        path: 'team/:teamId',
+        loadComponent: () =>
+            import('./pages/team-detail/team-detail.component').then(
+                (m) => m.TeamDetailComponent,
+            ),
+    },
+    {
+        path: 'players',
+        loadComponent: () =>
+            import('./pages/players/players-page.component').then(
+                (m) => m.PlayersPageComponent,
+            ),
+    },
+    {
+        path: 'champion',
+        loadComponent: () =>
+            import(
+                './pages/season-champion/season-champion-page.component'
+            ).then((m) => m.SeasonChampionPageComponent),
     },
     {
         path: 'news/:slug',
@@ -30,6 +72,13 @@ export const routes: Routes = [
             import('./pages/news-detail/news-detail.component').then(
                 (m) => m.NewsDetailComponent,
             ),
+    },
+    {
+        path: 'tournaments/:tournamentId',
+        loadComponent: () =>
+            import(
+                './pages/tournament-public/tournament-public-page.component'
+            ).then((m) => m.TournamentPublicPageComponent),
     },
     {
         path: 'login',
@@ -43,115 +92,263 @@ export const routes: Routes = [
         path: 'register',
         canActivate: [guestGuard],
         loadComponent: () =>
-            import('./pages/register/ui/register-page/register-page.component').then(
-                (m) => m.RegisterPageComponent,
+            import(
+                './pages/register/ui/register-page/register-page.component'
+            ).then((m) => m.RegisterPageComponent),
+    },
+    {
+        path: 'matches',
+        loadComponent: () =>
+            import('./pages/matches/matches-page.component').then(
+                (m) => m.MatchesPageComponent,
+            ),
+    },
+    {
+        path: 'forgot-password',
+        loadComponent: () =>
+            import(
+                './pages/forgot-password/forgot-password-page.component'
+            ).then((m) => m.ForgotPasswordPageComponent),
+    },
+    {
+        path: 'reset-password',
+        loadComponent: () =>
+            import('./pages/reset-password/reset-password-page.component').then(
+                (m) => m.ResetPasswordPageComponent,
+            ),
+    },
+    {
+        path: 'statistics',
+        loadComponent: () =>
+            import('./pages/standings/standings-page.component').then(
+                (m) => m.StandingsPageComponent,
+            ),
+    },
+    {
+        path: 'ranking',
+        loadComponent: () =>
+            import('./pages/team-ranking/team-ranking-page.component').then(
+                (m) => m.TeamRankingPageComponent,
             ),
     },
     {
         path: 'matches/:matchId/protocol',
         loadComponent: () =>
-            import('./pages/match-view-protocol/ui/match-view-protocol-page/match-view-protocol-page.component').then(
-                (m) => m.MatchViewProtocolPageComponent,
-            ),
+            import(
+                './pages/match-view-protocol/ui/match-view-protocol-page/match-view-protocol-page.component'
+            ).then((m) => m.MatchViewProtocolPageComponent),
     },
     {
         path: 'dashboard',
         canActivate: [authGuard],
         children: [
             {
+                path: 'communities',
+                loadComponent: () =>
+                    import(
+                        './pages/community-access/community-access-page.component'
+                    ).then((m) => m.CommunityAccessPageComponent),
+            },
+            {
                 path: '',
                 loadComponent: () =>
-                    import('./pages/dashboard/ui/dashboard-page/dashboard-page.component').then(
-                        (m) => m.DashboardPageComponent,
-                    ),
+                    import(
+                        './pages/dashboard/ui/dashboard-page/dashboard-page.component'
+                    ).then((m) => m.DashboardPageComponent),
             },
             {
                 path: 'match-service',
-                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Referee])],
+                canActivate: [
+                    roleGuard([UserRole.SuperAdmin, UserRole.Referee]),
+                ],
                 loadComponent: () =>
-                    import('./pages/match-service/ui/match-service-page/match-service-page.component').then(
-                        (m) => m.MatchServicePageComponent,
-                    ),
+                    import(
+                        './pages/match-service/ui/match-service-page/match-service-page.component'
+                    ).then((m) => m.MatchServicePageComponent),
             },
             {
                 path: 'match-service/:matchId/rosters',
-                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Referee])],
+                canActivate: [
+                    roleGuard([UserRole.SuperAdmin, UserRole.Referee]),
+                ],
                 loadComponent: () =>
-                    import('./pages/match-roster-check/ui/match-roster-check-page/match-roster-check-page.component').then(
-                        (m) => m.MatchRosterCheckPageComponent,
-                    ),
+                    import(
+                        './pages/match-roster-check/ui/match-roster-check-page/match-roster-check-page.component'
+                    ).then((m) => m.MatchRosterCheckPageComponent),
             },
             {
                 path: 'match-service/:matchId/protocol',
-                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Referee])],
+                canActivate: [
+                    roleGuard([UserRole.SuperAdmin, UserRole.Referee]),
+                ],
                 canDeactivate: [matchProtocolLeaveGuard],
                 loadComponent: () =>
-                    import('./pages/match-protocol/ui/match-protocol-page/match-protocol-page.component')
-                        .then((m) => m.MatchProtocolPageComponent),
+                    import(
+                        './pages/match-protocol/ui/match-protocol-page/match-protocol-page.component'
+                    ).then((m) => m.MatchProtocolPageComponent),
             },
             {
                 path: 'team-players',
                 canActivate: [authGuard],
                 loadComponent: () =>
-                    import('./pages/team-players-registration/ui/team-players-registration-page/team-players-registration-page.component').then(
-                        (m) => m.TeamPlayersRegistrationPageComponent,
-                    ),
+                    import(
+                        './pages/team-players-registration/ui/team-players-registration-page/team-players-registration-page.component'
+                    ).then((m) => m.TeamPlayersRegistrationPageComponent),
             },
             {
                 path: 'match-registrations',
                 canActivate: [authGuard],
                 loadComponent: () =>
-                    import('./pages/match-registrations/ui/match-registrations-page/match-registrations-page.component').then(
-                        (m) => m.MatchRegistrationsPageComponent,
-                    ),
+                    import(
+                        './pages/match-registrations/ui/match-registrations-page/match-registrations-page.component'
+                    ).then((m) => m.MatchRegistrationsPageComponent),
             },
             {
                 path: 'player-transfers',
                 canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
                 loadComponent: () =>
-                    import('./pages/player-transfers/player-transfers-page.component').then(
-                        (m) => m.PlayerTransfersPageComponent,
-                    ),
+                    import(
+                        './pages/player-transfers/player-transfers-page.component'
+                    ).then((m) => m.PlayerTransfersPageComponent),
             },
             {
                 path: 'match-results',
-                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin, UserRole.Referee])],
+                canActivate: [
+                    roleGuard([
+                        UserRole.SuperAdmin,
+                        UserRole.Admin,
+                        UserRole.Referee,
+                    ]),
+                ],
                 loadComponent: () =>
-                    import('./pages/match-results/match-results.component').then(
-                        (m) => m.MatchResultsComponent,
-                    ),
+                    import(
+                        './pages/match-results/match-results.component'
+                    ).then((m) => m.MatchResultsComponent),
+            },
+            {
+                path: 'editing-protocol',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
+                loadComponent: () =>
+                    import(
+                        './pages/editing-protocol/editing-protocol-page.component'
+                    ).then((m) => m.EditingProtocolPageComponent),
+            },
+            {
+                path: 'editing-protocol/:matchId/teams/:teamId',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
+                loadComponent: () =>
+                    import(
+                        './pages/match-registrations/ui/match-registration-detail-page/match-registration-detail-page.component'
+                    ).then((m) => m.MatchRegistrationDetailPageComponent),
+            },
+            {
+                path: 'editing-protocol/:matchId',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
+                loadComponent: () =>
+                    import(
+                        './pages/match-results/match-result-teams.component'
+                    ).then((m) => m.MatchResultTeamsComponent),
             },
             {
                 path: 'match-results/:matchId/teams/:teamId',
-                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin, UserRole.Referee])],
+                canActivate: [
+                    roleGuard([
+                        UserRole.SuperAdmin,
+                        UserRole.Admin,
+                        UserRole.Referee,
+                    ]),
+                ],
                 loadComponent: () =>
-                    import('./pages/match-registrations/ui/match-registration-detail-page/match-registration-detail-page.component').then(
-                        (m) => m.MatchRegistrationDetailPageComponent,
-                    ),
+                    import(
+                        './pages/match-registrations/ui/match-registration-detail-page/match-registration-detail-page.component'
+                    ).then((m) => m.MatchRegistrationDetailPageComponent),
             },
             {
                 path: 'match-results/:matchId',
-                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin, UserRole.Referee])],
+                canActivate: [
+                    roleGuard([
+                        UserRole.SuperAdmin,
+                        UserRole.Admin,
+                        UserRole.Referee,
+                    ]),
+                ],
                 loadComponent: () =>
-                    import('./pages/match-results/match-result-teams.component').then(
-                        (m) => m.MatchResultTeamsComponent,
-                    ),
+                    import(
+                        './pages/match-results/match-result-teams.component'
+                    ).then((m) => m.MatchResultTeamsComponent),
+            },
+            {
+                path: 'tournaments/new',
+                canActivate: [
+                    tournamentBuilderFeatureGuard,
+                    communityTournamentGuard,
+                ],
+                loadComponent: () =>
+                    import(
+                        './pages/tournament-builder/ui/tournament-builder-page.component'
+                    ).then((m) => m.TournamentBuilderPageComponent),
+            },
+            {
+                path: 'playoff-launch',
+                canActivate: [
+                    tournamentBuilderFeatureGuard,
+                    communityTournamentGuard,
+                ],
+                loadComponent: () =>
+                    import(
+                        './pages/playoff-launch/playoff-launch-page.component'
+                    ).then((m) => m.PlayoffLaunchPageComponent),
+            },
+            {
+                path: 'new-news',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
+                loadComponent: () =>
+                    import(
+                        './pages/news-management/news-management-page.component'
+                    ).then((m) => m.NewsManagementPageComponent),
+            },
+            {
+                path: 'new-news/new',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
+                loadComponent: () =>
+                    import(
+                        './pages/news-editor/news-editor-page.component'
+                    ).then((m) => m.NewsEditorPageComponent),
+            },
+            {
+                path: 'new-news/:newsId/edit',
+                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
+                loadComponent: () =>
+                    import(
+                        './pages/news-editor/news-editor-page.component'
+                    ).then((m) => m.NewsEditorPageComponent),
+            },
+            {
+                path: 'tournaments/:tournamentId/edit',
+                canActivate: [
+                    tournamentBuilderFeatureGuard,
+                    communityTournamentGuard,
+                ],
+                loadComponent: () =>
+                    import(
+                        './pages/tournament-builder/ui/tournament-builder-page.component'
+                    ).then((m) => m.TournamentBuilderPageComponent),
             },
             {
                 path: 'match-registrations/:matchId/teams/:teamId',
                 canActivate: [authGuard],
                 loadComponent: () =>
-                    import('./pages/match-registrations/ui/match-registration-detail-page/match-registration-detail-page.component').then(
-                        (m) => m.MatchRegistrationDetailPageComponent,
-                    ),
+                    import(
+                        './pages/match-registrations/ui/match-registration-detail-page/match-registration-detail-page.component'
+                    ).then((m) => m.MatchRegistrationDetailPageComponent),
             },
             {
                 path: 'team-players/:teamId',
                 canActivate: [authGuard],
                 loadComponent: () =>
-                    import('./pages/team-players-registration/ui/team-players-detail-page/team-players-detail-page.component').then(
-                        (m) => m.TeamPlayersDetailPageComponent,
-                    ),
+                    import(
+                        './pages/team-players-registration/ui/team-players-detail-page/team-players-detail-page.component'
+                    ).then((m) => m.TeamPlayersDetailPageComponent),
             },
         ],
     },

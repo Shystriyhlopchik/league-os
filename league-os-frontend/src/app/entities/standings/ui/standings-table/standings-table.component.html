@@ -9,23 +9,23 @@
         </colgroup>
 
         <thead>
-            <tr>
-                <th
-                    class="standings-table__head standings-table__head--place"
-                    colspan="2"
-                >
-                    №
-                </th>
-                <th class="standings-table__head standings-table__head--team">
-                    команда
-                </th>
-                <th class="standings-table__head standings-table__head--played">
-                    И
-                </th>
-                <th class="standings-table__head standings-table__head--points">
-                    О
-                </th>
-            </tr>
+        <tr>
+            <th
+                class="standings-table__head standings-table__head--place"
+                colspan="2"
+            >
+                №
+            </th>
+            <th class="standings-table__head standings-table__head--team">
+                команда
+            </th>
+            <th class="standings-table__head standings-table__head--played">
+                И
+            </th>
+            <th class="standings-table__head standings-table__head--points">
+                О
+            </th>
+        </tr>
         </thead>
 
         <tbody>
@@ -35,7 +35,7 @@
                 let index = $index;
                 let isFirst = $first;
                 let isLast = $last
-            ) {
+                ) {
                 <tr>
                     <td class="standings-table__cell standings-table__cell--place">
                         {{ index + 1 }}
@@ -55,7 +55,7 @@
                         <div class="standings-table__team">
                             <img
                                 class="standings-table__team-logo"
-                                [src]="team.team.logoUrl"
+                                [src]="team.team.logoUrl ?? DEFAULT_IMAGE"
                                 [alt]="team.team.name"
                             />
 

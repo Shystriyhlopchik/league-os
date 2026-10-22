@@ -1,0 +1,313 @@
+import {
+  type CanActivate,
+  type ExecutionContext,
+  INestApplication,
+  UnauthorizedException,
+  ValidationPipe,
+} from '@nestjs/common';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { Test } from '@nestjs/testing';
+import request from 'supertest';
+import type { Repository } from 'typeorm';
+
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { TournamentMemberEntity } from '../tournament-members/entities/tournament-member.entity';
+import { TournamentMemberRole } from '../tournament-members/enums/tournament-member-role.enum';
+import { TournamentAccessGuard } from './access/tournament-access.guard';
+import { TournamentAccessService } from './access/tournament-access.service';
+import { TournamentEntity } from './entities/tournaments.entity';
+import { TournamentLifecycleStatus } from './enums/tournament-lifecycle-status.enum';
+import { TournamentLifecycleService } from './tournament-lifecycle.service';
+import { TournamentsController } from './tournaments.controller';
+import { TournamentsService } from './tournaments.service';
+import { TournamentGroupSchedulingService } from './scheduling/tournament-group-scheduling.service';
+import { QualificationService } from '../tournament-qualifications/qualification.service';
+import { KnockoutBracketService } from '../tournament-knockout-brackets/knockout-bracket.service';
+import { PlayerSuspensionsService } from '../player-suspensions/player-suspensions.service';
+import { FeatureFlagGuard } from '../../common/feature-flags/feature-flag.guard';
+import { FeatureFlagsService } from '../../common/feature-flags/feature-flags.service';
+import { PlayoffLaunchService } from './playoff-launch.service';
+import {
+  CommunityMemberEntity,
+  CommunityRole,
+} from '../communities/entities/community-member.entity';
+
+describe('Tournament lifecycle HTTP integration', () => {
+  let app: INestApplication;
+
+  const tournaments = {
+    findOne: jest.fn(async () => ({
+      id: 10,
+      ownerUserId: 1,
+      season: { competition: { community: { id: 5, isActive: true } } },
+    })),
+  } as unknown as Repository<TournamentEntity>;
+  const members = {
+    findOne: jest.fn(async ({ where }: { where: { userId: number } }) => {
+      if (where.userId === 2) {
+        return { role: TournamentMemberRole.ORGANIZER };
+      }
+      if (where.userId === 3) {
+        return { role: TournamentMemberRole.VIEWER };
+      }
+      return null;
+    }),
+  } as unknown as Repository<TournamentMemberEntity>;
+  const lifecycle = {
+    create: jest.fn(async (_dto, ownerUserId) => ({
+      id: 10,
+      ownerUserId,
+      lifecycleStatus: TournamentLifecycleStatus.DRAFT,
+    })),
+    setMember: jest.fn(async (_tournamentId, dto) => dto),
+    createStage: jest.fn(async (_tournamentId, dto) => dto),
+    createRuleVersion: jest.fn(async () => ({ version: 2, status: 'draft' })),
+    updateDraftRuleVersion: jest.fn(async () => ({
+      version: 2,
+      status: 'draft',
+    })),
+    publish: jest.fn(async () => ({
+      id: 10,
+      lifecycleStatus: TournamentLifecycleStatus.PUBLISHED,
+      activeRuleVersionId: 2,
+    })),
+  };
+  const groupScheduling = {
+    previewGroupAssignments: jest.fn(),
+    assignGroups: jest.fn(),
+    previewSchedule: jest.fn(async () => ({ totalMatches: 30 })),
+    generateSchedule: jest.fn(),
+  };
+  const qualification = {
+    preview: jest.fn(async () => ({ id: 90, status: 'preview' })),
+    confirm: jest.fn(async () => ({ id: 90, status: 'confirmed' })),
+    recalculate: jest.fn(),
+    getCurrent: jest.fn(),
+  };
+  const knockoutBracket = {
+    preview: jest.fn(async () => ({ id: 100, status: 'preview' })),
+    confirm: jest.fn(async () => ({ id: 100, status: 'confirmed' })),
+    getCurrent: jest.fn(),
+    advance: jest.fn(),
+  };
+  const playerSuspensions = {
+    extend: jest.fn(async (_tournamentId, suspensionId, extraMatches) => ({
+      id: suspensionId,
+      matchesRequired: 1 + extraMatches,
+    })),
+  };
+  const authenticationGuard: CanActivate = {
+    canActivate(context: ExecutionContext): boolean {
+      const request = context.switchToHttp().getRequest();
+      const userId = Number(request.headers['x-test-user-id']);
+      if (!userId) throw new UnauthorizedException();
+      request.user = { id: userId, roles: [] };
+      return true;
+    },
+  };
+
+  beforeAll(async () => {
+    const module = await Test.createTestingModule({
+      controllers: [TournamentsController],
+      providers: [
+        TournamentAccessService,
+        TournamentAccessGuard,
+        FeatureFlagGuard,
+        {
+          provide: FeatureFlagsService,
+          useValue: { isEnabled: () => true },
+        },
+        { provide: TournamentsService, useValue: {} },
+        { provide: TournamentLifecycleService, useValue: lifecycle },
+        {
+          provide: TournamentGroupSchedulingService,
+          useValue: groupScheduling,
+        },
+        { provide: QualificationService, useValue: qualification },
+        { provide: KnockoutBracketService, useValue: knockoutBracket },
+        { provide: PlayerSuspensionsService, useValue: playerSuspensions },
+        { provide: PlayoffLaunchService, useValue: {} },
+        {
+          provide: getRepositoryToken(TournamentEntity),
+          useValue: tournaments,
+        },
+        {
+          provide: getRepositoryToken(TournamentMemberEntity),
+          useValue: members,
+        },
+        {
+          provide: getRepositoryToken(CommunityMemberEntity),
+          useValue: {
+            findOne: jest.fn(async ({ where }) =>
+              where.communityId === 5 && [1, 2, 3].includes(where.userId)
+                ? {
+                    role:
+                      where.userId === 1
+                        ? CommunityRole.Owner
+                        : CommunityRole.Member,
+                  }
+                : null,
+            ),
+          },
+        },
+      ],
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue(authenticationGuard)
+      .compile();
+
+    app = module.createNestApplication();
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
+    await app.init();
+  });
+
+  afterAll(async () => app.close());
+  beforeEach(() => jest.clearAllMocks());
+
+  it('creates a tournament for the authenticated owner', async () => {
+    await request(app.getHttpServer())
+      .post('/tournaments')
+      .set('x-test-user-id', '1')
+      .send({ seasonId: 1, name: 'Cup', slug: 'cup' })
+      .expect(201)
+      .expect({
+        id: 10,
+        ownerUserId: 1,
+        lifecycleStatus: TournamentLifecycleStatus.DRAFT,
+      });
+  });
+
+  it('lets the owner appoint an organizer', async () => {
+    await request(app.getHttpServer())
+      .post('/tournaments/10/members')
+      .set('x-test-user-id', '1')
+      .send({ userId: 2, role: TournamentMemberRole.ORGANIZER })
+      .expect(201);
+
+    expect(lifecycle.setMember).toHaveBeenCalledWith(10, {
+      userId: 2,
+      role: TournamentMemberRole.ORGANIZER,
+    });
+  });
+
+  it('lets an organizer edit structure and create a rule version', async () => {
+    await request(app.getHttpServer())
+      .post('/tournaments/10/stages')
+      .set('x-test-user-id', '2')
+      .send({
+        key: 'groups',
+        name: 'Groups',
+        type: 'group_stage',
+        order: 1,
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/tournaments/10/rule-versions')
+      .set('x-test-user-id', '2')
+      .send({ schemaVersion: 1, config: { schemaVersion: 1 } })
+      .expect(201)
+      .expect({ version: 2, status: 'draft' });
+  });
+
+  it('lets an organizer preview the group-stage schedule', async () => {
+    await request(app.getHttpServer())
+      .post('/tournaments/10/stages/20/schedule/preview')
+      .set('x-test-user-id', '2')
+      .send({ legs: 1 })
+      .expect(200)
+      .expect({ totalMatches: 30 });
+
+    expect(groupScheduling.previewSchedule).toHaveBeenCalledWith(10, 20, {
+      legs: 1,
+    });
+  });
+
+  it('lets an organizer create a qualification preview', async () => {
+    await request(app.getHttpServer())
+      .post('/tournaments/10/transitions/20/30/qualification/preview')
+      .set('x-test-user-id', '2')
+      .send({})
+      .expect(200)
+      .expect({ id: 90, status: 'preview' });
+
+    expect(qualification.preview).toHaveBeenCalledWith(10, 20, 30, {}, 2);
+  });
+
+  it('lets an organizer confirm a qualification snapshot', async () => {
+    await request(app.getHttpServer())
+      .post('/tournaments/10/qualification-snapshots/90/confirm')
+      .set('x-test-user-id', '2')
+      .send({})
+      .expect(200)
+      .expect({ id: 90, status: 'confirmed' });
+
+    expect(qualification.confirm).toHaveBeenCalledWith(10, 90, {}, 2);
+  });
+
+  it('lets an organizer preview and confirm a knockout bracket', async () => {
+    await request(app.getHttpServer())
+      .post('/tournaments/10/stages/30/knockout-bracket/preview')
+      .set('x-test-user-id', '2')
+      .send({})
+      .expect(200)
+      .expect({ id: 100, status: 'preview' });
+
+    await request(app.getHttpServer())
+      .post('/tournaments/10/knockout-bracket-snapshots/100/confirm')
+      .set('x-test-user-id', '2')
+      .send({})
+      .expect(200)
+      .expect({ id: 100, status: 'confirmed' });
+  });
+
+  it('lets an organizer manually extend a suspension', async () => {
+    await request(app.getHttpServer())
+      .post('/tournaments/10/discipline/suspensions/40/extend')
+      .set('x-test-user-id', '2')
+      .send({ extraMatches: 2, manualDecisionId: 900 })
+      .expect(200)
+      .expect({ id: 40, matchesRequired: 3 });
+
+    expect(playerSuspensions.extend).toHaveBeenCalledWith(10, 40, 2, 900);
+  });
+
+  it('reserves publication for the owner', async () => {
+    await request(app.getHttpServer())
+      .post('/tournaments/10/publish')
+      .set('x-test-user-id', '2')
+      .send({ ruleVersionId: 2 })
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .post('/tournaments/10/publish')
+      .set('x-test-user-id', '1')
+      .send({ ruleVersionId: 2 })
+      .expect(200)
+      .expect({
+        id: 10,
+        lifecycleStatus: TournamentLifecycleStatus.PUBLISHED,
+        activeRuleVersionId: 2,
+      });
+  });
+
+  it('denies edits to viewers and unauthenticated requests', async () => {
+    await request(app.getHttpServer())
+      .post('/tournaments/10/stages')
+      .set('x-test-user-id', '3')
+      .send({
+        key: 'groups',
+        name: 'Groups',
+        type: 'group_stage',
+        order: 1,
+      })
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .post('/tournaments/10/publish')
+      .send({ ruleVersionId: 2 })
+      .expect(401);
+  });
+});

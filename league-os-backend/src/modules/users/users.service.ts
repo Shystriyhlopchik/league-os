@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from './entities/user.entity';
-import { Repository } from 'typeorm';
+import { ILike, Repository } from 'typeorm';
 import { RoleEntity } from '../roles/entities/role.entity';
 
 @Injectable()
@@ -23,7 +23,7 @@ export class UsersService {
   async findByEmail(email: string) {
     return this.usersRepository.findOne({
       where: {
-        email,
+        email: ILike(email.trim()),
       },
       relations: {
         roles: true,

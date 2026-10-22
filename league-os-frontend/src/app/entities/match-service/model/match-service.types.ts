@@ -1,4 +1,15 @@
 import { MatchStatus } from '../../match/model/match.types';
+import type { MatchRosterCheckMatch } from '../../match-roster/model/match-roster.types';
+
+export interface FinalizePlayedMatch {
+    extraTime?: { home: number; away: number };
+    penalties?: {
+        home: number;
+        away: number;
+        homeKicksTaken: number;
+        awayKicksTaken: number;
+    };
+}
 
 export interface MatchServiceMatch {
     id: number;
@@ -6,6 +17,8 @@ export interface MatchServiceMatch {
     round?: string;
     matchDatetime?: string;
     status: MatchStatus;
+    homeScore: number;
+    awayScore: number;
     homeTeam: MatchServiceTeam;
     awayTeam: MatchServiceTeam;
     venue?: MatchServiceVenue;
@@ -52,6 +65,7 @@ export interface MatchRegistrationPlayer {
 export interface MatchRegistration {
     match: MatchServiceMatch;
     team: MatchServiceTeam;
+    isSubmitted: boolean;
     isApproved: boolean;
     players: MatchRegistrationPlayer[];
 }
@@ -125,6 +139,11 @@ export interface MatchProtocolData {
         homeTeam: MatchServiceTeam;
         awayTeam: MatchServiceTeam;
         venue?: MatchServiceVenue;
+        knockoutTie?: MatchRosterCheckMatch['knockoutTie'];
+        matchRules?: {
+            extraTime: { enabled: boolean };
+            penalties: { enabled: boolean; initialKicksPerTeam?: number };
+        };
     };
 
     session: MatchServiceSession;

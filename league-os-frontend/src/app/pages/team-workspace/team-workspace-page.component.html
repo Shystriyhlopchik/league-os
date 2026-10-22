@@ -1,0 +1,842 @@
+<main class="workspace">
+    <a class="back-link" routerLink="/dashboard">← В кабинет</a>
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Кабинет команды</p>
+            <h1>Мои команды</h1>
+            <p class="hint">
+                Состав, информация о команде и участие в турнирах.
+            </p>
+        </div>
+        @if (workspace()?.teams?.length) {
+            <div class="actions">
+                <button
+                    (click)="openAddFlow('create')"
+                    [disabled]="busy() || squadBusy()"
+                >
+                    Создать команду
+                </button>
+                <button
+                    class="text-button"
+                    (click)="openAddFlow('find')"
+                    [disabled]="busy() || squadBusy()"
+                >
+                    Запросить доступ
+                </button>
+            </div>
+        }
+    </header>
+    @if (error()) {
+        <p class="error" role="alert">{{ error() }}</p>
+    }
+    @if (notice()) {
+        <p class="notice" role="status">{{ notice() }}</p>
+    }
+    @if (busy()) {
+        <p class="loading" role="status">Выполняем запрос…</p>
+    }
+
+    @if (workspace() && !profile() && addFlow() === "none") {
+        <section class="card welcome">
+            <span class="empty-symbol" aria-hidden="true">⚑</span>
+            <h2>Начните со своей команды</h2>
+            <p class="hint">
+                Создайте новую команду или найдите уже зарегистрированную.<br />Турнир
+                можно выбрать позже.
+            </p>
+            <div class="actions centered">
+                <button
+                    class="primary"
+                    (click)="openAddFlow('create')"
+                    [disabled]="busy()"
+                >
+                    Создать команду
+                </button>
+                <button (click)="openAddFlow('find')" [disabled]="busy()">
+                    Моя команда уже есть
+                </button>
+            </div>
+        </section>
+    }
+
+    @if (addFlow() !== "none") {
+        <section class="card">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">
+                        {{
+                            addFlow() === "create"
+                                ? "Новая команда"
+                                : "Существующая команда"
+                        }}
+                    </p>
+                    <h2>
+                        {{
+                            addFlow() === "create"
+                                ? "Создать команду"
+                                : "Запросить управление"
+                        }}
+                    </h2>
+                </div>
+                <button (click)="openAddFlow('none')" [disabled]="busy()">
+                    Отмена
+                </button>
+            </div>
+            <fieldset [disabled]="busy()">
+                @if (addFlow() === "create") {
+                    <p class="hint">
+                        Сообщество: {{ workspace()?.defaultCommunity?.name }}.
+                        Сначала создадим непубличный черновик — состав и
+                        оформление добавите следующим шагом.
+                    </p>
+                    <form (ngSubmit)="create()">
+                        <div class="grid">
+                            <label
+                                >Название команды *<input
+                                    name="newName"
+                                    maxlength="150"
+                                    [(ngModel)]="newTeam.name"
+                                    required
+                                    minlength="2"
+                                    autocomplete="off"
+                            /></label>
+                            <label
+                                >Город<input
+                                    name="newCity"
+                                    maxlength="100"
+                                    [(ngModel)]="newTeam.city"
+                            /></label>
+                            <label
+                                >Другой населённый пункт<input
+                                    name="newVillage"
+                                    maxlength="100"
+                                    [(ngModel)]="newTeam.village"
+                                    placeholder="Если команда не из города"
+                            /></label>
+                        </div>
+                        <p class="hint">
+                            Для публикации достаточно города или другого
+                            населённого пункта. Остальные сведения
+                            необязательны.
+                        </p>
+                        <div class="actions">
+                            <button
+                                class="primary"
+                                [disabled]="
+                                    newTeam.name.trim().length < 2 ||
+                                    !workspace()
+                                "
+                            >
+                                Создать и перейти к составу
+                            </button>
+                            <button
+                                type="button"
+                                class="text-button"
+                                (click)="openAddFlow('find')"
+                            >
+                                Команда уже зарегистрирована?
+                            </button>
+                        </div>
+                    </form>
+                } @else {
+                    <p class="hint">
+                        Найдите команду и объясните вашу связь с ней.
+                        Администратор сообщества проверит запрос вручную.
+                    </p>
+                    <form class="row" (ngSubmit)="searchTeams()">
+                        <label class="grow"
+                            >Название или населённый пункт<input
+                                name="searchTeam"
+                                [(ngModel)]="search"
+                                minlength="3"
+                                required
+                                placeholder="Минимум 3 символа"
+                        /></label>
+                        <button [disabled]="search.trim().length < 3">
+                            Найти команду
+                        </button>
+                    </form>
+                    @for (team of searchResults(); track team.id) {
+                        <div class="list-row">
+                            <div class="grow">
+                                <strong>{{ team.name }}</strong
+                                ><span class="hint"
+                                    >{{ team.city }} {{ team.village }}</span
+                                >
+                            </div>
+                            <button
+                                (click)="accessTeam.set(team)"
+                                [disabled]="accessTeam()?.id === team.id"
+                            >
+                                Выбрать
+                            </button>
+                        </div>
+                    } @empty {
+                        @if (searchDone()) {
+                            <p class="hint">
+                                Команды не найдены. Проверьте название или
+                                создайте новую команду.
+                            </p>
+                        }
+                    }
+                    @if (accessTeam(); as team) {
+                        <form class="inset" (ngSubmit)="requestAccess(team.id)">
+                            <h3>Доступ к команде «{{ team.name }}»</h3>
+                            <label
+                                >Почему вам нужен доступ<textarea
+                                    name="accessReason"
+                                    maxlength="1000"
+                                    minlength="10"
+                                    required
+                                    [(ngModel)]="accessReason"
+                                    placeholder="Укажите вашу роль в команде и как администратор может это проверить"
+                                ></textarea>
+                            </label>
+                            <p class="hint">
+                                Не менее 10 символов. Запрос не даёт доступ
+                                автоматически.
+                            </p>
+                            <button
+                                class="primary"
+                                [disabled]="accessReason.trim().length < 10"
+                            >
+                                Отправить запрос
+                            </button>
+                        </form>
+                    }
+                }
+            </fieldset>
+        </section>
+    }
+
+    @if (workspace()?.requests?.length) {
+        <details class="card compact">
+            <summary>
+                Мои запросы доступа · {{ workspace()?.requests?.length }}
+            </summary>
+            @for (request of workspace()?.requests; track request.id) {
+                <div class="list-row">
+                    <div class="grow">
+                        <strong>{{ request.teamName }}</strong>
+                        @if (request.comment) {
+                            <span class="hint">{{ request.comment }}</span>
+                        }
+                    </div>
+                    <span class="badge">{{
+                        labels[request.status] || request.status
+                    }}</span>
+                </div>
+            }
+        </details>
+    }
+
+    @if (profile(); as p) {
+        <div [hidden]="addFlow() !== 'none'">
+            @if ((workspace()?.teams?.length || 0) > 1) {
+                <label class="team-switch"
+                    >Выбрать команду
+                    <select
+                        #teamSelect
+                        [value]="selectedTeamKey()"
+                        (change)="changeTeam(teamSelect)"
+                        [disabled]="busy() || squadBusy()"
+                    >
+                        @for (
+                            team of workspace()?.teams;
+                            track team.communityId + ":" + team.teamId
+                        ) {
+                            <option
+                                [value]="team.communityId + ':' + team.teamId"
+                            >
+                                {{ team.name }} · {{ team.communityName }}
+                            </option>
+                        }
+                    </select>
+                </label>
+            }
+            <section class="team-header card">
+                @if (p.team.logoUrl) {
+                    <img
+                        class="team-logo"
+                        [src]="p.team.logoUrl"
+                        [alt]="'Логотип ' + p.team.name"
+                    />
+                } @else {
+                    <span class="logo-placeholder" aria-hidden="true">{{
+                        p.team.name.slice(0, 2).toUpperCase()
+                    }}</span>
+                }
+                <div class="grow">
+                    <div class="row title-row">
+                        <h2>{{ p.team.name }}</h2>
+                        <span
+                            class="badge"
+                            [class.published]="
+                                p.team.profileStatus === 'published'
+                            "
+                            >{{ labels[p.team.profileStatus] }}</span
+                        >
+                    </div>
+                    <p class="hint">
+                        {{
+                            p.team.city ||
+                                p.team.village ||
+                                "Населённый пункт не указан"
+                        }}
+                        @if (roster(); as players) {
+                            · {{ players.length }} игроков · максимум 12
+                        }
+                    </p>
+                    @if (profileDirty()) {
+                        <button
+                            class="unsaved text-button"
+                            (click)="selectSection('profile')"
+                        >
+                            Есть несохранённые изменения карточки →
+                        </button>
+                    }
+                </div>
+                @if (p.team.profileStatus === "draft") {
+                    <button
+                        (click)="selectSection('profile')"
+                        [disabled]="busy() || squadBusy()"
+                    >
+                        Подготовить карточку →
+                    </button>
+                } @else {
+                    <button
+                        (click)="selectSection('tournaments')"
+                        [disabled]="busy() || squadBusy()"
+                    >
+                        Турниры и заявки →
+                    </button>
+                }
+            </section>
+
+            @if (p.team.profileStatus === "draft") {
+                <ol class="onboarding" aria-label="Подготовка команды">
+                    <li class="done"><span>1</span> Команда создана</li>
+                    <li [class.done]="!!roster()?.length">
+                        <span>2</span> Добавьте игроков
+                    </li>
+                    <li><span>3</span> Опубликуйте карточку</li>
+                    <li><span>4</span> Подайте заявку на турнир</li>
+                </ol>
+            }
+
+            <nav class="section-nav" aria-label="Разделы команды">
+                <button
+                    [attr.aria-current]="section() === 'squad' ? 'page' : null"
+                    (click)="selectSection('squad')"
+                    [disabled]="busy() || squadBusy()"
+                >
+                    Состав
+                    @if (roster(); as players) {
+                        <span>{{ players.length }}</span>
+                    }
+                </button>
+                <button
+                    [attr.aria-current]="
+                        section() === 'profile' ? 'page' : null
+                    "
+                    (click)="selectSection('profile')"
+                    [disabled]="busy() || squadBusy()"
+                >
+                    О команде
+                    @if (profileDirty()) {
+                        <span aria-label="Есть изменения">●</span>
+                    }
+                </button>
+                <button
+                    [attr.aria-current]="
+                        section() === 'tournaments' ? 'page' : null
+                    "
+                    (click)="selectSection('tournaments')"
+                    [disabled]="busy() || squadBusy()"
+                >
+                    Турниры и заявки
+                </button>
+                @if (p.canManageAccess) {
+                    <button
+                        [attr.aria-current]="
+                            section() === 'access' ? 'page' : null
+                        "
+                        (click)="selectSection('access')"
+                        [disabled]="busy() || squadBusy()"
+                    >
+                        Доступ
+                    </button>
+                }
+            </nav>
+
+            <section
+                [hidden]="section() !== 'squad'"
+                aria-label="Состав команды"
+            >
+                @for (
+                    selected of [p];
+                    track selected.communityId + ":" + selected.team.id
+                ) {
+                    <fieldset [disabled]="busy()">
+                        <app-team-squad-editor
+                            [communityId]="selected.communityId"
+                            [teamId]="selected.team.id"
+                            (rosterChanged)="roster.set($event)"
+                            (busyChanged)="squadBusy.set($event)"
+                        />
+                    </fieldset>
+                }
+            </section>
+
+            @if (section() === "profile") {
+                <section class="card">
+                    <div class="section-heading">
+                        <div>
+                            <h2>О команде</h2>
+                            <p class="hint">
+                                Так команду увидят в публичном каталоге.
+                            </p>
+                        </div>
+                        @if (!editing()) {
+                            <button
+                                (click)="editing.set(true)"
+                                [disabled]="busy()"
+                            >
+                                Редактировать
+                            </button>
+                        }
+                    </div>
+                    <fieldset [disabled]="busy()">
+                        @if (editing()) {
+                            <form (ngSubmit)="save()">
+                                <div class="grid">
+                                    <label
+                                        >Название команды *<input
+                                            name="name"
+                                            maxlength="150"
+                                            minlength="2"
+                                            required
+                                            [(ngModel)]="form.name"
+                                    /></label>
+                                    <label
+                                        >Город<input
+                                            name="city"
+                                            maxlength="100"
+                                            [(ngModel)]="form.city"
+                                    /></label>
+                                    <label
+                                        >Другой населённый пункт<input
+                                            name="village"
+                                            maxlength="100"
+                                            [(ngModel)]="form.village"
+                                            placeholder="Если команда не из города"
+                                    /></label>
+                                </div>
+                                <p class="hint">
+                                    Для публикации укажите город или другой
+                                    населённый пункт. Остальные поля ниже
+                                    необязательны.
+                                </p>
+                                <details class="inset" open>
+                                    <summary>
+                                        Оформление и дополнительная информация
+                                    </summary>
+                                    <div class="grid">
+                                        <label
+                                            >Короткое название<input
+                                                name="shortName"
+                                                maxlength="40"
+                                                [(ngModel)]="form.shortName"
+                                        /></label>
+                                        <label
+                                            >Год основания<input
+                                                name="year"
+                                                type="number"
+                                                min="1800"
+                                                max="2100"
+                                                [(ngModel)]="form.foundedYear"
+                                        /></label>
+                                        <label
+                                            >Основной цвет<input
+                                                name="primary"
+                                                type="color"
+                                                [(ngModel)]="form.primaryColor"
+                                        /></label>
+                                        <label
+                                            >Дополнительный цвет<input
+                                                name="secondary"
+                                                type="color"
+                                                [(ngModel)]="
+                                                    form.secondaryColor
+                                                "
+                                        /></label>
+                                    </div>
+                                    <label
+                                        >Описание<textarea
+                                            name="description"
+                                            maxlength="4000"
+                                            [(ngModel)]="form.description"
+                                            placeholder="Несколько слов о команде"
+                                        ></textarea>
+                                    </label>
+                                </details>
+                                <div class="save-bar">
+                                    <span class="hint">{{
+                                        profileDirty()
+                                            ? "Изменения ещё не сохранены"
+                                            : "Нет несохранённых изменений"
+                                    }}</span>
+                                    <div class="actions">
+                                        <button
+                                            type="button"
+                                            (click)="cancelEdit()"
+                                        >
+                                            Отмена</button
+                                        ><button
+                                            class="primary"
+                                            [disabled]="!profileDirty()"
+                                        >
+                                            Сохранить изменения
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        } @else {
+                            <dl class="facts">
+                                <div>
+                                    <dt>Название</dt>
+                                    <dd>{{ p.team.name }}</dd>
+                                </div>
+                                <div>
+                                    <dt>Короткое название</dt>
+                                    <dd>
+                                        {{ p.team.shortName || "Не указано" }}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>Город / населённый пункт</dt>
+                                    <dd>
+                                        {{
+                                            p.team.city ||
+                                                p.team.village ||
+                                                "Не указан"
+                                        }}{{
+                                            p.team.city && p.team.village
+                                                ? ", " + p.team.village
+                                                : ""
+                                        }}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>Год основания</dt>
+                                    <dd>
+                                        {{ p.team.foundedYear || "Не указан" }}
+                                    </dd>
+                                </div>
+                            </dl>
+                            <h3>Описание</h3>
+                            <p class="description">
+                                {{
+                                    p.team.description ||
+                                        "Добавьте пару слов об истории и характере команды."
+                                }}
+                            </p>
+                        }
+                        <div class="inset">
+                            <h3>Логотип</h3>
+                            <label
+                                >PNG, JPEG или WebP · до 5 МБ<input
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp"
+                                    (change)="uploadLogo($event)"
+                            /></label>
+                            <p class="hint">
+                                Логотип сохраняется сразу. Изменения текстовых
+                                полей — только по кнопке «Сохранить изменения».
+                            </p>
+                        </div>
+                        <div class="actions">
+                            @if (
+                                p.team.profileStatus === "draft" && !editing()
+                            ) {
+                                <button
+                                    class="primary"
+                                    (click)="publish()"
+                                    [disabled]="
+                                        !p.team.name.trim() ||
+                                        (!p.team.city?.trim() &&
+                                            !p.team.village?.trim())
+                                    "
+                                >
+                                    Опубликовать карточку
+                                </button>
+                            }
+                            @if (p.team.profileStatus === "published") {
+                                <a [routerLink]="['/team', p.team.id]"
+                                    >Открыть публичную страницу ↗</a
+                                >
+                            }
+                            <button
+                                class="text-button"
+                                (click)="refreshProfile()"
+                            >
+                                Обновить с сервера
+                            </button>
+                        </div>
+                        @if (p.team.profileStatus === "draft") {
+                            <p class="hint">
+                                Публикация делает карточку видимой в каталоге,
+                                но не записывает команду на турнир.
+                            </p>
+                        }
+                    </fieldset>
+                </section>
+            }
+
+            @if (section() === "tournaments") {
+                <section class="card">
+                    <div class="section-heading">
+                        <div>
+                            <h2>Турниры и заявки</h2>
+                            <p class="hint">
+                                На каждый турнир подаётся отдельный заявочный
+                                лист.
+                            </p>
+                        </div>
+                        <button (click)="loadTournaments()" [disabled]="busy()">
+                            Обновить
+                        </button>
+                    </div>
+                    @if (p.team.profileStatus === "draft") {
+                        <div class="inset">
+                            <h3>Сначала опубликуйте карточку команды</h3>
+                            <p class="hint">
+                                Состав можно готовить сейчас, а для подачи
+                                заявки нужна опубликованная карточка.
+                            </p>
+                            <button
+                                (click)="selectSection('profile')"
+                                [disabled]="busy()"
+                            >
+                                Перейти к карточке
+                            </button>
+                        </div>
+                    }
+                    @for (row of tournaments(); track row.tournament.id) {
+                        <article class="tournament-row">
+                            <div class="grow">
+                                <h3>{{ row.tournament.name }}</h3>
+                                <p class="hint">
+                                    {{
+                                        row.tournament.registrationStatus ===
+                                        "open"
+                                            ? "Приём заявок открыт"
+                                            : row.tournament
+                                                    .registrationStatus ===
+                                                "closed"
+                                              ? "Приём заявок закрыт"
+                                              : "Приём заявок ещё не открыт"
+                                    }}
+                                </p>
+                                @if (row.unavailable) {
+                                    <p class="error">
+                                        Не удалось получить состояние заявки.
+                                        Попробуйте обновить.
+                                    </p>
+                                } @else {
+                                    <span class="badge">{{
+                                        row.detail?.application
+                                            ? applicationLabels[
+                                                  row.detail!.application!
+                                                      .status
+                                              ] ||
+                                              row.detail!.application!.status
+                                            : "Заявка не подана"
+                                    }}</span>
+                                    @if (
+                                        row.detail?.application
+                                            ?.approvedRevisionId &&
+                                        row.detail?.application?.status !==
+                                            "approved"
+                                    ) {
+                                        <p class="hint">
+                                            Ранее утверждённый состав продолжает
+                                            действовать.
+                                        </p>
+                                    }
+                                    @if (row.detail?.editing?.reason) {
+                                        <p class="hint">
+                                            {{ row.detail?.editing?.reason }}
+                                        </p>
+                                    }
+                                }
+                            </div>
+                            @if (p.team.profileStatus === "published") {
+                                <a
+                                    class="button"
+                                    routerLink="/dashboard/tournament-applications"
+                                    [queryParams]="{
+                                        teamId: p.team.id,
+                                        tournamentId: row.tournament.id,
+                                    }"
+                                    >{{
+                                        row.detail?.application
+                                            ? "Открыть заявку →"
+                                            : "Перейти к заявке →"
+                                    }}</a
+                                >
+                            }
+                        </article>
+                    } @empty {
+                        @if (tournamentsLoaded()) {
+                            <p class="hint">
+                                Турниров с приёмом заявок в этом сообществе пока
+                                нет. Подготовьте состав — он сохранится до
+                                открытия регистрации.
+                            </p>
+                        }
+                    }
+                    <div class="inset">
+                        <h3>Заявка на матч — отдельно</h3>
+                        <p class="hint">
+                            Игроки протокола выбираются из состава,
+                            утверждённого для конкретного турнира.
+                        </p>
+                        <a routerLink="/dashboard/match-registrations"
+                            >Перейти к заявкам на матчи →</a
+                        >
+                    </div>
+                </section>
+            }
+
+            @if (section() === "access" && p.canManageAccess) {
+                <section class="card">
+                    <h2>Кто управляет командой</h2>
+                    <p class="hint">
+                        Управляющий редактирует карточку и состав, подаёт
+                        заявки. Владелец также выдаёт и отзывает доступ. Эти
+                        права не занимают место в игровом составе.
+                    </p>
+                    <fieldset [disabled]="busy()">
+                        @if (management(); as m) {
+                            @for (manager of m.managers; track manager.userId) {
+                                <div class="list-row">
+                                    <div class="grow">
+                                        <strong>{{ manager.name }}</strong
+                                        ><span class="hint"
+                                            >&#64;{{ manager.username }} ·
+                                            {{ labels[manager.role]
+                                            }}{{
+                                                manager.isActive
+                                                    ? ""
+                                                    : " · учётная запись отключена"
+                                            }}</span
+                                        >
+                                        @if (isLastOwner(manager)) {
+                                            <small class="hint"
+                                                >Последний активный владелец —
+                                                доступ защищён</small
+                                            >
+                                        }
+                                    </div>
+                                    <button
+                                        class="danger"
+                                        (click)="removeManager(manager)"
+                                        [disabled]="isLastOwner(manager)"
+                                    >
+                                        Отозвать доступ
+                                    </button>
+                                </div>
+                            }
+                            <form class="inset" (ngSubmit)="assignManager()">
+                                <h3>Добавить управляющего</h3>
+                                <div class="row">
+                                    <label class="grow"
+                                        >Точный логин зарегистрированного
+                                        пользователя<input
+                                            name="manager"
+                                            maxlength="100"
+                                            [(ngModel)]="managerUsername"
+                                            required
+                                    /></label>
+                                    <button
+                                        [disabled]="!managerUsername.trim()"
+                                    >
+                                        Выдать доступ
+                                    </button>
+                                </div>
+                            </form>
+                            <details class="inset">
+                                <summary>Управление владением</summary>
+                                <p class="hint">
+                                    Можно назначить ещё одного владельца. Это не
+                                    автоматическая передача: ваши права
+                                    сохранятся. После назначения прежнего
+                                    владельца можно удалить отдельно. Последнего
+                                    активного владельца удалить нельзя.
+                                </p>
+                                <form
+                                    class="row"
+                                    (ngSubmit)="assignManager('owner')"
+                                >
+                                    <label class="grow"
+                                        >Точный логин нового владельца<input
+                                            name="owner"
+                                            maxlength="100"
+                                            [(ngModel)]="ownerUsername"
+                                            required /></label
+                                    ><button [disabled]="!ownerUsername.trim()">
+                                        Назначить владельца
+                                    </button>
+                                </form>
+                            </details>
+                            <details class="inset">
+                                <summary>История изменения доступа</summary>
+                                @for (entry of m.audit; track entry.id) {
+                                    <p class="hint">
+                                        {{
+                                            entry.createdAt
+                                                | date: "dd.MM.yyyy HH:mm"
+                                        }}
+                                        ·
+                                        {{
+                                            auditLabels[entry.action] ||
+                                                entry.action
+                                        }}
+                                        · пользователь №{{
+                                            entry.targetUserId ||
+                                                entry.actorUserId
+                                        }}
+                                        @if (entry.comment) {
+                                            —
+                                            {{
+                                                labels[entry.comment] ||
+                                                    entry.comment
+                                            }}
+                                        }
+                                    </p>
+                                } @empty {
+                                    <p class="hint">История пока пуста.</p>
+                                }
+                            </details>
+                        } @else if (!busy()) {
+                            <button (click)="selectSection('access')">
+                                Повторить загрузку доступа
+                            </button>
+                        }
+                    </fieldset>
+                </section>
+            }
+        </div>
+    }
+    @if (workspace()?.reviewCommunities?.length) {
+        <aside class="admin-link">
+            <span class="hint">Администрирование сообщества</span
+            ><a
+                routerLink="/dashboard/communities"
+                fragment="team-access-requests"
+                >Рассмотреть запросы доступа к командам →</a
+            >
+        </aside>
+    }
+</main>

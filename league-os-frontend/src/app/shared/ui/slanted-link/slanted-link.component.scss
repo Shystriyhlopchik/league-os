@@ -4,7 +4,7 @@
     padding: 0.75rem 1.5rem;
 
     box-sizing: border-box;
-    background-color: #27AE60;
+    background-color: rgb(214, 38, 40);
     clip-path: polygon(5% 0, 100% 0, 95% 100%, 0 100%);
 
     display: flex;
@@ -12,7 +12,7 @@
 
     &:hover {
         color: #ffffff;
-        background-color: #2ecc71;
+        background-color: rgb(205, 22, 24);
     }
 }
 

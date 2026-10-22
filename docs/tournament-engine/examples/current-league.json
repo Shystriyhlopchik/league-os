@@ -1,0 +1,98 @@
+{
+  "profile": {
+    "id": "current-league-compatibility-v1",
+    "name": "Текущая лига — compatibility profile",
+    "status": "requires_product_confirmation",
+    "assumptions": [
+      "Текущая реализация не хранит число кругов как правило; для новых генераций профилю временно назначен один круг.",
+      "Длительность тайма в текущей доменной модели турнира не задана и оставлена null.",
+      "Профиль воспроизводит реализованную сортировку points, goal_difference, goals_for, но не утверждает, что это полный официальный регламент.",
+      "Специальная механика red_ball остаётся вне tournament rules v1 и требует отдельного продуктового решения."
+    ]
+  },
+  "tournament": {
+    "templateKey": "current-league",
+    "name": "Текущая лига",
+    "lifecycleStatus": "draft"
+  },
+  "structure": {
+    "stages": [
+      {
+        "key": "league-stage",
+        "name": "Регулярный этап",
+        "type": "round_robin",
+        "order": 1
+      }
+    ],
+    "groups": []
+  },
+  "rules": {
+    "schemaVersion": 1,
+    "stages": [
+      {
+        "stageKey": "league-stage",
+        "type": "round_robin",
+        "schedule": {
+          "algorithm": "circle",
+          "legs": 1,
+          "balanceHomeAway": true
+        },
+        "scoring": {
+          "win": 3,
+          "draw": 1,
+          "loss": 0
+        },
+        "standings": {
+          "tieBreakers": [
+            {
+              "type": "goal_difference",
+              "scope": "all_matches"
+            },
+            {
+              "type": "goals_for",
+              "scope": "all_matches"
+            },
+            {
+              "type": "manual_decision"
+            }
+          ]
+        },
+        "match": {
+          "periods": 2,
+          "periodDurationMinutes": null,
+          "allowDraw": true,
+          "extraTime": {
+            "enabled": false
+          },
+          "penalties": {
+            "enabled": false
+          }
+        },
+        "discipline": {
+          "accumulatedYellows": {
+            "enabled": true,
+            "threshold": 4,
+            "suspensionMatches": 1,
+            "progression": "reset_after_suspension"
+          },
+          "secondYellowInMatch": {
+            "enabled": true,
+            "minimumMatches": 1,
+            "allowManualExtension": true
+          },
+          "directRed": {
+            "enabled": true,
+            "minimumMatches": 1,
+            "allowManualExtension": true
+          },
+          "stageTransition": {
+            "carryYellowCards": true,
+            "carryPendingSuspensions": true
+          }
+        }
+      }
+    ],
+    "transitions": []
+  }
+}
+

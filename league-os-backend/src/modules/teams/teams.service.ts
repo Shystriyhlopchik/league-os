@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { TeamEntity } from './entities/team.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -13,6 +13,7 @@ export class TeamsService {
     return this.teamsRepository.find({
       where: {
         isActive: true,
+        profileStatus: 'published',
       },
       order: {
         name: 'ASC',
@@ -30,5 +31,35 @@ export class TeamsService {
         isActive: true,
       },
     });
+  }
+
+  async findPublicById(teamId: number): Promise<TeamEntity> {
+    const team = await this.teamsRepository.findOne({
+      where: {
+        id: teamId,
+        isActive: true,
+        profileStatus: 'published',
+      },
+      select: {
+        id: true,
+        name: true,
+        shortName: true,
+        slug: true,
+        description: true,
+        logoUrl: true,
+        primaryColor: true,
+        secondaryColor: true,
+        city: true,
+        village: true,
+        foundedYear: true,
+        isActive: true,
+      },
+    });
+
+    if (!team) {
+      throw new NotFoundException('Команда не найдена');
+    }
+
+    return team;
   }
 }

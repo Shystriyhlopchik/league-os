@@ -1,5 +1,6 @@
 export interface StatsSummaryData {
     tournamentId: number;
+    groupId?: number;
     seasonId: number;
     competitionId: number;
     year: number;

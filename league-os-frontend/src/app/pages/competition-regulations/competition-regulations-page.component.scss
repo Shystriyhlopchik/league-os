@@ -1,0 +1,261 @@
+:host {
+    display: block;
+    background: #16191a;
+}
+
+.regulations-page {
+    color: #f5f5f5;
+    font-family: "Roboto", Arial, sans-serif;
+    background: #16191a;
+}
+
+.regulations-page__container {
+    width: min(100%, 1200px);
+    margin: 0 auto;
+    padding: 32px 16px 72px;
+    box-sizing: border-box;
+}
+
+.regulations-page__hero {
+    padding: clamp(24px, 5vw, 56px);
+    background: #101615;
+    border-top: 4px solid #f61129;
+}
+
+.regulations-page__eyebrow {
+    margin: 0 0 12px;
+    color: #aab2ae;
+    font-family: "Oswald", Arial, sans-serif;
+    font-size: 16px;
+}
+
+.regulations-page__title {
+    max-width: 900px;
+    margin: 0;
+    color: #f61129;
+    font-family: "Play", Arial, sans-serif;
+    font-size: clamp(38px, 6vw, 68px);
+    font-weight: 700;
+    line-height: 1.05;
+    text-transform: uppercase;
+}
+
+.regulations-page__lead {
+    max-width: 880px;
+    margin: 24px 0 0;
+    color: #e2e6e4;
+    font-family: "Oswald", Arial, sans-serif;
+    font-size: clamp(20px, 2.5vw, 26px);
+    font-weight: 300;
+    line-height: 1.45;
+}
+
+.regulations-page__facts {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    margin: 36px 0 0;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.regulations-page__fact {
+    padding: 20px;
+    background: #151d1b;
+
+    dt {
+        color: #9ca6a1;
+        font-family: "Oswald", Arial, sans-serif;
+        font-size: 14px;
+    }
+
+    dd {
+        margin: 8px 0 0;
+        color: #ffffff;
+        font-family: "Play", Arial, sans-serif;
+        font-size: 24px;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+}
+
+.regulations-page__contents {
+    margin-top: 24px;
+    padding: 24px;
+    background: #111615;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+
+    h2 {
+        margin: 0 0 16px;
+        font-family: "Play", Arial, sans-serif;
+        font-size: 24px;
+        text-transform: uppercase;
+    }
+}
+
+.regulations-page__contents-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+
+    a {
+        padding: 8px 12px;
+        color: #dce2df;
+        font-family: "Oswald", Arial, sans-serif;
+        font-size: 16px;
+        text-decoration: none;
+        border: 1px solid rgba(246, 17, 41, 0.4);
+
+        &:hover,
+        &:focus-visible {
+            color: #f61129;
+            border-color: #f61129;
+        }
+    }
+}
+
+.regulations-page__article {
+    margin-top: 24px;
+    padding: 0 clamp(16px, 5vw, 64px);
+    background: #121716;
+}
+
+.regulations-page__section {
+    padding: 40px 0;
+    scroll-margin-top: 88px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+    &:last-child {
+        border-bottom: 0;
+    }
+
+    h2,
+    h3 {
+        font-family: "Play", Arial, sans-serif;
+    }
+
+    h2 {
+        margin: 0 0 20px;
+        color: #f61129;
+        font-size: clamp(30px, 4vw, 42px);
+        line-height: 1.15;
+        text-transform: uppercase;
+    }
+
+    h3 {
+        margin: 32px 0 12px;
+        color: #ffffff;
+        font-size: clamp(22px, 3vw, 28px);
+        line-height: 1.2;
+    }
+
+    p,
+    li {
+        font-size: 18px;
+        line-height: 1.65;
+    }
+
+    p {
+        margin: 12px 0;
+    }
+
+    ul,
+    ol {
+        margin: 16px 0;
+        padding-left: 28px;
+    }
+
+    li + li {
+        margin-top: 8px;
+    }
+
+    strong {
+        color: #ffffff;
+        font-weight: 700;
+    }
+}
+
+.regulations-page__notice,
+.regulations-page__contact {
+    margin-top: 20px;
+    padding: 20px 24px;
+    background: #18201e;
+    border-left: 4px solid #f61129;
+}
+
+.regulations-page__venues {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin: 20px 0;
+
+    address {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 20px;
+        font-size: 16px;
+        font-style: normal;
+        background: #18201e;
+    }
+}
+
+.regulations-page__contact {
+    a {
+        display: inline-block;
+        margin: 4px 0 12px;
+        color: #f61129;
+        font-family: "Oswald", Arial, sans-serif;
+        font-size: 24px;
+        font-weight: 500;
+        text-decoration: none;
+    }
+}
+
+@media (max-width: 900px) {
+    .regulations-page__facts {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .regulations-page__venues {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .regulations-page__container {
+        padding: 16px 0 48px;
+    }
+
+    .regulations-page__facts {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .regulations-page__contents {
+        margin-top: 16px;
+        padding: 20px 16px;
+    }
+
+    .regulations-page__contents-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .regulations-page__contents-list a {
+        display: flex;
+        align-items: center;
+    }
+
+    .regulations-page__article {
+        margin-top: 16px;
+        padding-inline: 16px;
+    }
+
+    .regulations-page__section {
+        padding: 32px 0;
+
+        p,
+        li {
+            font-size: 16px;
+        }
+    }
+}

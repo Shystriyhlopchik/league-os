@@ -1,5 +1,6 @@
 import { PlayerPosition } from '../../players/enums/player-position.enum';
 import { MatchStatus } from '../../matches/enums/match-status.enum';
+import { MatchResolutionType } from '../../matches/enums/match-resolution-type.enum';
 
 export class MatchRosterTeamDto {
   id: number;
@@ -14,6 +15,26 @@ export class MatchRosterCheckDto {
     status: MatchStatus;
     homeScore: number;
     awayScore: number;
+    penalties?: {
+      home: number;
+      away: number;
+      homeKicksTaken: number;
+      awayKicksTaken: number;
+    };
+    extraTimeEnabled: boolean;
+    knockoutTie?: {
+      tiePosition: string | undefined;
+      leg: 1 | 2;
+      legs: 2;
+      firstLegOfficial: boolean;
+      previousScore?: { home: number; away: number };
+    };
+    penaltyShootout?: {
+      initialKicksPerTeam: number;
+      suddenDeath: boolean;
+    };
+    resolutionType?: MatchResolutionType;
+    technicalResultReason?: string;
     matchDatetime?: Date;
     venueName?: string;
     homeTeam: MatchRosterTeamDto;
@@ -40,6 +61,8 @@ export type PlayerEligibilityReason =
   | 'none'
   | 'three_yellows'
   | 'four_yellows_suspension'
+  | 'yellow_card_threshold_warning'
+  | 'accumulated_yellows_suspension'
   | 'red_card_suspension'
   | 'second_yellow_suspension';
 

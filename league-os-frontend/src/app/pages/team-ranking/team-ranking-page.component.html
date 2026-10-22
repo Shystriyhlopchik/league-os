@@ -1,0 +1,259 @@
+<section class="ranking-page">
+    <header class="ranking-page__header">
+        <div>
+            <span class="ranking-page__eyebrow">Дворовая лига</span>
+            <h1>Рейтинг команд</h1>
+        </div>
+        @if (ranking(); as data) {
+            <p>{{ data.competition.name }}</p>
+        }
+    </header>
+
+    <nav class="ranking-tabs" aria-label="Вид рейтинга">
+        <button
+            type="button"
+            [class.ranking-tabs__button--active]="mode() === 'current'"
+            [attr.aria-pressed]="mode() === 'current'"
+            (click)="selectMode('current')"
+        >
+            Текущий рейтинг
+        </button>
+        <button
+            type="button"
+            [class.ranking-tabs__button--active]="mode() === 'historical'"
+            [attr.aria-pressed]="mode() === 'historical'"
+            (click)="selectMode('historical')"
+        >
+            Исторический рейтинг
+        </button>
+    </nav>
+
+    <section
+        class="ranking-explanation"
+        aria-labelledby="ranking-calculation-title"
+    >
+        <div class="ranking-explanation__heading">
+            <div>
+                <span>Принцип расчёта</span>
+                <h2 id="ranking-calculation-title">Как формируется рейтинг</h2>
+            </div>
+            <p>
+                Очки считаются отдельно за каждый турнир, складываются внутри
+                сезона, а затем суммируются с учётом выбранного вида рейтинга.
+            </p>
+        </div>
+
+        <div class="ranking-explanation__mode" aria-live="polite">
+            @if (mode() === "current") {
+                <strong>Текущий рейтинг</strong>
+                <span>
+                    Показывает актуальную силу команды. Учитываются четыре
+                    последних сезона лиги: последний сезон — 100%, предыдущий —
+                    75%, третий — 50%, четвёртый — 25%. Более ранние сезоны в
+                    этот рейтинг не входят.
+                </span>
+            } @else {
+                <strong>Исторический рейтинг</strong>
+                <span>
+                    Показывает достижения команды за всё время. Учитываются все
+                    сезоны с весом 100%: набранные очки не уменьшаются и не
+                    сгорают. Поэтому преимущество получают не только успешные,
+                    но и стабильно участвующие команды.
+                </span>
+            }
+        </div>
+
+        <div class="ranking-explanation__steps">
+            <article class="ranking-rule">
+                <span class="ranking-rule__number">1</span>
+                <div>
+                    <h3>Очки за результаты матчей</h3>
+                    <p>
+                        Учитываются только завершённые матчи. Максимум — 30
+                        очков за турнир: победа приносит 3 турнирных очка, ничья
+                        — 1, поражение — 0.
+                    </p>
+                    <code>
+                        30 × (3 × победы + ничьи) / (3 × сыгранные матчи)
+                    </code>
+                </div>
+            </article>
+
+            <article class="ranking-rule">
+                <span class="ranking-rule__number">2</span>
+                <div>
+                    <h3>Бонус за итог турнира</h3>
+                    <p>
+                        К очкам за матчи добавляется бонус за лучшее достигнутое
+                        место или этап.
+                    </p>
+                    <ul class="ranking-bonuses" aria-label="Бонусы за результат">
+                        <li><span>Чемпион</span><strong>+20</strong></li>
+                        <li><span>Финалист</span><strong>+14</strong></li>
+                        <li><span>3-е место</span><strong>+10</strong></li>
+                        <li><span>4-е место</span><strong>+7</strong></li>
+                        <li><span>Плей-офф</span><strong>+4</strong></li>
+                        <li><span>Участие</span><strong>+2</strong></li>
+                    </ul>
+                </div>
+            </article>
+
+            <article class="ranking-rule">
+                <span class="ranking-rule__number">3</span>
+                <div>
+                    <h3>Коэффициент турнира</h3>
+                    <p>
+                        Сумма очков за матчи и бонуса за место умножается на
+                        коэффициент количества участников. Чем больше команд в
+                        турнире, тем выше его ценность. Коэффициент ограничен
+                        диапазоном от 0,90 до 1,30.
+                    </p>
+                    <code>0,8 + 0,04 × количество команд</code>
+                </div>
+            </article>
+
+            <article class="ranking-rule">
+                <span class="ranking-rule__number">4</span>
+                <div>
+                    <h3>Бонус за постоянство</h3>
+                    <p>
+                        В конце сезона команда получает бонус за участие в
+                        нескольких сезонах подряд. Пропуск сезона прерывает
+                        серию.
+                    </p>
+                    <ul
+                        class="ranking-bonuses ranking-bonuses--streak"
+                        aria-label="Бонусы за непрерывное участие"
+                    >
+                        <li><span>1 сезон</span><strong>0</strong></li>
+                        <li><span>2 сезона</span><strong>+2</strong></li>
+                        <li><span>3 сезона</span><strong>+4</strong></li>
+                        <li><span>4 сезона</span><strong>+6</strong></li>
+                        <li><span>5+ сезонов</span><strong>+8</strong></li>
+                    </ul>
+                </div>
+            </article>
+        </div>
+
+        <div class="ranking-explanation__formula">
+            <strong>Итог сезона</strong>
+            <span>
+                сумма очков всех турниров сезона + бонус за постоянство
+            </span>
+        </div>
+
+        <p class="ranking-explanation__tie-break">
+            Если рейтинг равен, выше располагается команда с лучшей разницей
+            мячей. Затем сравнивается количество забитых мячей, после чего —
+            название команды по алфавиту.
+        </p>
+    </section>
+
+    @if (isLoading()) {
+        <div class="page-state" role="status">
+            <span class="page-state__spinner" aria-hidden="true"></span>
+            Загружаем рейтинг…
+        </div>
+    } @else if (error()) {
+        <div class="page-state page-state--error" role="alert">
+            <p>{{ error() }}</p>
+            <button type="button" (click)="loadRankings()">Повторить</button>
+        </div>
+    } @else {
+        @if (ranking(); as data) {
+            @if (data.rankings.length) {
+                <div class="ranking-card">
+                    <div class="ranking-card__heading">
+                        <span>Положение команд</span>
+                        <small>{{ data.rankings.length }} участников</small>
+                    </div>
+
+                    <div class="table-scroll">
+                        <table class="ranking-table">
+                            <thead>
+                                <tr>
+                                    <th class="ranking-table__position">№</th>
+                                    <th class="ranking-table__team">Команда</th>
+                                    <th class="ranking-table__points">
+                                        Рейтинг
+                                    </th>
+                                    <th>Последний сезон</th>
+                                    <th title="Сезоны участия">Сезоны</th>
+                                    <th
+                                        title="Разница мячей — только tie-breaker"
+                                    >
+                                        РМ
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (row of data.rankings; track row.team.id) {
+                                    <tr>
+                                        <td class="ranking-table__position">
+                                            <span
+                                                class="rank-marker"
+                                                [class.rank-marker--podium]="
+                                                    row.position <= 3
+                                                "
+                                            >
+                                                {{ row.position }}
+                                            </span>
+                                        </td>
+                                        <td class="ranking-table__team">
+                                            <a
+                                                class="team-link"
+                                                [routerLink]="[
+                                                    '/team',
+                                                    row.team.id,
+                                                ]"
+                                            >
+                                                <img
+                                                    [src]="
+                                                        row.team.logoUrl ||
+                                                        defaultTeamLogo
+                                                    "
+                                                    [alt]="
+                                                        'Логотип команды ' +
+                                                        row.team.name
+                                                    "
+                                                    (error)="
+                                                        useFallbackLogo($event)
+                                                    "
+                                                />
+                                                <span>{{ row.team.name }}</span>
+                                            </a>
+                                        </td>
+                                        <td class="ranking-table__points">
+                                            {{ row.points }}
+                                        </td>
+                                        <td>
+                                            @if (latestSeason(row); as season) {
+                                                <span class="season-points">
+                                                    {{ seasonLabel(season) }}
+                                                    <small
+                                                        >{{
+                                                            season.weightedPoints
+                                                        }}
+                                                        оч.</small
+                                                    >
+                                                </span>
+                                            }
+                                        </td>
+                                        <td>{{ row.seasonsPlayed }}</td>
+                                        <td class="ranking-table__tie-break">
+                                            {{ signed(row.goalDifference) }}
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            } @else {
+                <p class="page-state">
+                    Рейтинг появится после добавления команд.
+                </p>
+            }
+        }
+    }
+</section>

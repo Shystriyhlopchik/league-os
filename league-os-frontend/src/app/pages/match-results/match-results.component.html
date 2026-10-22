@@ -24,7 +24,12 @@
             @for (match of store.matches(); track match.id) {
                 <article class="match-item">
                     <div>
-                        <p>{{ match.matchDatetime | date: 'd MMMM, HH:mm' }}</p>
+                        <p>
+                            {{
+                                match.matchDatetime
+                                    | date: 'd MMMM, HH:mm' : 'UTC'
+                            }}
+                        </p>
                         <strong>
                             {{ match.homeTeam.name }} — {{ match.awayTeam.name }}
                         </strong>

@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
@@ -21,6 +21,20 @@ export class MatchRegistrationDetailPageComponent implements OnInit {
     readonly matchId = Number(this.route.snapshot.paramMap.get('matchId'));
     readonly teamId = Number(this.route.snapshot.paramMap.get('teamId'));
     readonly isRefereeFlow = this.router.url.startsWith('/dashboard/match-results/');
+    readonly isCorrectionMode = this.router.url.startsWith(
+        '/dashboard/editing-protocol/',
+    );
+    readonly isEditing = signal(false);
+    readonly pageTitle = this.isCorrectionMode
+        ? 'Корректировка протокола участников'
+        : this.isRefereeFlow
+          ? 'Состав команды'
+        : 'Формирование заявки';
+    readonly pageDescription = this.isCorrectionMode
+        ? 'Уточните фактический состав команды в завершённом матче'
+        : this.isRefereeFlow
+          ? 'Проверьте состав, который капитан выбрал на матч'
+        : 'Выберите игроков команды для участия в матче';
 
     readonly availablePlayers = computed(() =>
         (this.store.registration()?.players ?? []).filter(
@@ -35,12 +49,23 @@ export class MatchRegistrationDetailPageComponent implements OnInit {
     );
 
     ngOnInit(): void {
-        this.store.load(this.matchId, this.teamId);
+        this.store.load(
+            this.matchId,
+            this.teamId,
+            this.isCorrectionMode,
+        );
     }
 
     goBack(): void {
         if (this.isRefereeFlow) {
             this.router.navigate(['/dashboard/match-results', this.matchId]);
+            return;
+        }
+        if (this.isCorrectionMode) {
+            this.router.navigate([
+                '/dashboard/editing-protocol',
+                this.matchId,
+            ]);
             return;
         }
 
@@ -53,7 +78,24 @@ export class MatchRegistrationDetailPageComponent implements OnInit {
     }
 
     save(): void {
-        this.store.save(this.matchId, this.teamId);
+        this.store.save(
+            this.matchId,
+            this.teamId,
+            this.isCorrectionMode,
+            this.isRefereeFlow,
+            this.isRefereeFlow
+                ? () => this.isEditing.set(false)
+                : undefined,
+        );
+    }
+
+    startEditing(): void {
+        this.isEditing.set(true);
+    }
+
+    cancelEditing(): void {
+        this.isEditing.set(false);
+        this.store.load(this.matchId, this.teamId);
     }
 
     approve(): void {

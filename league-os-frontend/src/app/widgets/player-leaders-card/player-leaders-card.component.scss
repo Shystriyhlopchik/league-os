@@ -1,0 +1,150 @@
+:host {
+    display: block;
+    min-width: 0;
+    width: 100%;
+}
+
+.leaders-card {
+    width: 100%;
+    overflow: hidden;
+    color: #fff;
+    font-family: "Bebas Neue", "Oswald", sans-serif;
+}
+
+.leaders-card__hero {
+    height: clamp(230px, 27vw, 320px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.leaders-card__hero img {
+    display: block;
+    width: auto;
+    height: 94%;
+    max-width: 86%;
+    object-fit: contain;
+    object-position: center bottom;
+}
+
+.leaders-card__list {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+}
+
+.leaders-card__row {
+    height: 48px;
+    display: grid;
+    grid-template-columns: 36px 66px minmax(0, 1fr) 44px;
+    align-items: center;
+    gap: 14px;
+    padding: 8px 22px;
+    box-sizing: border-box;
+    background: rgba(254, 224, 102, 0.3);
+    color: #fff;
+}
+
+.leaders-card__row--winner {
+    background: #916f72;
+    background: rgba(158, 56, 67, 0.3);
+}
+
+.leaders-card__position,
+.leaders-card__value {
+    font-size: 20px;
+    font-weight: 400;
+    line-height: 1.2;
+    font-family: "Bebas Neue", "Oswald", sans-serif;
+}
+
+.leaders-card__value {
+    text-align: right;
+}
+
+.leaders-card__team-logo {
+    display: block;
+    //width: 36px;
+    height: 36px;
+    object-fit: contain;
+}
+
+.leaders-card__name {
+    min-width: 0;
+    font-size: 20px;
+    line-height: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.leaders-card__state {
+    min-height: 300px;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    color: rgba(255, 255, 255, 0.75);
+    font-family: "Oswald", sans-serif;
+    font-size: 18px;
+    text-align: center;
+}
+
+.leaders-card__hero--loading,
+.leaders-card__skeleton-row {
+    background: linear-gradient(90deg, #141414 25%, #242424 50%, #141414 75%);
+    background-size: 200% 100%;
+    animation: leaders-card-pulse 1.2s ease-in-out infinite;
+}
+
+.leaders-card__skeleton-row {
+    //height: 82px;
+}
+
+@keyframes leaders-card-pulse {
+    from {
+        background-position: 200% 0;
+    }
+    to {
+        background-position: -200% 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .leaders-card__header {
+        padding-inline: 18px;
+    }
+
+    .leaders-card__hero {
+        height: 230px;
+    }
+
+    .leaders-card__row {
+        max-height: 48px;
+        grid-template-columns: 26px 48px minmax(0, 1fr) 32px;
+        gap: 10px;
+        padding-inline: 14px;
+    }
+
+    .leaders-card__team-logo {
+        //width: 46px;
+        height: 36px;
+    }
+
+    .leaders-card__name {
+        font-size: 20px;
+    }
+
+    .leaders-card__position,
+    .leaders-card__value {
+        font-size: 20px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .leaders-card__hero--loading,
+    .leaders-card__skeleton-row {
+        animation: none;
+    }
+}

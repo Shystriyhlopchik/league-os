@@ -36,10 +36,11 @@ interface StatsSummaryItem {
     templateUrl: './stats-summary.component.html',
     styleUrl: './stats-summary.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    providers: [StatsSummaryStore]
+    providers: [StatsSummaryStore],
 })
 export class StatsSummaryComponent {
     readonly tournamentId = input.required<number>();
+    readonly groupId = input<number | null>(null);
     readonly title = input('Статистика сезона');
 
     readonly store = inject(StatsSummaryStore);
@@ -62,7 +63,7 @@ export class StatsSummaryComponent {
 
     constructor() {
         effect(() => {
-            this.store.loadStats(this.tournamentId());
+            this.store.loadStats(this.tournamentId(), this.groupId());
         });
     }
 }

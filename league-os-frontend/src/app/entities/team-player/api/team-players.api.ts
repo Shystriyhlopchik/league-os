@@ -32,6 +32,19 @@ export class TeamPlayersApi {
         return this.save(url, dto, 'patch');
     }
 
+    remove(
+        teamId: number,
+        teamPlayerId: number,
+    ): Observable<{ id: number; isActive: false; leftAt: string }> {
+        return this.http.delete<{
+            id: number;
+            isActive: false;
+            leftAt: string;
+        }>(
+            `${environment.apiUrl}/teams/${teamId}/players/${teamPlayerId}`,
+        );
+    }
+
     private save(
         url: string,
         dto: CreateTeamPlayerDto,

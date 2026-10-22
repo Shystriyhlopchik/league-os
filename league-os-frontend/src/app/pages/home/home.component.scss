@@ -5,9 +5,24 @@
 
 .home__body {
     width: 100%;
-    background-color: #16191A;
+    background-color: #16191a;
 }
 
+.home__static-header {
+    display: flex;
+    gap: 16px;
+    margin: 32px 0 0 16px;
+
+    h2 {
+        font-family: Play, Arial, sans-serif;
+        font-weight: 700;
+        font-size: 36px;
+        line-height: 1.2;
+        color: #f61129;
+        margin: 0 !important;
+        text-transform: uppercase;
+    }
+}
 .home__section {
     max-width: 1200px;
     margin: 0 auto;
@@ -16,22 +31,49 @@
         font-family: Play, Arial, sans-serif;
         font-weight: 700;
         font-size: 36px;
-        line-height: 1.2;
-        color: #27AE60;
+        line-height: 1.6;
+        color: #f61129;
         margin: 32px 16px 0 16px;
         text-transform: uppercase;
     }
 }
 
 .home__statistics {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(280px, 485px) minmax(0, 1fr);
     gap: 40px;
     padding: 16px;
-}
 
-@media (max-width: 540px) {
-    .home__statistics {
-        flex-direction: column;
+    app-stats-summary,
+    app-statistics-preview,
+    app-player-leaders-list {
+        min-width: 0;
+    }
+
+    app-stats-summary {
+        grid-column: 1;
+    }
+
+    app-statistics-preview {
+        grid-column: 2;
+    }
+
+    app-player-leaders-list {
+        grid-column: 1 / -1;
     }
 }
 
+@media (max-width: 767px) {
+    .home__statistics {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 24px;
+
+        app-stats-summary,
+        app-statistics-preview,
+        app-player-leaders-list {
+            grid-column: 1;
+            width: 100%;
+            max-width: none;
+        }
+    }
+}

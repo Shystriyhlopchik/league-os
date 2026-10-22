@@ -1,15 +1,47 @@
-<app-matches-slider [seasonId]="1" />
+@if (activeTournament(); as tournament) {
+    <app-matches-slider [seasonId]="tournament.season.id" />
+}
+
 <div class="home__body">
     <div class="home__section">
         <app-advertising-banner />
-        <h2>новости</h2>
-        <app-news-preview [limit]="3" />
-        <h2>статистика</h2>
-        <div class="home__statistics">
-            <app-statistics-preview />
-            <app-stats-summary [tournamentId]="1" />
+        <h2>Новости</h2>
+        <app-news-preview [limit]="6" />
+        @if (activeTournament(); as tournament) {
+            <app-top-players-ovr [tournamentId]="tournament.id" />
+        }
+        <div class="home__static-header">
+            <h2>Статистика</h2>
+            @if (groups().length) {
+                <app-select
+                    [size]="'large'"
+                    [options]="groups()"
+                    [placeholder]="''"
+                    [value]="selectedGroupId()"
+                    (valueChange)="selectedGroupId.set($event)"
+                />
+            }
         </div>
-        <app-teams-map></app-teams-map>
-<!--        <app-teams-showcase />-->
+        <div class="home__statistics">
+            @if (activeTournament(); as tournament) {
+                <app-stats-summary
+                    [tournamentId]="tournament.id"
+                    [groupId]="selectedGroupId()"
+                    [title]="statsTitle()"
+                />
+                <app-statistics-preview
+                    [tournamentId]="tournament.id"
+                    [groupId]="selectedGroupId()"
+                />
+                <app-player-leaders-list
+                    [tournamentId]="tournament.id"
+                    [groupId]="selectedGroupId()"
+                    [metrics]="playerLeaderMetrics"
+                />
+            }
+        </div>
+        <h2>Наша география</h2>
+        <app-teams-map />
+        <app-sponsors />
     </div>
 </div>

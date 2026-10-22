@@ -6,12 +6,14 @@ import { join } from 'node:path';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-
-  if (process.env.NODE_ENV !== 'production') {
-    app.useStaticAssets(join(process.cwd(), 'uploads'), {
-      prefix: '/uploads/',
-    });
-  }
+  app.setGlobalPrefix('api');
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+    prefix: '/uploads/',
+    setHeaders: (response) => {
+      response.setHeader('X-Content-Type-Options', 'nosniff');
+      response.setHeader('Cache-Control', 'public, max-age=2592000');
+    },
+  });
 
 
   app.enableCors({

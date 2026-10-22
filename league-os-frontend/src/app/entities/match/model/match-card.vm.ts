@@ -1,4 +1,4 @@
-import {MatchStatus} from './match.types';
+import { MatchStatus } from './match.types';
 
 export interface MatchCardVm {
     id: number;
@@ -6,10 +6,12 @@ export interface MatchCardVm {
     status: MatchStatus;
     matchDateTime: string | Date;
 
+    homeTeamId: number;
     homeTeamName: string;
     homeTeamLogoUrl: string;
     homeTeamScore: number | null;
 
+    awayTeamId: number;
     awayTeamName: string;
     awayTeamLogoUrl: string;
     awayTeamScore: number | null;

@@ -77,6 +77,17 @@ export class MatchEventsService {
       throw new NotFoundException('Событие матча не найдено');
     }
 
+    const match = await this.matchRepository.findOne({
+      where: { id: event.matchId },
+    });
     await this.matchEventRepository.remove(event);
+    if (match && event.playerId) {
+      await this.playerTournamentStatsService.revertCardEvent({
+        match,
+        teamId: event.teamId,
+        playerId: event.playerId,
+        eventType: event.eventType,
+      });
+    }
   }
 }

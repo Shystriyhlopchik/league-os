@@ -17,10 +17,37 @@ export interface MatchRosterCheckMatch {
     status: 'scheduled' | 'live' | 'finished' | 'cancelled';
     homeScore: number;
     awayScore: number;
+    penalties?: PenaltyShootoutResult;
+    extraTimeEnabled: boolean;
+    knockoutTie?: {
+        tiePosition: string;
+        leg: 1 | 2;
+        legs: 2;
+        firstLegOfficial: boolean;
+        previousScore?: { home: number; away: number };
+    };
+    penaltyShootout?: {
+        initialKicksPerTeam: number;
+        suddenDeath: boolean;
+    };
+    resolutionType?:
+        | 'regular_time'
+        | 'extra_time'
+        | 'penalties'
+        | 'technical'
+        | 'walkover';
+    technicalResultReason?: string;
     matchDatetime?: string;
     venueName?: string;
     homeTeam: MatchRosterTeam;
     awayTeam: MatchRosterTeam;
+}
+
+export interface PenaltyShootoutResult {
+    home: number;
+    away: number;
+    homeKicksTaken: number;
+    awayKicksTaken: number;
 }
 
 export interface MatchRosterTeam {
