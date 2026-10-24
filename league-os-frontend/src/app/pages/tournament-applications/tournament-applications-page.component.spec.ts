@@ -124,6 +124,32 @@ describe('TournamentApplicationsPageComponent', () => {
         await fixture.whenStable();
         fixture.detectChanges();
     }
+    function enableTransferReview() {
+        component.tournaments.update((items) =>
+            items.map((t) => ({ ...t, canReview: true })),
+        );
+        api.settings.and.returnValue(
+            of({
+                tournament: { ...server.tournament },
+                policy: { ...server.policy },
+                communityId: 1,
+                canReview: true,
+                canManageMembers: true,
+            }),
+        );
+        communities.list.and.returnValue(
+            of([
+                {
+                    id: 1,
+                    name: 'Лига',
+                    slug: 'liga',
+                    role: 'owner',
+                    canManageMembers: true,
+                    canManageTournaments: true,
+                },
+            ]),
+        );
+    }
     async function recreate(query: Record<string, string>) {
         fixture.destroy();
         route.snapshot.queryParamMap = convertToParamMap(query);
@@ -162,6 +188,7 @@ describe('TournamentApplicationsPageComponent', () => {
                 'list',
                 'members',
                 'transfers',
+                'reviewTransfer',
             ],
         );
         communities = jasmine.createSpyObj<CommunityApi>('CommunityApi', [
@@ -183,6 +210,7 @@ describe('TournamentApplicationsPageComponent', () => {
         api.list.and.returnValue(of([]));
         api.members.and.returnValue(of([]));
         api.transfers.and.returnValue(of([]));
+        api.reviewTransfer.and.returnValue(of({}));
         api.save.and.callFake((_t, teamId, ids, representatives) => {
             const saved: TournamentApplication = {
                 id: 2,
@@ -631,6 +659,65 @@ describe('TournamentApplicationsPageComponent', () => {
                 'input[placeholder="2026-11-01T23:59:00+03:00"]',
             ),
         ).toBeNull();
+    });
+    it('shows the requested number and the existing player before approving a transfer', async () => {
+        enableTransferReview();
+        api.transfers.and.returnValue(
+            of([
+                {
+                    id: 100,
+                    shirtNumber: 7,
+                    player: { lastName: 'Петров', firstName: 'Пётр' },
+                    fromTeam: { name: 'Старая команда' },
+                    toTeam: { name: 'Новая команда' },
+                    numberConflict: {
+                        playerId: 30,
+                        name: 'Иванов Иван Иванович',
+                    },
+                },
+            ]),
+        );
+        await component.selectMode('management');
+        await settle();
+        const row = fixture.nativeElement.querySelector(
+            '[aria-label="Запрос перехода №100"]',
+        );
+        expect(row.textContent.replace(/\s+/g, ' ')).toContain('номер 7');
+        expect(row.querySelector('[role="status"]').textContent).toContain(
+            'Иванов Иван Иванович',
+        );
+        expect(row.textContent.replace(/\s+/g, ' ')).toContain(
+            'В команде «Новая команда» номер 7 уже занят',
+        );
+        expect(api.reviewTransfer).not.toHaveBeenCalled();
+    });
+    it('shows a fresh server conflict and keeps the transfer pending if its number was taken later', async () => {
+        enableTransferReview();
+        api.transfers.and.returnValue(
+            of([
+                {
+                    id: 100,
+                    shirtNumber: 7,
+                    player: { lastName: 'Петров', firstName: 'Пётр' },
+                    toTeam: { name: 'Новая команда' },
+                    numberConflict: null,
+                },
+            ]),
+        );
+        await component.selectMode('management');
+        await settle();
+        const message =
+            'Номер 7 уже занят: Иванов Иван Иванович. Выберите свободный номер';
+        api.reviewTransfer.and.returnValue(
+            throwError(() => ({ error: { message } })),
+        );
+        await component.reviewTransfer(100, 'approve');
+        await settle();
+        expect(
+            fixture.nativeElement.querySelector('[role="alert"]').textContent,
+        ).toContain(message);
+        expect(component.transfers().map((r) => r.id)).toEqual([100]);
+        expect(component.busy()).toBeFalse();
     });
     it('opens organizer workflow links directly in management mode', async () => {
         api.workspace.and.returnValue(

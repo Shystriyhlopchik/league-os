@@ -105,6 +105,8 @@ export interface PlayerCandidate {
 }
 export interface TransferRequest {
     id: number;
+    shirtNumber: number;
+    numberConflict?: { playerId: number; name: string } | null;
     player: SquadPlayer['player'];
     fromTeam?: { name: string };
     toTeam: { name: string };
