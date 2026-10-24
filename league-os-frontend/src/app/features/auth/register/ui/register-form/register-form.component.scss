@@ -14,10 +14,31 @@
 
 .register-form__field--error {
     background: #2e1d23;
+    box-shadow: inset 0 0 0 1px #ffb3bf;
 
     .register-form__label {
         color: #ffb3bf;
     }
+}
+
+.register-form__field:focus-within {
+    outline: 2px solid #2fd476;
+    outline-offset: 2px;
+}
+
+.register-form__hint,
+.register-form__field-error {
+    margin: 0 16px 10px;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.register-form__hint {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.register-form__field-error {
+    color: #ffb3bf;
 }
 
 .register-form__label {
@@ -25,7 +46,7 @@
 
     color: rgba(255, 255, 255, 0.48);
     font-size: 10px;
-    font-family: Montserrat, 'Inter', sans-serif;
+    font-family: Montserrat, "Inter", sans-serif;
     line-height: 1.2;
     font-weight: 800;
     text-transform: uppercase;
