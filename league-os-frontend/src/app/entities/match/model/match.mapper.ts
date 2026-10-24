@@ -1,8 +1,8 @@
 import { Match } from './match.types';
 import { MatchCardVm } from './match-card.vm';
 
-const DEFAULT_TEAM_LOGO = 'images/logo/logo_team_def.png';
-const DEFAULT_TOURNAMENT_LOGO = 'images/logo/dvor-liga.png';
+const DEFAULT_TEAM_LOGO = 'brand/logos/mark_white.svg';
+const DEFAULT_TOURNAMENT_LOGO = 'brand/logos/mark_white.svg';
 
 export function mapMatchToCardVm(match: Match): MatchCardVm {
     return {

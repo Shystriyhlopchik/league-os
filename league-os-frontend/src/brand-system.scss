@@ -1,0 +1,159 @@
+// The identity layer is deliberately scoped to UI surfaces. Uploaded team logos,
+// charts, disciplinary colours and status messages retain their own meaning.
+.brand-identity app-root {
+    :is(.workspace, .applications, .builder, .communities-page) {
+        font-family: var(--brand-body-font);
+        h1,
+        h2,
+        h3 {
+            font-family: var(--brand-display-font);
+        }
+        h1 {
+            font-weight: 600;
+            letter-spacing: -0.015em;
+        }
+        .card,
+        .step-card,
+        .review-card {
+            border-radius: 6px;
+        }
+        .card,
+        .step-card {
+            border-color: var(--brand-border);
+        }
+        input:not([type="checkbox"]):not([type="radio"]),
+        select,
+        textarea {
+            border-radius: 4px;
+            font-family: var(--brand-body-font);
+        }
+        button,
+        .button {
+            border-radius: 4px;
+        }
+    }
+    :is(.standings-page, .players-page, .ranking-page, .matches-page) {
+        font-family: var(--brand-body-font);
+        h1,
+        h2,
+        h3 {
+            font-family: var(--brand-display-font);
+        }
+    }
+    app-tournament-workflow button {
+        background: var(--brand-surface);
+        border-color: var(--brand-border);
+        color: var(--brand-concrete);
+        font-family: var(--brand-body-font);
+        border-radius: 4px;
+    }
+    app-tournament-workflow button[aria-current] {
+        border-color: var(--brand-accent);
+    }
+    :is(.login-page, .register-page) {
+        min-height: calc(100vh - 90px);
+        padding: 48px 20px 64px;
+        background:
+            linear-gradient(90deg, #151919eb, #151919fa),
+            url("/brand/elements/facades.svg") center / 760px repeat;
+    }
+    :is(.login-page__hero, .register-page__hero) {
+        max-width: 500px;
+        padding: 32px;
+        margin: 0 auto;
+        border: 1px solid var(--brand-border);
+        border-top: 3px solid var(--brand-accent);
+        background: var(--brand-asphalt);
+    }
+    :is(.login-page__logo, .register-page__logo) {
+        width: 128px;
+        height: auto;
+        margin: 0 auto 24px;
+        display: block;
+    }
+    :is(.login-page__title, .register-page__title) {
+        margin: 0 0 28px;
+        color: var(--brand-concrete);
+        font: 500 28px/1.2 var(--brand-display-font);
+    }
+    :is(.login-form__field, .register-form__field, .password-page__field) {
+        border-radius: 4px;
+    }
+    :is(.login-form__label, .register-form__label) {
+        color: #b8c1b7;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+    }
+    :is(.login-form__submit, .register-form__submit) {
+        border-radius: 4px;
+        font: 800 14px/1.4 var(--brand-body-font);
+        text-transform: none;
+    }
+    .login-form__forgot {
+        color: var(--brand-accent);
+        font-size: 13px;
+    }
+    .login-form__icon--key {
+        background-color: var(--brand-accent);
+    }
+    .advertising-ticker {
+        background: #1d2419;
+        border-color: #516033;
+        color: var(--brand-concrete);
+    }
+    .advertising-ticker--birthday {
+        background: #232a17;
+        color: var(--brand-accent);
+        border-color: #516033;
+    }
+    .advertising-ticker__group span {
+        font-family: var(--brand-display-font);
+        font-size: 20px;
+    }
+    .news-card {
+        border-bottom: 1px solid var(--brand-border);
+        padding-bottom: 20px;
+    }
+    .news-card__title {
+        font-family: var(--brand-display-font);
+    }
+    .news-card__image {
+        background: var(--brand-surface);
+    }
+    .news-card__placeholder {
+        display: grid;
+        place-items: center;
+        background:
+            linear-gradient(115deg, #151919cc, #151919ed),
+            url("/brand/elements/pattern_1080.svg") center / cover;
+        border-bottom: 3px solid var(--brand-accent);
+    }
+    .news-card__placeholder img {
+        width: 35%;
+        height: 65%;
+        object-fit: contain;
+    }
+    :is(
+            .matches-page__header,
+            .standings-page__header,
+            .players-page__header,
+            .ranking-page__header
+        )
+        h1 {
+        color: var(--brand-concrete);
+    }
+}
+@media (max-width: 599px) {
+    .brand-identity app-root {
+        :is(.login-page, .register-page) {
+            padding: 24px 16px 40px;
+        }
+        :is(.login-page__hero, .register-page__hero) {
+            padding: 24px 20px;
+        }
+        .workspace,
+        .applications {
+            padding-inline: 16px;
+        }
+    }
+}

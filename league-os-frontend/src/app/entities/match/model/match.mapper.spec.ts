@@ -9,7 +9,7 @@ describe('mapMatchToCardVm', () => {
 
         const result = mapMatchToCardVm(match);
 
-        expect(result.competitionLogoUrl).toBe('images/logo/dvor-liga.png');
+        expect(result.competitionLogoUrl).toBe('brand/logos/mark_white.svg');
     });
 
     it('uses the competition logo when the tournament logo is missing', () => {

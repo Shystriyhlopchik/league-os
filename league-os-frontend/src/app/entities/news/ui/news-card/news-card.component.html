@@ -3,11 +3,18 @@
     [class.news-card--large]="variant() === 'large'"
     [routerLink]="['/news', news().slug]"
 >
-    <img
-        class="news-card__image"
-        [src]="news().imageUrl"
-        [alt]="news().imageAlt ?? news().title"
-    />
+    @if (hasImage()) {
+        <img
+            class="news-card__image"
+            [src]="news().imageUrl"
+            [alt]="news().imageAlt ?? news().title"
+            (error)="failedImage.set(news().imageUrl)"
+        />
+    } @else {
+        <div class="news-card__image news-card__placeholder" aria-hidden="true">
+            <img src="brand/logos/stacked_white.svg" alt="" />
+        </div>
+    }
 
     <div class="news-card__content">
         <h3 class="news-card__title">
@@ -15,7 +22,7 @@
         </h3>
 
         <time class="news-card__date">
-            {{ news().publishedAt | date: 'd MMMM y' }}
+            {{ news().publishedAt | date: "d MMMM y" }}
         </time>
     </div>
 </a>

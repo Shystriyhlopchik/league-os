@@ -1,7 +1,7 @@
 :host {
     display: block;
     min-height: calc(100vh - 217px);
-    background: #16191a;
+    background: #151919;
     color: #ffffff;
 }
 
@@ -24,7 +24,7 @@
 
 .ranking-page__eyebrow,
 .ranking-card__heading span {
-    color: #f61129;
+    color: #d6ff3f;
     font-size: 13px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -32,7 +32,7 @@
 
 .ranking-page h1 {
     margin: 4px 0 0;
-    font-family: Play, Arial, sans-serif;
+    font-family: "Oswald", Arial, sans-serif;
     font-size: clamp(32px, 5vw, 52px);
     line-height: 1;
     text-transform: uppercase;
@@ -69,7 +69,7 @@
 .ranking-tabs button:focus-visible,
 .ranking-tabs__button--active {
     color: #ffffff !important;
-    border-bottom-color: #f61129 !important;
+    border-bottom-color: #d6ff3f !important;
 }
 
 .ranking-explanation {
@@ -88,7 +88,7 @@
 }
 
 .ranking-explanation__heading span {
-    color: #f61129;
+    color: #d6ff3f;
     font-size: 12px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -96,7 +96,7 @@
 
 .ranking-explanation__heading h2 {
     margin: 5px 0 0;
-    font-family: Play, Arial, sans-serif;
+    font-family: "Oswald", Arial, sans-serif;
     font-size: 24px;
     text-transform: uppercase;
 }
@@ -154,7 +154,7 @@
     height: 34px;
     display: grid;
     place-items: center;
-    border: 1px solid #f61129;
+    border: 1px solid #d6ff3f;
     color: #ffffff;
     font-weight: 700;
 }
@@ -176,7 +176,7 @@
     padding: 10px 12px;
     background: #151819;
     color: #d8ddde;
-    font-family: "Roboto Mono", Consolas, monospace;
+    font-family: ""Manrope" Mono", Consolas, monospace;
     font-size: 12px;
     line-height: 1.45;
     white-space: normal;
@@ -225,7 +225,7 @@
 }
 
 .ranking-explanation__formula strong {
-    color: #f61129;
+    color: #d6ff3f;
     font-size: 13px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -322,7 +322,7 @@
 }
 
 .rank-marker--podium {
-    border-color: #f61129;
+    border-color: #d6ff3f;
     color: #ffffff;
 }
 
@@ -336,7 +336,7 @@
 
 .team-link:hover,
 .team-link:focus-visible {
-    color: #f61129;
+    color: #d6ff3f;
 }
 
 .team-link img {
@@ -370,7 +370,7 @@
 
 .page-state--error {
     flex-direction: column;
-    border-color: #f61129;
+    border-color: #ff6975;
 }
 
 .page-state--error p {
@@ -380,7 +380,7 @@
 .page-state button {
     min-height: 40px;
     padding: 6px 22px;
-    border: 1px solid #f61129;
+    border: 1px solid #d6ff3f;
     background: transparent;
     color: #ffffff;
     font: inherit;
@@ -391,7 +391,7 @@
     width: 20px;
     height: 20px;
     border: 2px solid #42494a;
-    border-top-color: #f61129;
+    border-top-color: #d6ff3f;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }

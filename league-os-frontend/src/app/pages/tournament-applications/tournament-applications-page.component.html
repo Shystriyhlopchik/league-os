@@ -45,7 +45,8 @@
         <label
             >Турнир<select
                 #tournamentSelect
-                [value]="tournamentId()"
+                [ngModel]="tournamentId()"
+                [ngModelOptions]="{ standalone: true }"
                 (change)="changeTournament(tournamentSelect)"
                 [disabled]="busy()"
             >
@@ -59,7 +60,8 @@
             <label
                 >Команда<select
                     #teamSelect
-                    [value]="teamId()"
+                    [ngModel]="teamId()"
+                    [ngModelOptions]="{ standalone: true }"
                     (change)="changeTeam(teamSelect)"
                     [disabled]="busy()"
                 >

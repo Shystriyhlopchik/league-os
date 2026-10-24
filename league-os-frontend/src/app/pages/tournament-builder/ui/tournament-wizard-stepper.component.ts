@@ -42,7 +42,7 @@ export interface TournamentWizardStep {
             text-align: left; cursor: pointer;
         }
         .stepper__item:hover { background: #202927; }
-        .stepper__item--active { color: #fff; background: #25312e; border-color: #72df9c; }
+        .stepper__item--active { color: var(--brand-concrete); background: var(--brand-surface); border-color: var(--brand-accent); }
         .stepper__item--error { border-color: #ff6b76; }
         .stepper__number {
             width: 28px; height: 28px; flex: 0 0 28px; display: grid;
@@ -50,7 +50,7 @@ export interface TournamentWizardStep {
             border-radius: 50%; font-weight: 800;
         }
         .stepper__item--active .stepper__number,
-        .stepper__item--complete .stepper__number { background: #72df9c; }
+        .stepper__item--complete .stepper__number { background: var(--brand-accent); }
         .stepper__item--error .stepper__number { background: #ff6b76; }
         .stepper__label { min-width: 0; display: grid; gap: 2px; }
         .stepper__label strong { font-size: 13px; }

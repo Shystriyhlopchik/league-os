@@ -1,8 +1,8 @@
 <section class="standings-page">
     <header class="standings-page__header">
         <div>
-            <span class="standings-page__eyebrow">Турнирная таблица</span>
-            <h1>Таблица</h1>
+            <span class="standings-page__eyebrow">Статистика турнира</span>
+            <h1>{{ pageTitle() }}</h1>
         </div>
         @if (view(); as tournamentView) {
             <p>{{ tournamentView.tournament.name }}</p>
@@ -86,7 +86,7 @@
                         <section class="standings-section">
                             <div class="section-heading">
                                 <div>
-                                    <span>Групповой этап</span>
+                                    <span>{{ stageLabel(stage) }}</span>
                                     <h2>
                                         {{ currentGroup()?.name ?? stage.name }}
                                     </h2>

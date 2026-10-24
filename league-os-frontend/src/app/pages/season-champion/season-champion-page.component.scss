@@ -1,517 +1,560 @@
 :host {
     display: block;
-    min-height: calc(100vh - 217px);
-    background: #101313;
-    color: #ffffff;
+    min-height: 70vh;
+    background: #0d1212;
+    color: var(--brand-concrete);
 }
-
 .champion-page {
-    width: min(100%, 1200px);
-    min-height: inherit;
-    margin: 0 auto;
-    padding: 34px 24px 96px;
-    box-sizing: border-box;
-    font-family: "Oswald", Arial, sans-serif;
+    max-width: 1440px;
+    margin: auto;
+    padding: 0 40px 64px;
 }
-
-.champion-state,
-.champion-awaiting {
-    padding: 40px;
-    border: 1px solid #303737;
-    background: #1a1f20;
+.champion-masthead {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 24px 0;
+    color: var(--brand-muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
 }
-
-.champion-state {
-    display: grid;
-    justify-items: start;
-    gap: 18px;
-    font-size: 18px;
-}
-
-.champion-state p {
-    margin: 0;
-}
-
-.champion-state--error {
-    border-color: #f61129;
-}
-
-.champion-state button,
-.champion-awaiting a {
-    min-height: 44px;
-    padding: 0 24px;
-    display: inline-flex;
-    align-items: center;
-    border: 1px solid #f61129;
-    background: transparent;
-    color: #ffffff;
-    font: inherit;
+.champion-masthead a {
     text-decoration: none;
-    cursor: pointer;
+    color: var(--brand-accent);
 }
-
-.champion-state button:hover,
-.champion-awaiting a:hover {
-    background: #f61129;
-}
-
 .champion-hero {
-    --team-primary: #f61129;
-    --team-secondary: #ffd76a;
-
-    position: relative;
-    min-height: 620px;
     display: grid;
-    grid-template-columns: minmax(300px, 0.9fr) minmax(360px, 1.1fr);
-    align-items: center;
-    gap: 32px;
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    background:
-        linear-gradient(125deg, rgba(255, 255, 255, 0.04), transparent 45%),
-        radial-gradient(
-            circle at 26% 46%,
-            color-mix(in srgb, var(--team-primary) 32%, transparent),
-            transparent 42%
-        ),
-        #191e1f;
-}
-
-.champion-hero::before,
-.champion-hero::after {
-    content: "";
-    position: absolute;
-    pointer-events: none;
-}
-
-.champion-hero::before {
-    inset: 0;
-    opacity: 0.2;
-    background-image:
-        linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-    background-size: 46px 46px;
-    mask-image: linear-gradient(90deg, #000, transparent 72%);
-}
-
-.champion-hero::after {
-    top: -18%;
-    right: -9%;
-    width: 220px;
-    height: 140%;
-    background: var(--team-primary);
-    opacity: 0.75;
-    transform: rotate(16deg);
-}
-
-.champion-hero__glow {
-    position: absolute;
-    left: 7%;
-    bottom: 10%;
-    width: 360px;
-    height: 140px;
-    border-radius: 50%;
-    background: rgba(255, 191, 42, 0.24);
-    filter: blur(34px);
-}
-
-.trophy {
+    grid-template-columns: 1.05fr 1fr;
+    min-height: 540px;
     position: relative;
-    z-index: 1;
-    width: min(88%, 430px);
-    margin: 0 auto;
-    filter: drop-shadow(0 28px 25px rgba(0, 0, 0, 0.5));
+    background: #19201e;
 }
-
-.trophy svg {
-    width: 100%;
-    height: auto;
-    display: block;
-}
-
-.trophy__handle {
-    fill: none;
-    stroke: url("#champion-cup-shadow");
-    stroke-width: 18;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-.trophy__cup,
-.trophy__stem,
-.trophy__base {
-    fill: url("#champion-cup-gold");
-}
-
-.trophy__shine {
-    fill: rgba(255, 255, 255, 0.32);
-}
-
-.trophy__plaque {
-    fill: #2a1710;
-    stroke: #f2bd45;
-    stroke-width: 4;
-}
-
 .champion-hero__identity {
     position: relative;
-    z-index: 2;
-    max-width: 560px;
-    padding: 52px 72px 52px 0;
+    z-index: 1;
+    padding: 48px 32px;
+    background: linear-gradient(90deg, #19201ef5, #19201edb), url("/brand/elements/pitch.svg") left bottom / 330px no-repeat;
 }
-
-.champion-hero__eyebrow,
-.champion-squad__heading p {
-    margin: 0 0 12px;
-    color: #f4c753;
-    font-family: Play, Arial, sans-serif;
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 0.16em;
+.champion-hero__eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 34px;
+    color: var(--brand-accent);
+    font-size: 10px;
+    font-weight: 800;
     text-transform: uppercase;
+    letter-spacing: 0.1em;
 }
-
+.champion-hero__eyebrow > span {
+    font-size: 24px;
+}
 .champion-hero h1 {
     margin: 0;
-    font-family: Play, Arial, sans-serif;
-    font-size: clamp(48px, 7vw, 86px);
-    line-height: 0.9;
+    font: 600 clamp(48px, 5.7vw, 82px) / 0.98 var(--brand-display-font);
+    text-transform: uppercase;
+    letter-spacing: -0.025em;
+}
+.champion-hero h1 > span {
+    color: var(--brand-accent);
+}
+.champion-hero__label {
+    margin: 32px 0 12px;
+    color: #b8c3b7;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
 }
-
 .champion-team {
-    margin-top: 42px;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    color: var(--brand-concrete);
+    text-decoration: none;
+    min-width: 0;
+}
+.champion-team__logo {
+    display: grid;
+    place-items: center;
+    width: 64px;
+    height: 64px;
+    flex: 0 0 64px;
+    border: 1px solid #56604e;
+    background: #0d1212;
+    color: var(--brand-accent);
+    font: 600 24px var(--brand-display-font);
+}
+.champion-team__logo img {
+    width: 90%;
+    height: 90%;
+    object-fit: contain;
+}
+.champion-team > strong {
+    font: 600 clamp(28px, 3vw, 42px) / 1.1 var(--brand-display-font);
+    text-transform: uppercase;
+    overflow-wrap: anywhere;
+}
+.champion-team__arrow {
+    margin-left: auto;
+    font-size: 26px;
+    color: var(--brand-accent);
+}
+.champion-team:hover > strong {
+    text-decoration: underline;
+    text-decoration-color: var(--brand-accent);
+    text-underline-offset: 6px;
+}
+.champion-hero__squad-link {
+    display: inline-flex;
+    gap: 36px;
+    align-items: center;
+    min-height: 44px;
+    margin-top: 24px;
+    color: #c0cabd;
+    font-size: 11px;
+    text-decoration: none;
+    border-bottom: 1px solid #52604c;
+}
+.champion-hero__photo {
+    position: relative;
+    margin: 0;
+    min-width: 0;
+    overflow: hidden;
+}
+.champion-hero__photo::before {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    left: -35px;
+    top: -10%;
+    width: 54px;
+    height: 120%;
+    transform: rotate(5deg);
+    background: #19201e;
+}
+.champion-hero__photo::after {
+    content: "";
+    position: absolute;
+    inset: 55% 0 0;
+    background: linear-gradient(transparent, #080d0ed9);
+}
+.champion-hero__photo > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 60% center;
+}
+.champion-hero__stamp {
+    position: absolute;
+    z-index: 2;
+    right: 24px;
+    top: 30px;
+    transform: rotate(5deg);
+    padding: 14px 18px;
+    background: var(--brand-accent);
+    color: var(--brand-asphalt);
+    font: 600 24px/1 var(--brand-display-font);
+    text-transform: uppercase;
+}
+.champion-hero__photo figcaption {
+    position: absolute;
+    z-index: 2;
+    bottom: 18px;
+    left: 30px;
+    color: #e5e9df;
+    font-size: 9px;
+    text-transform: uppercase;
+    line-height: 1.6;
+}
+.champion-finish {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 32px;
+    padding: 24px 32px;
+    border-bottom: 3px solid var(--brand-accent);
+    background: #242d28;
+}
+.champion-finish__intro {
     display: flex;
     align-items: center;
     gap: 20px;
-    color: #ffffff;
-    text-decoration: none;
 }
-
-.champion-team__logo {
-    width: 96px;
-    height: 96px;
-    display: grid;
-    place-items: center;
-    flex: 0 0 auto;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 50%;
-    background: #101414;
-    overflow: hidden;
+.champion-finish__slash {
+    color: var(--brand-accent);
+    font: 500 84px/1 var(--brand-display-font);
+    transform: skew(-12deg);
 }
-
-.champion-team__logo img {
-    width: 76px;
-    height: 76px;
-    object-fit: contain;
-}
-
-.champion-team__logo span {
-    color: var(--team-secondary);
-    font-size: 28px;
+.champion-finish__intro p {
+    margin: 0 0 8px;
+    color: #b8c3b7;
+    font-size: 9px;
     font-weight: 700;
-}
-
-.champion-team > strong {
-    font-family: Play, Arial, sans-serif;
-    font-size: clamp(28px, 4vw, 48px);
-    line-height: 1;
     text-transform: uppercase;
 }
-
+.champion-finish h2 {
+    margin: 0;
+    font: 500 clamp(24px, 2.7vw, 36px) / 1 var(--brand-display-font);
+    text-transform: uppercase;
+}
 .final-result {
-    margin-top: 34px;
-    padding-top: 24px;
-    display: flex;
-    align-items: baseline;
-    gap: 18px;
-    border-top: 1px solid rgba(255, 255, 255, 0.16);
+    display: grid;
+    grid-template-columns: auto auto;
+    column-gap: 20px;
+    align-items: center;
 }
-
-.final-result > span,
-.final-result time {
-    color: #aeb7b4;
+.final-result > span {
+    font-size: 10px;
     text-transform: uppercase;
+    color: #bdc6b8;
 }
-
 .final-result > strong {
-    font-family: Play, Arial, sans-serif;
-    font-size: 28px;
+    font: 600 72px/0.95 var(--brand-display-font);
+    letter-spacing: -0.03em;
 }
-
+.final-result > strong > span {
+    color: var(--brand-accent);
+    padding-inline: 4px;
+}
 .final-result small {
-    margin-left: 8px;
-    color: #f4c753;
-    font-family: "Oswald", Arial, sans-serif;
-    font-size: 15px;
-    font-weight: 500;
+    grid-column: 2;
+    margin-top: 8px;
+    color: #bdc6b8;
+    font-size: 10px;
 }
-
-.final-result time {
-    margin-left: auto;
-    font-size: 13px;
+.final-result b {
+    margin-left: 6px;
+    color: var(--brand-accent);
 }
-
+.champion-finish__details {
+    display: grid;
+    gap: 8px;
+    font-size: 10px;
+    text-align: right;
+}
+.champion-finish__details time {
+    color: #bdc6b8;
+}
+.champion-finish__details a {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    min-height: 44px;
+    color: var(--brand-accent);
+}
 .champion-squad {
-    margin-top: 72px;
+    margin-top: 64px;
 }
-
 .champion-squad__heading {
-    margin-bottom: 30px;
-    padding-bottom: 18px;
     display: flex;
     align-items: end;
     justify-content: space-between;
-    border-bottom: 1px solid #343b3b;
+    gap: 24px;
+    margin-bottom: 28px;
 }
-
 .champion-squad__heading p {
-    margin-bottom: 8px;
-    color: #f61129;
+    margin: 0 0 12px;
+    color: var(--brand-muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
 }
-
 .champion-squad__heading h2 {
     margin: 0;
-    font-family: Play, Arial, sans-serif;
-    font-size: clamp(34px, 5vw, 54px);
-    line-height: 1;
+    font: 600 clamp(36px, 5vw, 64px) / 1 var(--brand-display-font);
     text-transform: uppercase;
 }
-
-.champion-squad__heading > span {
-    color: #939e9b;
-    font-size: 16px;
+.champion-squad__heading h2 > span {
+    color: var(--brand-accent);
+}
+.champion-squad__count {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: var(--brand-accent);
+    font: 500 54px/1 var(--brand-display-font);
+}
+.champion-squad__count small {
+    max-width: 70px;
+    color: #bdc6b8;
+    font: 10px/1.5 var(--brand-body-font);
     text-transform: uppercase;
 }
-
 .players-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 18px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px;
     margin: 0;
-    padding: 0;
+    padding: 1px;
+    background: #3a453b;
     list-style: none;
 }
-
 .player-card {
+    display: flex;
+    align-items: center;
     min-width: 0;
-    border: 1px solid #303737;
-    background: #1b2021;
-    transition:
-        border-color 0.2s ease,
-        transform 0.2s ease;
+    background: #151c19;
+    padding: 24px 20px;
+    gap: 18px;
+    transition: background 0.2s;
 }
-
 .player-card:hover {
-    border-color: #a67d27;
-    transform: translateY(-4px);
+    background: #252f25;
 }
-
 .player-card__portrait {
     position: relative;
-    height: 250px;
     display: grid;
     place-items: center;
+    width: 70px;
+    height: 92px;
+    flex: 0 0 70px;
     overflow: hidden;
-    background:
-        linear-gradient(180deg, transparent 55%, rgba(0, 0, 0, 0.55)),
-        radial-gradient(circle at 50% 38%, #394242, #171b1c 70%);
+    background: linear-gradient(135deg, #273429, #151c19);
+    border-bottom: 2px solid var(--brand-accent);
 }
-
-.player-card__portrait::after {
-    content: "";
-    position: absolute;
-    inset: auto 0 0;
-    height: 4px;
-    background: linear-gradient(90deg, var(--team-primary, #f61129), #f4c753);
-}
-
 .player-card__portrait img {
     width: 100%;
     height: 100%;
-    display: block;
     object-fit: cover;
     object-position: top center;
 }
-
-.player-card__portrait > span {
-    color: #f4c753;
-    font-family: Play, Arial, sans-serif;
-    font-size: 58px;
-    font-weight: 700;
+.player-card__initials {
+    position: absolute;
+    inset: 8px auto auto 6px;
+    font: 500 16px var(--brand-display-font);
+    color: #9eaf98;
 }
-
 .player-card__number {
     position: absolute;
-    right: 12px;
-    bottom: 12px;
-    width: 46px;
-    height: 46px;
-    display: grid;
-    place-items: center;
-    border-radius: 50%;
-    background: #f4c753;
-    color: #151818;
-    font-family: Play, Arial, sans-serif;
-    font-size: 21px;
+    bottom: 0;
+    right: 6px;
+    color: var(--brand-accent);
+    text-shadow: 0 2px 6px #000;
+    font: 500 52px/1 var(--brand-display-font);
 }
-
 .player-card__body {
-    padding: 20px;
+    min-width: 0;
 }
-
 .player-card__body h3 {
     margin: 0;
-    font-family: Play, Arial, sans-serif;
-    font-size: 21px;
-    line-height: 1.15;
+    font: 500 20px/1.2 var(--brand-display-font);
+    overflow-wrap: anywhere;
 }
-
 .player-card__body p {
-    margin: 10px 0 0;
-    color: #f4c753;
+    margin: 8px 0 4px;
+    color: var(--brand-accent);
+    font-size: 9px;
     text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
-
-.player-card__body span {
-    margin-top: 6px;
-    display: block;
-    color: #8f9996;
-    font-size: 14px;
+.player-card__body > span {
+    color: var(--brand-muted);
+    font-size: 10px;
 }
-
+.champion-state,
 .champion-squad__empty {
-    padding: 28px;
-    border: 1px solid #303737;
-    background: #1b2021;
-    color: #aeb7b4;
+    padding: 40px;
+    border: 1px solid #46503e;
+    background: #19201e;
 }
-
-.champion-awaiting {
-    min-height: 520px;
-    display: flex;
-    flex-direction: column;
+.champion-state--error {
+    border-color: #ff6975;
+}
+.champion-state button,
+.champion-awaiting a {
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
-    text-align: center;
-    background:
-        radial-gradient(
-            circle at 50% 30%,
-            rgba(244, 199, 83, 0.14),
-            transparent 35%
-        ),
-        #1a1f20;
+    min-height: 44px;
+    padding: 10px 20px;
+    color: #151919;
+    background: var(--brand-accent);
+    border: 0;
+    cursor: pointer;
+    font-weight: 800;
+    text-decoration: none;
 }
-
-.champion-awaiting__cup {
-    font-size: 96px;
-    filter: grayscale(1);
-    opacity: 0.42;
+.champion-awaiting {
+    position: relative;
+    isolation: isolate;
+    padding: 80px 40px;
+    min-height: 600px;
+    background: #0d1212;
 }
-
-.champion-awaiting > p {
-    margin: 28px 0 8px;
-    color: #f4c753;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+.champion-awaiting > img {
+    position: absolute;
+    z-index: -2;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
-
+.champion-awaiting::before {
+    position: absolute;
+    content: "";
+    z-index: -1;
+    inset: 0;
+    background: linear-gradient(90deg, #0d1212f5, #0d121266);
+}
+.champion-awaiting > div {
+    max-width: 640px;
+}
 .champion-awaiting h1 {
-    max-width: 700px;
-    margin: 0;
-    font-family: Play, Arial, sans-serif;
-    font-size: clamp(38px, 6vw, 66px);
-    line-height: 1;
+    font: 600 clamp(44px, 7vw, 88px) / 1 var(--brand-display-font);
     text-transform: uppercase;
 }
-
-.champion-awaiting > span {
-    max-width: 560px;
-    margin: 24px 0 30px;
-    color: #aeb7b4;
-    font-family: Roboto, Arial, sans-serif;
-    line-height: 1.6;
+.champion-awaiting h1 span {
+    color: var(--brand-accent);
 }
-
-@media (max-width: 900px) {
-    .champion-hero {
-        grid-template-columns: 1fr;
-        padding-top: 36px;
-    }
-
-    .trophy {
-        width: min(58%, 330px);
-    }
-
-    .champion-hero__identity {
-        max-width: none;
-        padding: 0 36px 50px;
-        text-align: center;
-    }
-
-    .champion-team {
-        justify-content: center;
-    }
-
-    .final-result {
-        justify-content: center;
-    }
-
-    .final-result time {
-        margin-left: 0;
-    }
-
-    .players-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
+.champion-awaiting p {
+    color: #c4cebe;
+    max-width: 460px;
 }
-
-@media (max-width: 650px) {
+.champion-awaiting small {
+    display: block;
+    margin-top: 36px;
+    font-size: 9px;
+}
+@media (max-width: 1050px) {
     .champion-page {
-        padding: 18px 14px 70px;
+        padding-inline: 24px;
     }
-
-    .champion-hero {
-        min-height: 0;
-    }
-
-    .trophy {
-        width: min(72%, 280px);
-    }
-
     .champion-hero__identity {
-        padding-inline: 18px;
+        padding: 32px 24px;
     }
-
-    .champion-team {
-        flex-direction: column;
+    .champion-hero h1 {
+        font-size: 58px;
     }
-
-    .final-result {
+    .champion-hero {
+        min-height: 500px;
+    }
+    .champion-finish {
         flex-wrap: wrap;
+        gap: 24px;
     }
-
-    .champion-squad {
-        margin-top: 52px;
+    .champion-finish__details {
+        margin-left: auto;
     }
-
-    .champion-squad__heading {
-        align-items: start;
-        flex-direction: column;
-        gap: 12px;
-    }
-
     .players-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-
-    .player-card__portrait {
-        height: 210px;
-    }
 }
-
-@media (max-width: 410px) {
+@media (max-width: 800px) {
+    .champion-page {
+        padding: 0 16px 40px;
+    }
+    .champion-masthead {
+        padding: 18px 0;
+        font-size: 8px;
+        gap: 12px;
+    }
+    .champion-masthead > span:nth-child(2) {
+        display: none;
+    }
+    .champion-hero {
+        grid-template-columns: 1fr;
+    }
+    .champion-hero__identity {
+        padding: 28px 20px 24px;
+    }
+    .champion-hero__eyebrow {
+        font-size: 9px;
+        margin-bottom: 22px;
+    }
+    .champion-hero h1 {
+        font-size: clamp(40px, 11vw, 62px);
+    }
+    .champion-hero__label {
+        margin-top: 24px;
+    }
+    .champion-team__logo {
+        width: 52px;
+        height: 52px;
+        flex-basis: 52px;
+    }
+    .champion-team > strong {
+        font-size: 32px;
+    }
+    .champion-hero__squad-link {
+        margin-top: 12px;
+    }
+    .champion-hero__photo {
+        height: 260px;
+    }
+    .champion-hero__photo::before {
+        display: none;
+    }
+    .champion-hero__photo > img {
+        object-position: center 55%;
+    }
+    .champion-hero__stamp {
+        top: 14px;
+        right: 16px;
+        font-size: 18px;
+        padding: 10px 12px;
+    }
+    .champion-hero__photo figcaption {
+        font-size: 8px;
+        left: 16px;
+        bottom: 10px;
+    }
+    .champion-finish {
+        padding: 20px;
+        align-items: start;
+        gap: 22px 16px;
+    }
+    .champion-finish__intro {
+        width: 100%;
+        gap: 12px;
+    }
+    .champion-finish__slash {
+        font-size: 54px;
+    }
+    .champion-finish h2 {
+        font-size: 26px;
+    }
+    .final-result {
+        column-gap: 12px;
+    }
+    .final-result > strong {
+        font-size: 64px;
+    }
+    .final-result small {
+        font-size: 9px;
+    }
+    .champion-finish__details {
+        font-size: 9px;
+        padding-top: 4px;
+    }
+    .champion-squad {
+        margin-top: 40px;
+    }
+    .champion-squad__heading {
+        flex-wrap: wrap;
+        gap: 18px;
+    }
+    .champion-squad__heading h2 {
+        font-size: 38px;
+    }
+    .champion-squad__count {
+        font-size: 38px;
+    }
     .players-grid {
         grid-template-columns: 1fr;
+    }
+    .player-card {
+        padding: 18px;
+    }
+    .player-card__portrait {
+        height: 80px;
+    }
+    .player-card__body h3 {
+        font-size: 22px;
+    }
+    .champion-awaiting {
+        padding: 40px 24px;
     }
 }

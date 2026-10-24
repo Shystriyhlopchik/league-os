@@ -1,34 +1,10 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-body {
-    font-family: Arial, sans-serif;
-    color: #333;
-    background-color: #faf7f0;
-}
-a {
-    text-decoration: none;
-    color: inherit;
-}
-img {
-    max-width: 100%;
-    display: block;
-}
-
-main {
-    //margin: 0 auto;
-    //background: #121212 url("/images/bg-arman.png") no-repeat;
-    background-color: #16191A;
-    background-size: 100%;
-    //max-width: 1400px;
-    box-sizing: border-box;
-    flex: 1 0 auto;
-}
-
 :host {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+}
+main {
+    flex: 1 0 auto;
+    min-width: 0;
+    background: var(--brand-asphalt);
 }

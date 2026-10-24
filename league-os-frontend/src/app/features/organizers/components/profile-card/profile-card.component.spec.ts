@@ -13,6 +13,13 @@ describe('ProfileCardComponent', () => {
 
         fixture = TestBed.createComponent(ProfileCardComponent);
         component = fixture.componentInstance;
+        fixture.componentRef.setInput('data', {
+            id: 'test-organizer',
+            fullName: 'Организатор лиги',
+            photoUrl: '/brand/logos/mark_white.svg',
+            bio: 'Команда организаторов',
+            route: '/organizers/test-organizer',
+        });
         fixture.detectChanges();
     });
 

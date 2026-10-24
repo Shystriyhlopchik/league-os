@@ -1,5 +1,15 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import {
+    Component,
+    computed,
+    DestroyRef,
+    effect,
+    HostListener,
+    inject,
+    signal,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
 import { catchError, of, shareReplay, switchMap } from 'rxjs';
 import { MatchesSliderComponent } from '../../widgets/matches-slide/matches-slider/matches-slider.component';
 import { StatisticsPreviewComponent } from '../../widgets/statistics-preview/statistics-preview.component';
@@ -22,6 +32,7 @@ import { TopPlayersOvrComponent } from '../../widgets/top-players-ovr/top-player
 @Component({
     selector: 'app-home',
     imports: [
+        RouterLink,
         MatchesSliderComponent,
         StatisticsPreviewComponent,
         NewsPreviewComponent,
@@ -37,6 +48,35 @@ import { TopPlayersOvrComponent } from '../../widgets/top-players-ovr/top-player
     styleUrl: './home.component.scss',
 })
 export class HomeComponent {
+    readonly isYardLinePaused = signal(false);
+    readonly introSlides = [
+        {
+            src: 'brand/photos/match-action.jpg',
+            alt: 'Борьба за мяч в вечернем матче Дворовой лиги',
+            position: '60% 48%',
+            mobilePosition: '61% 50%',
+        },
+        {
+            src: 'brand/photos/match-duel.jpg',
+            alt: 'Игроки борются за мяч у ворот',
+            position: '60% 50%',
+            mobilePosition: '53% 50%',
+        },
+        {
+            src: 'brand/photos/match-strike.jpg',
+            alt: 'Футболист наносит удар по мячу',
+            position: '58% 50%',
+            mobilePosition: '53% 50%',
+        },
+    ] as const;
+    readonly activeIntroSlide = signal(0);
+    readonly introPaused = signal(false);
+    readonly introControlsHovered = signal(false);
+    readonly introFocused = signal(false);
+    readonly introReducedMotion = signal(false);
+    readonly loadedIntroSlides = signal<ReadonlySet<number>>(new Set());
+    private readonly document = inject(DOCUMENT);
+    private readonly introPageHidden = signal(this.document.hidden);
     private readonly tournamentsApi = inject(TournamentsApi);
     private readonly standingsApi = inject(StandingsApi);
     private readonly activeTournament$ = this.tournamentsApi
@@ -83,6 +123,33 @@ export class HomeComponent {
     });
 
     constructor() {
+        const view = this.document.defaultView;
+        const motion = view?.matchMedia('(prefers-reduced-motion: reduce)');
+        if (motion) {
+            this.introReducedMotion.set(motion.matches);
+            const updateMotion = (event: MediaQueryListEvent) =>
+                this.introReducedMotion.set(event.matches);
+            motion.addEventListener('change', updateMotion);
+            inject(DestroyRef).onDestroy(() =>
+                motion.removeEventListener('change', updateMotion),
+            );
+        }
+        effect((onCleanup) => {
+            // A new active frame restarts the full interval after a manual selection.
+            this.activeIntroSlide();
+            if (
+                !view ||
+                this.introPaused() ||
+                this.introReducedMotion() ||
+                this.introControlsHovered() ||
+                this.introFocused() ||
+                this.introPageHidden() ||
+                this.loadedIntroSlides().size < 2
+            )
+                return;
+            const timer = view.setTimeout(() => this.stepIntro(1, false), 6500);
+            onCleanup(() => view.clearTimeout(timer));
+        });
         effect(() => {
             const groups = this.groups();
             const selectedGroupId = this.selectedGroupId();
@@ -90,5 +157,37 @@ export class HomeComponent {
                 this.selectedGroupId.set(groups[0]?.value ?? null);
             }
         });
+    }
+
+    markIntroLoaded(index: number): void {
+        this.loadedIntroSlides.update((loaded) => new Set([...loaded, index]));
+        if (!this.loadedIntroSlides().has(this.activeIntroSlide())) {
+            this.activeIntroSlide.set(index);
+        }
+    }
+
+    markIntroFailed(index: number): void {
+        const loaded = new Set(this.loadedIntroSlides());
+        loaded.delete(index);
+        this.loadedIntroSlides.set(loaded);
+        if (index === this.activeIntroSlide() && loaded.size)
+            this.activeIntroSlide.set([...loaded][0]);
+    }
+
+    stepIntro(direction: number, manual = true): void {
+        const available = [...this.loadedIntroSlides()].sort((a, b) => a - b);
+        if (available.length < 2) return;
+        if (manual) this.introPaused.set(true);
+        const position = available.indexOf(this.activeIntroSlide());
+        this.activeIntroSlide.set(
+            available[
+                (position + direction + available.length) % available.length
+            ],
+        );
+    }
+
+    @HostListener('document:visibilitychange')
+    onIntroVisibilityChange(): void {
+        this.introPageHidden.set(this.document.hidden);
     }
 }
