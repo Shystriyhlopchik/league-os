@@ -56,17 +56,17 @@
 }
 
 .sponsors__text--fsk {
-    font-family: "Play", Arial, sans-serif;
+    font-family: "Oswald", Arial, sans-serif;
     font-weight: 400;
     transition: color 0.2s ease;
 
     &:hover,
     &:focus-visible {
-        color: #f61129;
+        color: #d6ff3f;
     }
 
     &:focus-visible {
-        outline: 2px solid #f61129;
+        outline: 2px solid #d6ff3f;
         outline-offset: 6px;
     }
 }

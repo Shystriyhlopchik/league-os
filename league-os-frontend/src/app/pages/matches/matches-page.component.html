@@ -1,22 +1,74 @@
-<section class="matches-page">
-    <header class="matches-page__header">
-        <h1 class="matches-page__title">{{ title() }}</h1>
-        @if (!isLoading() && !error() && filteredMatches().length) {
-            <p class="matches-page__count">
-                Матчей: {{ filteredMatches().length }}
+<section class="matches-page" [attr.aria-label]="title()">
+    <header class="matches-hero">
+        <div class="matches-hero__copy">
+            <div class="matches-hero__brand-line">
+                <img src="/brand/logos/stacked_black.svg" alt="" /><span
+                    >Календарь Дворовой лиги</span
+                >
+            </div>
+            <h1>Расписание<span>.</span></h1>
+            <img
+                class="matches-hero__accent"
+                src="/brand/schedule/heading-accent.svg"
+                alt=""
+            />
+            <p class="matches-hero__tournament">
+                {{ tournamentName() || "Дворовая лига" }}
             </p>
-        }
+            <p class="matches-hero__intro">Встретимся на поле.</p>
+        </div>
+        <div class="matches-hero__visual">
+            @if (!heroPhotoFailed()) {
+                <img
+                    class="matches-hero__photo"
+                    src="/brand/photos/match-duel.jpg"
+                    alt="Игровой эпизод Дворовой лиги, общий фотоархив"
+                    fetchpriority="high"
+                    (error)="heroPhotoFailed.set(true)"
+                />
+            }
+            <span class="matches-hero__tag"
+                >От первого свистка<br />до последней минуты.</span
+            >
+            <p class="matches-hero__credit">
+                Фотоархив лиги · IVANOV / GEOMETRIA
+            </p>
+        </div>
     </header>
 
     @if (!isLoading() && !error() && matches().length) {
-        <div class="matches-page__filters">
-            <app-select
-                [options]="teamOptions()"
-                [value]="selectedTeamId()"
-                [label]="'Команда'"
-                [ariaLabel]="'Фильтр матчей по команде'"
-                (valueChange)="selectedTeamId.set($event ?? allTeamsId)"
-            />
+        <div class="matches-page__toolbar">
+            <div
+                class="matches-page__status-filters"
+                role="group"
+                aria-label="Статус матчей"
+            >
+                @for (filter of statusFilters; track filter.value) {
+                    <button
+                        type="button"
+                        [attr.aria-pressed]="selectedStatus() === filter.value"
+                        (click)="selectedStatus.set(filter.value)"
+                    >
+                        {{ filter.label }}
+                    </button>
+                }
+            </div>
+            <div class="matches-page__filters">
+                <app-select
+                    [options]="teamOptions()"
+                    [value]="selectedTeamId()"
+                    [label]="'Команда'"
+                    [ariaLabel]="'Фильтр матчей по команде'"
+                    (valueChange)="selectedTeamId.set($event ?? allTeamsId)"
+                />
+            </div>
+        </div>
+        <div class="matches-page__summary">
+            <p class="matches-page__count" role="status" aria-live="polite">
+                Матчей: {{ filteredMatches().length }}
+                <span> / игровых дней: {{ dateGroups().length }}</span>
+            </p>
+            <p>Дата и время — в часовом поясе устройства.</p>
         </div>
     }
 
@@ -35,18 +87,41 @@
             Календарь турнира пока не опубликован.
         </p>
     } @else if (isFilterEmpty()) {
-        <p class="matches-page__state">Матчи выбранной команды не найдены.</p>
+        <div class="matches-page__state">
+            <p>По выбранным фильтрам матчей нет.</p>
+            <button type="button" (click)="resetFilters()">
+                Показать все матчи
+            </button>
+        </div>
     } @else {
         <div class="matches-page__dates">
             @for (group of dateGroups(); track group.key) {
-                <section class="matches-date">
-                    <app-section-title>{{
-                        group.date | date: "d MMMM, EEEE"
-                    }}</app-section-title>
-
+                <section
+                    class="matches-date"
+                    [attr.aria-labelledby]="'match-date-' + group.key"
+                >
+                    <header class="matches-date__heading">
+                        <h2 [id]="'match-date-' + group.key">
+                            <time [attr.datetime]="group.key"
+                                ><span class="matches-date__day">{{
+                                    group.date | date: "dd"
+                                }}</span
+                                ><span class="matches-date__month"
+                                    >{{ group.date | date: "MMMM"
+                                    }}<span>{{
+                                        group.date | date: "y"
+                                    }}</span></span
+                                ></time
+                            >
+                        </h2>
+                        <p>{{ group.date | date: "EEEE" }}</p>
+                        <span class="matches-date__count"
+                            >Матчей: {{ group.matches.length }}</span
+                        >
+                    </header>
                     <div class="matches-date__grid">
                         @for (match of group.matches; track match.id) {
-                            <app-match-card
+                            <app-match-schedule-row
                                 [match]="match"
                                 (cardClick)="openProtocol($event)"
                             />

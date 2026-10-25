@@ -7,8 +7,8 @@
 .leaders-card {
     width: 100%;
     overflow: hidden;
-    color: #fff;
-    font-family: "Bebas Neue", "Oswald", sans-serif;
+    color: var(--brand-concrete);
+    font-family: var(--brand-display-font);
 }
 
 .leaders-card__hero {
@@ -43,13 +43,21 @@
     gap: 14px;
     padding: 8px 22px;
     box-sizing: border-box;
-    background: rgba(254, 224, 102, 0.3);
-    color: #fff;
+    background: var(--brand-surface);
+    color: var(--brand-concrete);
 }
 
 .leaders-card__row--winner {
-    background: #916f72;
-    background: rgba(158, 56, 67, 0.3);
+    background: var(--brand-surface-raised);
+    box-shadow: inset 3px 0 var(--brand-accent);
+}
+
+.leaders-card__position {
+    color: var(--brand-muted);
+}
+
+.leaders-card__row--winner .leaders-card__position {
+    color: var(--brand-accent);
 }
 
 .leaders-card__position,
@@ -57,10 +65,11 @@
     font-size: 20px;
     font-weight: 400;
     line-height: 1.2;
-    font-family: "Bebas Neue", "Oswald", sans-serif;
+    font-family: var(--brand-display-font);
 }
 
 .leaders-card__value {
+    color: var(--brand-accent);
     text-align: right;
 }
 

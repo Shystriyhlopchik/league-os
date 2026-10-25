@@ -6,12 +6,24 @@ html {
     @include mat.theme(
         (
             color: (
-                theme-type: light,
+                theme-type: dark,
                 primary: mat.$azure-palette,
                 tertiary: mat.$blue-palette,
             ),
-            typography: Roboto,
+            typography: "Manrope",
             density: 0,
         )
     );
+}
+
+html {
+    --mat-sys-primary: #d6ff3f;
+    --mat-sys-on-primary: #151919;
+    --mat-sys-primary-container: #303b1b;
+    --mat-sys-on-primary-container: #f0f1e9;
+    --mat-sys-secondary: #c5cec2;
+    --mat-sys-surface: #151919;
+    --mat-sys-surface-container: #202625;
+    --mat-sys-on-surface: #f0f1e9;
+    --mat-sys-outline: #59655d;
 }

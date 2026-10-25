@@ -195,12 +195,20 @@ export class CommunitySquadsService {
       throw new ConflictException(
         'В текущем составе команды может быть не более 12 игроков. Сначала освободите место',
       );
-    if (
-      await manager.exists(TeamPlayerEntity, {
-        where: { communityId, teamId, shirtNumber, isActive: true },
-      })
-    )
-      throw new ConflictException('Номер уже занят');
+    const occupant = await manager.findOne(TeamPlayerEntity, {
+      where: { communityId, teamId, shirtNumber, isActive: true },
+      relations: { player: true },
+    });
+    if (occupant)
+      throw new ConflictException(
+        `Номер ${shirtNumber} уже занят: ${this.playerName(occupant.player)}. Выберите свободный номер или сначала измените номер этого игрока в составе команды`,
+      );
+  }
+
+  private playerName(player: PlayerEntity) {
+    return [player.lastName, player.firstName, player.middleName]
+      .filter(Boolean)
+      .join(' ');
   }
 
   async assertCaptainHandover(
@@ -337,10 +345,40 @@ export class CommunitySquadsService {
 
   async transfers(communityId: number, actor: CommunityActor) {
     await this.communities.assertAccess(communityId, actor);
-    return this.dataSource.getRepository(CommunityTransferRequestEntity).find({
-      where: { communityId, status: 'pending' },
-      relations: { player: true, fromTeam: true, toTeam: true },
-      order: { id: 'ASC' },
+    const requests = await this.dataSource
+      .getRepository(CommunityTransferRequestEntity)
+      .find({
+        where: { communityId, status: 'pending' },
+        relations: { player: true, fromTeam: true, toTeam: true },
+        order: { id: 'ASC' },
+      });
+    if (!requests.length) return [];
+    const occupants = await this.dataSource
+      .getRepository(TeamPlayerEntity)
+      .find({
+        where: requests.map((request) => ({
+          communityId,
+          teamId: request.toTeamId,
+          shirtNumber: request.shirtNumber,
+          isActive: true,
+        })),
+        relations: { player: true },
+      });
+    return requests.map((request) => {
+      const occupant = occupants.find(
+        (link) =>
+          link.teamId === request.toTeamId &&
+          link.shirtNumber === request.shirtNumber,
+      );
+      return {
+        ...request,
+        numberConflict: occupant
+          ? {
+              playerId: occupant.playerId,
+              name: this.playerName(occupant.player),
+            }
+          : null,
+      };
     });
   }
 

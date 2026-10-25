@@ -8,7 +8,7 @@ import { StandingRow } from '../../model/standings-row.model';
     styleUrl: './standings-table.component.scss',
 })
 export class StandingsTableComponent {
-    DEFAULT_IMAGE = 'images/logo/dvor-liga.png';
+    DEFAULT_IMAGE = 'brand/logos/mark_white.svg';
 
     readonly sourceRows = input.required<readonly StandingRow[]>({
         alias: 'rows',

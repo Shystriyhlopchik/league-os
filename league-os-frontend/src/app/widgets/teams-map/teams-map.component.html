@@ -1,28 +1,161 @@
-<div class="teams-map">
-    <img
-        class="teams-map__image"
-        src="/images/maps/map_cheb_transparent.png"
-        alt="Карта расположения команд"
-    />
-
-    <div class="teams-map__layer" aria-label="Команды на карте">
-        @for (team of teams; track team.id) {
-            <a
-                class="teams-map__team"
-                [routerLink]="['/team', team.slug]"
-                [style.left.%]="team.x"
-                [style.top.%]="team.y"
-                [style.--pulse-delay]="team.delay + 's'"
-                [title]="team.name"
-                [attr.aria-label]="team.name"
+<section class="teams-map" aria-labelledby="teams-map-title">
+    <header class="teams-map__header">
+        <div>
+            <p class="teams-map__eyebrow">Свои люди на карте города</p>
+            <h2 id="teams-map-title">
+                Районы разные.<br />Игра <span>одна.</span>
+            </h2>
+        </div>
+        <a class="teams-map__all" routerLink="/team"
+            >Все команды <span aria-hidden="true">↗</span></a
+        >
+    </header>
+    <div class="teams-map__layout">
+        <div class="teams-map__explorer">
+            <div
+                class="teams-map__canvas"
+                role="group"
+                aria-label="Схема расположения команд в Чебоксарах"
             >
+                <div class="teams-map__map-caption">
+                    <span>Чебоксары / своя территория</span
+                    ><span>{{ teams.length }} команд на схеме</span>
+                </div>
                 <img
-                    class="teams-map__logo"
-                    [src]="team.logoUrl"
-                    [alt]="team.name"
+                    class="teams-map__image"
+                    src="/brand/elements/cheboksary-map.svg"
+                    alt=""
                     loading="lazy"
                 />
-            </a>
-        }
+                <div class="teams-map__layer">
+                    @for (team of teams; track team.id) {
+                        <button
+                            type="button"
+                            class="teams-map__marker"
+                            [class.teams-map__marker--active]="
+                                selectedTeamId() === team.id
+                            "
+                            [style.left.%]="team.x"
+                            [style.top.%]="team.y"
+                            [attr.aria-label]="'Показать команду ' + team.name"
+                            [attr.aria-pressed]="selectedTeamId() === team.id"
+                            aria-controls="teams-map-spotlight"
+                            (mouseenter)="selectTeam(team.id)"
+                            (focus)="selectTeam(team.id)"
+                            (click)="selectTeam(team.id)"
+                        >
+                            @if (!failedLogoIds().has(team.id)) {
+                                <img
+                                    [src]="team.logoUrl"
+                                    alt=""
+                                    loading="lazy"
+                                    (error)="markLogoFailed(team.id)"
+                                />
+                            } @else {
+                                <span>{{ team.name.slice(0, 1) }}</span>
+                            }
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="teams-map__selection-heading">
+                <span>Выбери своих</span><span aria-hidden="true">↘</span>
+            </div>
+            <div
+                class="teams-map__teams"
+                id="teams-map-choices"
+                role="group"
+                aria-label="Выбор команды"
+            >
+                @for (team of teams; track team.id; let index = $index) {
+                    <button
+                        type="button"
+                        class="teams-map__choice"
+                        [class.teams-map__choice--active]="
+                            selectedTeamId() === team.id
+                        "
+                        [attr.aria-pressed]="selectedTeamId() === team.id"
+                        aria-controls="teams-map-spotlight"
+                        (mouseenter)="selectTeam(team.id)"
+                        (focus)="selectTeam(team.id)"
+                        (click)="selectTeam(team.id, $event.detail > 0)"
+                    >
+                        <span class="teams-map__number"
+                            >{{ index + 1 < 10 ? "0" : ""
+                            }}{{ index + 1 }}</span
+                        >
+                        <span>{{ team.name }}</span
+                        ><span
+                            class="teams-map__choice-arrow"
+                            aria-hidden="true"
+                            >↗</span
+                        >
+                    </button>
+                }
+            </div>
+            <p class="teams-map__map-note">
+                Схема расположения команд, не адреса домашних площадок.
+            </p>
+        </div>
+        <article
+            #spotlight
+            class="teams-map__spotlight"
+            id="teams-map-spotlight"
+            [attr.aria-label]="'Выбранная команда: ' + selectedTeam().name"
+        >
+            <div class="teams-map__photo-wrap">
+                @for (photo of [selectedPhoto()]; track photo.src) {
+                    @if (!failedPhotos().has(photo.src)) {
+                        <img
+                            class="teams-map__photo"
+                            [src]="photo.src"
+                            [alt]="photo.alt"
+                            loading="lazy"
+                            (error)="markPhotoFailed(photo.src)"
+                        />
+                    } @else {
+                        <div class="teams-map__photo-fallback">
+                            Здесь играют свои.
+                        </div>
+                    }
+                }
+                <span class="teams-map__photo-tag"
+                    >Игра за пределами экрана ↗</span
+                >
+                <p class="teams-map__credit">
+                    Общий фотоархив лиги · IVANOV / GEOMETRIA
+                </p>
+            </div>
+            <div class="teams-map__identity">
+                <p class="teams-map__eyebrow">Команда Дворовой лиги</p>
+                <div class="teams-map__team-heading">
+                    @for (team of [selectedTeam()]; track team.id) {
+                        @if (!failedLogoIds().has(team.id)) {
+                            <img
+                                class="teams-map__selected-logo"
+                                [src]="team.logoUrl"
+                                alt=""
+                                (error)="markLogoFailed(team.id)"
+                            />
+                        }
+                    }
+                    <h3>{{ selectedTeam().name }}</h3>
+                </div>
+                <p class="teams-map__description">
+                    У каждого своя история.<br />На поле — одна игра.
+                </p>
+                <a
+                    class="teams-map__team-link"
+                    [routerLink]="['/team', selectedTeam().slug]"
+                    >О команде <span aria-hidden="true">↗</span></a
+                >
+                <p class="teams-map__archive-note">
+                    Фото из общего архива, не фотография выбранной команды.
+                </p>
+                <a class="teams-map__back" href="#teams-map-choices"
+                    >Выбрать другую команду <span aria-hidden="true">↑</span></a
+                >
+            </div>
+        </article>
     </div>
-</div>
+</section>

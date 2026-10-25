@@ -32,6 +32,11 @@ export class SessionStore {
             ),
     );
 
+    readonly canManageCommunityVideos = computed(() =>
+        this.hasRole('super_admin') ||
+        (this.user()?.communities ?? []).some(c => c.role === 'owner' || c.role === 'admin'),
+    );
+
     updateUser(user: User): void {
         this.user.set(user);
     }

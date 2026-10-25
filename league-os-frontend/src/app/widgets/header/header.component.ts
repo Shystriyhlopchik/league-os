@@ -7,7 +7,7 @@ import {
     inject,
     signal,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 
 const enum MENU_ICON_LABEL {
     OPEN = 'Открыть меню',
@@ -17,7 +17,7 @@ const enum MENU_ICON_LABEL {
 @Component({
     selector: 'app-header',
     standalone: true,
-    imports: [RouterLink],
+    imports: [RouterLink, RouterLinkActive],
     templateUrl: './header.component.html',
     styleUrl: './header.component.scss',
 })
@@ -61,7 +61,7 @@ export class HeaderComponent {
     @HostListener('window:resize')
     onViewportResize(): void {
         const desktopViewport = this.document.defaultView?.matchMedia(
-            '(min-width: 768px)',
+            '(min-width: 1240px)',
         ).matches;
 
         if (desktopViewport) {

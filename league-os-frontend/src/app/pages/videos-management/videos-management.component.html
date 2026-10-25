@@ -1,0 +1,352 @@
+<div class="media-admin">
+    <a routerLink="/dashboard" class="back">← В кабинет</a>
+    <header class="page-heading">
+        <div>
+            <p>Медиатека сообщества</p>
+            <h1>Видео лиги<span>.</span></h1>
+        </div>
+        <a routerLink="/" fragment="videos">Посмотреть на сайте ↗</a>
+    </header>
+    <p class="intro">
+        Добавьте ролик из ВК, загрузите обложку и опубликуйте. На главной — до
+        восьми видео: сначала с меньшим номером порядка, при равенстве — новые
+        публикации.
+    </p>
+    @if (error()) {
+        <p class="message message--error" role="alert">{{ error() }}</p>
+    }
+    @if (notice()) {
+        <p class="message" role="status">{{ notice() }}</p>
+    }
+    @if (communities().length) {
+        <div class="toolbar">
+            <label
+                >Сообщество<select
+                    [value]="communityId()"
+                    (change)="changeCommunity($event)"
+                    [disabled]="saving() || loading()"
+                >
+                    @for (community of communities(); track community.id) {
+                        <option [value]="community.id">
+                            {{ community.name }}
+                        </option>
+                    }
+                </select></label
+            ><span class="counter"
+                >На главной <strong>{{ page().homeCount }} / 8</strong></span
+            >
+            <button
+                class="primary"
+                type="button"
+                (click)="create()"
+                [disabled]="saving() || loading()"
+            >
+                + Добавить видео
+            </button>
+        </div>
+    }
+    @if (loading()) {
+        <p role="status">Загрузка медиатеки…</p>
+    } @else if (!communities().length && !error()) {
+        <p>
+            Нет сообществ, в которых вы администратор. Обратитесь к владельцу
+            сообщества.
+        </p>
+    }
+    @if (editorOpen()) {
+        <section class="editor" aria-labelledby="video-editor-title">
+            <header>
+                <h2 id="video-editor-title" #editorHeading tabindex="-1">
+                    {{ editingId() ? "Редактировать видео" : "Новое видео" }}
+                </h2>
+                <span>{{
+                    editingId()
+                        ? "#" + editingId()
+                        : "Сначала сохраните черновик"
+                }}</span>
+            </header>
+            <form [formGroup]="form" (ngSubmit)="save()">
+                <fieldset [disabled]="saving() || loading()">
+                    <div class="editor__grid">
+                        <div class="fields">
+                            <label
+                                >Название *<input
+                                    formControlName="title"
+                                    maxlength="180"
+                                    placeholder="Водоканал — КРИКС · Обзор матча"
+                                    [attr.aria-invalid]="
+                                        form.controls.title.touched &&
+                                        form.controls.title.invalid
+                                    "
+                            /></label>
+                            @if (
+                                form.controls.title.touched &&
+                                form.controls.title.invalid
+                            ) {
+                                <small class="field-error"
+                                    >Укажите название, до 180 символов.</small
+                                >
+                            }
+                            <label
+                                >Ссылка ВК или код вставки *<textarea
+                                    formControlName="source"
+                                    rows="3"
+                                    maxlength="5000"
+                                    placeholder="https://vkvideo.ru/video-123456_456239001"
+                                    [attr.aria-invalid]="
+                                        form.controls.source.touched &&
+                                        form.controls.source.invalid
+                                    "
+                                ></textarea>
+                            </label>
+                            @if (
+                                form.controls.source.touched &&
+                                form.controls.source.invalid
+                            ) {
+                                <small class="field-error"
+                                    >Вставьте ссылку на отдельное видео или
+                                    iframe.</small
+                                >
+                            }
+                            <p class="help">
+                                В ВК: «Поделиться → Экспортировать». Если
+                                обычная ссылка не работает, вставьте код iframe.
+                                Закрытые ролики и клипы не подходят. Проверьте
+                                просмотр без входа в ВК.
+                            </p>
+                            <div class="field-row">
+                                <label
+                                    >Турнир (необязательно)<select
+                                        formControlName="tournamentId"
+                                        (change)="tournamentChanged()"
+                                    >
+                                        <option [ngValue]="null">
+                                            Без привязки
+                                        </option>
+                                        @for (
+                                            tournament of options().tournaments;
+                                            track tournament.id
+                                        ) {
+                                            <option [ngValue]="tournament.id">
+                                                {{ tournament.name }}
+                                            </option>
+                                        }
+                                    </select></label
+                                ><label
+                                    >Матч (необязательно)<select
+                                        formControlName="matchId"
+                                    >
+                                        <option [ngValue]="null">
+                                            Без привязки
+                                        </option>
+                                        @for (
+                                            match of options().matches;
+                                            track match.id
+                                        ) {
+                                            <option [ngValue]="match.id">
+                                                {{ match.label }}
+                                            </option>
+                                        }
+                                    </select></label
+                                >
+                            </div>
+                            @if (optionsLoading()) {
+                                <small role="status">Загружаем матчи…</small>
+                            }
+                            <div class="field-row">
+                                <label
+                                    >Состояние<select formControlName="status">
+                                        <option value="draft">Черновик</option>
+                                        <option value="published">
+                                            Опубликовано
+                                        </option>
+                                    </select></label
+                                >
+                                <label
+                                    >Порядок на главной<input
+                                        type="number"
+                                        formControlName="sortOrder"
+                                        min="0"
+                                        max="9999"
+                                        step="1"
+                                /></label>
+                            </div>
+                            @if (
+                                form.controls.sortOrder.touched &&
+                                form.controls.sortOrder.invalid
+                            ) {
+                                <small class="field-error"
+                                    >Целое число от 0 до 9999. Меньшее —
+                                    раньше.</small
+                                >
+                            }
+                            <label class="check"
+                                ><input
+                                    type="checkbox"
+                                    formControlName="showOnHome"
+                                />
+                                Показывать на главной после публикации</label
+                            >
+                            <p class="help">
+                                Снятие галочки убирает карточку с главной.
+                                «Черновик» снимает видео с публикации. Чтобы
+                                заменить одно из восьми, сначала снимите старое
+                                с главной.
+                            </p>
+                        </div>
+                        <div class="cover">
+                            <div class="cover__image">
+                                @if (coverPreview()) {
+                                    <img
+                                        [src]="coverPreview()"
+                                        alt="Обложка видео"
+                                    />
+                                } @else {
+                                    <span>Обложка видео<br />16:9</span>
+                                }
+                            </div>
+                            <label class="upload"
+                                >Загрузить обложку<input
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp"
+                                    (change)="selectCover($event)"
+                            /></label>
+                            <p class="help">
+                                PNG, JPEG или WebP, до 5 МБ. Рекомендуем 1280 ×
+                                720. Обложка обязательна для публикации.
+                            </p>
+                            <p class="help">
+                                Плеер можно проверить в списке после сохранения
+                                черновика. Загружать видеофайл на сайт не нужно.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="editor__actions">
+                        <button
+                            class="primary"
+                            type="submit"
+                            [disabled]="saving() || optionsLoading()"
+                        >
+                            {{
+                                saving()
+                                    ? "Сохраняем…"
+                                    : form.controls.status.value === "published"
+                                      ? "Сохранить и опубликовать"
+                                      : "Сохранить черновик"
+                            }}
+                        </button>
+                        <button
+                            type="button"
+                            (click)="cancel()"
+                            [disabled]="saving()"
+                        >
+                            Отмена
+                        </button>
+                    </div>
+                </fieldset>
+            </form>
+        </section>
+    }
+    @if (!loading() && communityId()) {
+        <section class="library" aria-labelledby="video-library-title">
+            <h2 id="video-library-title">
+                Все видео <span>{{ page().total }}</span>
+            </h2>
+            @if (!page().items.length) {
+                <div class="empty">
+                    <h3>Первый свисток ещё впереди</h3>
+                    <p>
+                        Добавьте обзор матча, интервью или лучшие голы. Пока нет
+                        публикаций, блок на главной скрыт.
+                    </p>
+                </div>
+            }
+            @for (video of page().items; track video.id) {
+                <article class="library__row">
+                    <div class="library__cover">
+                        @if (video.coverUrl) {
+                            <img [src]="video.coverUrl" alt="" loading="lazy" />
+                        } @else {
+                            <span>ВК</span>
+                        }
+                    </div>
+                    <div class="library__copy">
+                        <span
+                            class="badge"
+                            [class.badge--published]="
+                                video.status === 'published'
+                            "
+                            >{{
+                                video.status === "published"
+                                    ? "Опубликовано"
+                                    : "Черновик"
+                            }}{{
+                                video.status === "published" && video.showOnHome
+                                    ? " · На главной"
+                                    : ""
+                            }}</span
+                        >
+                        <h3>{{ video.title }}</h3>
+                        <p>
+                            Порядок: {{ video.sortOrder }}
+                            @if (video.publishedAt) {
+                                · {{ video.publishedAt | date: "dd.MM.yyyy" }}
+                            }
+                        </p>
+                    </div>
+                    <div class="library__actions">
+                        <button
+                            type="button"
+                            (click)="preview(video)"
+                            [disabled]="saving()"
+                            [attr.aria-label]="
+                                'Проверить плеер: ' + video.title
+                            "
+                        >
+                            ▶ Плеер
+                        </button>
+                        <button
+                            type="button"
+                            (click)="edit(video)"
+                            [disabled]="saving()"
+                            [attr.aria-label]="'Редактировать: ' + video.title"
+                        >
+                            Изменить
+                        </button>
+                        <button
+                            type="button"
+                            (click)="archive(video)"
+                            [disabled]="saving()"
+                            [attr.aria-label]="'В архив: ' + video.title"
+                        >
+                            В архив
+                        </button>
+                    </div>
+                </article>
+            }
+            @if (page().total > page().limit) {
+                <nav class="pagination" aria-label="Страницы видео">
+                    <button
+                        type="button"
+                        (click)="loadPage(page().page - 1)"
+                        [disabled]="loading() || saving() || page().page === 1"
+                    >
+                        ← Назад
+                    </button>
+                    <span>Страница {{ page().page }}</span
+                    ><button
+                        type="button"
+                        (click)="loadPage(page().page + 1)"
+                        [disabled]="
+                            loading() ||
+                            saving() ||
+                            page().page * page().limit >= page().total
+                        "
+                    >
+                        Далее →
+                    </button>
+                </nav>
+            }
+        </section>
+    }
+</div>

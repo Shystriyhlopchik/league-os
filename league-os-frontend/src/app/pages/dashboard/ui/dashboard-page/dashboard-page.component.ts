@@ -22,6 +22,14 @@ export class DashboardPageComponent {
 
     readonly actions: DashboardAction[] = [
         {
+            title: 'Видео лиги',
+            description: 'Обложки, ролики ВК и восемь видео на главной',
+            route: '/dashboard/videos',
+            roles: [],
+            capability: 'communityVideos',
+            variant: '#D6FF3F',
+        },
+        {
             title: 'Конструктор турниров',
             description: 'Создание формата, этапов, групп, правил и плей-офф',
             route: '/dashboard/tournaments/new',
@@ -99,7 +107,9 @@ export class DashboardPageComponent {
     readonly availableActions = computed(() => {
         return this.actions.filter(
             (action) =>
-                (action.feature === 'tournamentBuilder'
+                (action.capability === 'communityVideos'
+                    ? this.sessionStore.canManageCommunityVideos()
+                    : action.feature === 'tournamentBuilder'
                     ? this.sessionStore.canManageCommunityTournaments()
                     : this.sessionStore.hasAnyRole(...action.roles)) &&
                 (!action.feature || this.featureFlags()[action.feature]),

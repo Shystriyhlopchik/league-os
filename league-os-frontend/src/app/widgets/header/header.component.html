@@ -1,9 +1,13 @@
 <header class="header">
     <div class="header__inner">
-        <a class="header__logo" routerLink="/" aria-label="Арман Лига">
+        <a
+            class="header__logo"
+            routerLink="/"
+            aria-label="Дворовая лига — главная"
+        >
             <img
                 class="header__logo-image"
-                src="images/logo/dvor-liga.png"
+                src="brand/logos/horizontal_white.svg"
                 alt="Дворовая Лига"
             />
         </a>
@@ -14,6 +18,9 @@
         >
             <a
                 class="header__nav-link"
+                routerLinkActive="header__nav-link--active"
+                ariaCurrentWhenActive="page"
+                [routerLinkActiveOptions]="{ exact: true }"
                 routerLink="/team"
                 (click)="closeMenu()"
             >
@@ -21,6 +28,9 @@
             </a>
             <a
                 class="header__nav-link"
+                routerLinkActive="header__nav-link--active"
+                ariaCurrentWhenActive="page"
+                [routerLinkActiveOptions]="{ exact: true }"
                 routerLink="/players"
                 (click)="closeMenu()"
             >
@@ -28,6 +38,9 @@
             </a>
             <a
                 class="header__nav-link"
+                routerLinkActive="header__nav-link--active"
+                ariaCurrentWhenActive="page"
+                [routerLinkActiveOptions]="{ exact: true }"
                 routerLink="/matches"
                 (click)="closeMenu()"
             >
@@ -35,6 +48,9 @@
             </a>
             <a
                 class="header__nav-link"
+                routerLinkActive="header__nav-link--active"
+                ariaCurrentWhenActive="page"
+                [routerLinkActiveOptions]="{ exact: true }"
                 routerLink="/statistics"
                 (click)="closeMenu()"
             >
@@ -42,6 +58,9 @@
             </a>
             <a
                 class="header__nav-link"
+                routerLinkActive="header__nav-link--active"
+                ariaCurrentWhenActive="page"
+                [routerLinkActiveOptions]="{ exact: true }"
                 routerLink="/ranking"
                 (click)="closeMenu()"
             >
@@ -49,6 +68,9 @@
             </a>
             <a
                 class="header__nav-link"
+                routerLinkActive="header__nav-link--active"
+                ariaCurrentWhenActive="page"
+                [routerLinkActiveOptions]="{ exact: true }"
                 routerLink="/champion"
                 (click)="closeMenu()"
             >
@@ -56,6 +78,9 @@
             </a>
             <a
                 class="header__nav-link"
+                routerLinkActive="header__nav-link--active"
+                ariaCurrentWhenActive="page"
+                [routerLinkActiveOptions]="{ exact: true }"
                 routerLink="/news"
                 (click)="closeMenu()"
             >
@@ -63,12 +88,15 @@
             </a>
             <a
                 class="header__nav-link"
+                routerLinkActive="header__nav-link--active"
+                ariaCurrentWhenActive="page"
+                [routerLinkActiveOptions]="{ exact: true }"
                 routerLink="/regulations"
                 (click)="closeMenu()"
             >
                 Регламент соревнований
             </a>
-            <!--            <a class="header__nav-link" routerLink="/" (click)="closeMenu()">-->
+            <!--            <a class="header__nav-link" routerLinkActive="header__nav-link--active" ariaCurrentWhenActive="page" [routerLinkActiveOptions]="{ exact: true }" routerLink="/" (click)="closeMenu()">-->
             <!--                О лиге-->
             <!--            </a>-->
         </nav>
@@ -113,13 +141,14 @@
             <a
                 class="header__action header__action--authorization"
                 [routerLink]="'/login'"
-                aria-label="Авторизация"
+                aria-label="Личный кабинет"
             >
                 <img
                     class="header__authorization-icon"
                     src="images/icons/authorization.svg"
                     alt=""
                 />
+                <span>Кабинет</span>
             </a>
 
             <button
@@ -144,11 +173,20 @@
             class="header__nav header__nav--mobile"
             aria-label="Мобильная навигация"
         >
-            <a class="header__nav-link" routerLink="/" (click)="closeMenu()"
+            <a
+                class="header__nav-link"
+                routerLinkActive="header__nav-link--active"
+                ariaCurrentWhenActive="page"
+                [routerLinkActiveOptions]="{ exact: true }"
+                routerLink="/"
+                (click)="closeMenu()"
                 >Главная</a
             >
             <a
                 class="header__nav-link"
+                routerLinkActive="header__nav-link--active"
+                ariaCurrentWhenActive="page"
+                [routerLinkActiveOptions]="{ exact: true }"
                 routerLink="/team"
                 (click)="closeMenu()"
             >
@@ -156,6 +194,9 @@
             </a>
             <a
                 class="header__nav-link"
+                routerLinkActive="header__nav-link--active"
+                ariaCurrentWhenActive="page"
+                [routerLinkActiveOptions]="{ exact: true }"
                 routerLink="/players"
                 (click)="closeMenu()"
             >
@@ -163,6 +204,9 @@
             </a>
             <a
                 class="header__nav-link"
+                routerLinkActive="header__nav-link--active"
+                ariaCurrentWhenActive="page"
+                [routerLinkActiveOptions]="{ exact: true }"
                 routerLink="/matches"
                 (click)="closeMenu()"
             >
@@ -170,6 +214,9 @@
             </a>
             <a
                 class="header__nav-link"
+                routerLinkActive="header__nav-link--active"
+                ariaCurrentWhenActive="page"
+                [routerLinkActiveOptions]="{ exact: true }"
                 routerLink="/statistics"
                 (click)="closeMenu()"
             >
@@ -177,6 +224,9 @@
             </a>
             <a
                 class="header__nav-link"
+                routerLinkActive="header__nav-link--active"
+                ariaCurrentWhenActive="page"
+                [routerLinkActiveOptions]="{ exact: true }"
                 routerLink="/ranking"
                 (click)="closeMenu()"
             >
@@ -184,6 +234,9 @@
             </a>
             <a
                 class="header__nav-link"
+                routerLinkActive="header__nav-link--active"
+                ariaCurrentWhenActive="page"
+                [routerLinkActiveOptions]="{ exact: true }"
                 routerLink="/champion"
                 (click)="closeMenu()"
             >
@@ -191,6 +244,9 @@
             </a>
             <a
                 class="header__nav-link"
+                routerLinkActive="header__nav-link--active"
+                ariaCurrentWhenActive="page"
+                [routerLinkActiveOptions]="{ exact: true }"
                 routerLink="/news"
                 (click)="closeMenu()"
             >
@@ -198,6 +254,9 @@
             </a>
             <a
                 class="header__nav-link"
+                routerLinkActive="header__nav-link--active"
+                ariaCurrentWhenActive="page"
+                [routerLinkActiveOptions]="{ exact: true }"
                 routerLink="/regulations"
                 (click)="closeMenu()"
             >
@@ -205,6 +264,9 @@
             </a>
             <a
                 class="header__nav-link"
+                routerLinkActive="header__nav-link--active"
+                ariaCurrentWhenActive="page"
+                [routerLinkActiveOptions]="{ exact: true }"
                 routerLink="/login"
                 (click)="closeMenu()"
             >

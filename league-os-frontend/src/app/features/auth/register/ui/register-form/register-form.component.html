@@ -41,23 +41,64 @@
         </button>
     </section>
 } @else {
-    <form class="register-form" [formGroup]="form" (ngSubmit)="submit()">
-        <label class="register-form__field">
+    <form
+        class="register-form"
+        [formGroup]="form"
+        (ngSubmit)="submit()"
+        novalidate
+    >
+        @if (submitted() && form.invalid) {
+            <p class="register-form__error" role="alert">
+                Регистрация не отправлена. Исправьте отмеченные поля и нажмите
+                «Зарегистрироваться» ещё раз.
+            </p>
+        }
+        <label
+            class="register-form__field"
+            [class.register-form__field--error]="!!fieldError('lastName')"
+        >
             <span class="register-form__label">Фамилия *</span>
             <input
                 class="register-form__input"
                 type="text"
                 formControlName="lastName"
+                autocomplete="family-name"
+                [attr.aria-invalid]="!!fieldError('lastName')"
+                [attr.aria-describedby]="
+                    fieldError('lastName') ? 'register-last-name-error' : null
+                "
             />
+            @if (fieldError("lastName"); as error) {
+                <span
+                    class="register-form__field-error"
+                    id="register-last-name-error"
+                    >{{ error }}</span
+                >
+            }
         </label>
 
-        <label class="register-form__field">
+        <label
+            class="register-form__field"
+            [class.register-form__field--error]="!!fieldError('firstName')"
+        >
             <span class="register-form__label">Имя *</span>
             <input
                 class="register-form__input"
                 type="text"
                 formControlName="firstName"
+                autocomplete="given-name"
+                [attr.aria-invalid]="!!fieldError('firstName')"
+                [attr.aria-describedby]="
+                    fieldError('firstName') ? 'register-first-name-error' : null
+                "
             />
+            @if (fieldError("firstName"); as error) {
+                <span
+                    class="register-form__field-error"
+                    id="register-first-name-error"
+                    >{{ error }}</span
+                >
+            }
         </label>
 
         <label class="register-form__field">
@@ -66,40 +107,96 @@
                 class="register-form__input"
                 type="text"
                 formControlName="middleName"
-            />
-        </label>
-
-        <label class="register-form__field">
-            <span class="register-form__label">Логин *</span>
-            <input
-                class="register-form__input"
-                type="text"
-                formControlName="username"
-            />
-        </label>
-
-        <label class="register-form__field">
-            <span class="register-form__label">E-mail *</span>
-            <input
-                class="register-form__input"
-                type="email"
-                formControlName="email"
-            />
-        </label>
-
-        <label class="register-form__field">
-            <span class="register-form__label">Пароль *</span>
-            <input
-                class="register-form__input"
-                type="password"
-                formControlName="password"
+                autocomplete="additional-name"
             />
         </label>
 
         <label
             class="register-form__field"
+            [class.register-form__field--error]="!!fieldError('username')"
+        >
+            <span class="register-form__label">Логин *</span>
+            <input
+                class="register-form__input"
+                type="text"
+                formControlName="username"
+                autocomplete="username"
+                [attr.aria-invalid]="!!fieldError('username')"
+                [attr.aria-describedby]="
+                    fieldError('username')
+                        ? 'register-username-hint register-username-error'
+                        : 'register-username-hint'
+                "
+            />
+            <span class="register-form__hint" id="register-username-hint"
+                >Не менее 3 символов</span
+            >
+            @if (fieldError("username"); as error) {
+                <span
+                    class="register-form__field-error"
+                    id="register-username-error"
+                    >{{ error }}</span
+                >
+            }
+        </label>
+
+        <label
+            class="register-form__field"
+            [class.register-form__field--error]="!!fieldError('email')"
+        >
+            <span class="register-form__label">E-mail *</span>
+            <input
+                class="register-form__input"
+                type="email"
+                formControlName="email"
+                autocomplete="email"
+                [attr.aria-invalid]="!!fieldError('email')"
+                [attr.aria-describedby]="
+                    fieldError('email') ? 'register-email-error' : null
+                "
+            />
+            @if (fieldError("email"); as error) {
+                <span
+                    class="register-form__field-error"
+                    id="register-email-error"
+                    >{{ error }}</span
+                >
+            }
+        </label>
+
+        <label
+            class="register-form__field"
+            [class.register-form__field--error]="!!fieldError('password')"
+        >
+            <span class="register-form__label">Пароль *</span>
+            <input
+                class="register-form__input"
+                type="password"
+                formControlName="password"
+                autocomplete="new-password"
+                [attr.aria-invalid]="!!fieldError('password')"
+                [attr.aria-describedby]="
+                    fieldError('password')
+                        ? 'register-password-hint register-password-error'
+                        : 'register-password-hint'
+                "
+            />
+            <span class="register-form__hint" id="register-password-hint"
+                >Не менее 8 символов</span
+            >
+            @if (fieldError("password"); as error) {
+                <span
+                    class="register-form__field-error"
+                    id="register-password-error"
+                    >{{ error }}</span
+                >
+            }
+        </label>
+
+        <label
+            class="register-form__field"
             [class.register-form__field--error]="
-                form.controls.passwordConfirmation.hasError('passwordMismatch')
+                !!fieldError('passwordConfirmation')
             "
         >
             <span class="register-form__label">Повторите пароль *</span>
@@ -107,15 +204,25 @@
                 class="register-form__input"
                 type="password"
                 formControlName="passwordConfirmation"
+                autocomplete="new-password"
+                [attr.aria-invalid]="!!fieldError('passwordConfirmation')"
+                [attr.aria-describedby]="
+                    fieldError('passwordConfirmation')
+                        ? 'register-password-confirmation-error'
+                        : null
+                "
             />
+            @if (fieldError("passwordConfirmation"); as error) {
+                <span
+                    class="register-form__field-error"
+                    id="register-password-confirmation-error"
+                    >{{ error }}</span
+                >
+            }
         </label>
 
-        @if (form.controls.passwordConfirmation.hasError("passwordMismatch")) {
-            <p class="register-form__error">Пароли не совпадают</p>
-        }
-
         @if (store.error()) {
-            <p class="register-form__error">
+            <p class="register-form__error" role="alert">
                 {{ store.error() }}
             </p>
         }

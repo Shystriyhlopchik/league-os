@@ -17,7 +17,7 @@
     border-spacing: 0 6px;
 
     font-family: Oswald, "Inter", sans-serif;
-    color: #f5f5f5;
+    color: #f0f1e9;
 }
 
 .standings-table__col--place {
@@ -40,7 +40,7 @@
 .standings-table__head {
     padding: 0 clamp(10px, 2vw, 28px) 4px;
 
-    color: #f5f5f5;
+    color: #f0f1e9;
     font-size: 16px;
     font-weight: 400;
     line-height: 1;
@@ -67,7 +67,7 @@
 .standings-table__cell--place,
 .standings-table__cell--played,
 .standings-table__cell--points {
-    font-family: "Bebas Neue", sans-serif;
+    font-family: "Oswald", sans-serif;
 }
 
 .standings-table__cell--played,
@@ -90,7 +90,7 @@
     }
 
     &--white {
-        background: #f5f5f5;
+        background: #f0f1e9;
     }
 
     &--yellow {

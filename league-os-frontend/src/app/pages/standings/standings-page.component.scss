@@ -1,8 +1,8 @@
 :host {
     display: block;
     min-height: calc(100vh - 217px);
-    background: #16191a;
-    color: #f5f5f5;
+    background: #151919;
+    color: #f0f1e9;
 }
 
 .standings-page {
@@ -36,14 +36,14 @@
 .standings-page__header h1,
 .section-heading h2 {
     margin: 0;
-    font-family: "Play", Arial, sans-serif;
+    font-family: "Oswald", Arial, sans-serif;
     font-weight: 700;
     line-height: 1.08;
     text-transform: uppercase;
 }
 
 .standings-page__header h1 {
-    color: #f61129;
+    color: #d6ff3f;
     font-size: clamp(34px, 5vw, 52px);
 }
 
@@ -92,12 +92,12 @@
 }
 
 .stage-tabs__button--active::after {
-    background: #f61129 !important;
+    background: #d6ff3f !important;
 }
 
 .stage-tabs button:focus-visible,
 .group-tabs button:focus-visible {
-    outline: 2px solid #f61129;
+    outline: 2px solid #d6ff3f;
     outline-offset: 2px;
 }
 
@@ -126,9 +126,9 @@
 }
 
 .group-tabs__button--active {
-    border-color: #f61129 !important;
-    background: #f61129 !important;
-    color: #ffffff !important;
+    border-color: #d6ff3f !important;
+    background: #d6ff3f !important;
+    color: #151919 !important;
 }
 
 .standings-section {
@@ -209,7 +209,7 @@
 .full-table td.full-table__position {
     position: relative;
     padding-left: 22px;
-    font-family: "Bebas Neue", sans-serif;
+    font-family: "Oswald", sans-serif;
     font-size: 21px;
 }
 
@@ -342,7 +342,7 @@
     margin: 0;
     padding: 18px 26px 8px;
     color: #c4cbc9;
-    font-family: Roboto, Arial, sans-serif;
+    font-family: "Manrope", Arial, sans-serif;
     font-size: 14px;
     line-height: 1.5;
 }
@@ -408,7 +408,7 @@
 .page-state button {
     min-height: 40px;
     padding: 6px 22px;
-    border: 1px solid #f61129;
+    border: 1px solid #d6ff3f;
     background: transparent;
     color: #ffffff;
     font: inherit;
@@ -419,7 +419,7 @@
     width: 20px;
     height: 20px;
     border: 2px solid #42494a;
-    border-top-color: #f61129;
+    border-top-color: #d6ff3f;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }

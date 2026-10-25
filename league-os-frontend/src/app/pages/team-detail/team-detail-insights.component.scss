@@ -19,8 +19,8 @@
 .team-insights__eyebrow,
 .insight-card__label {
     margin: 0 0 8px;
-    color: #f61129;
-    font-family: Play, Arial, sans-serif;
+    color: #d6ff3f;
+    font-family: "Oswald", Arial, sans-serif;
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.13em;
@@ -30,7 +30,7 @@
 .team-insights__heading h2,
 .insights-subheading h3 {
     margin: 0;
-    font-family: Play, Arial, sans-serif;
+    font-family: "Oswald", Arial, sans-serif;
     text-transform: uppercase;
 }
 
@@ -56,7 +56,7 @@
 }
 
 .team-insights__table-link span {
-    color: #f61129;
+    color: #d6ff3f;
     font-size: 22px;
     transition: transform 0.2s ease;
 }
@@ -70,7 +70,7 @@
 .next-match-card__action:focus-visible,
 .team-form__result:focus-visible,
 .recent-match:focus-visible {
-    outline: 2px solid #f61129;
+    outline: 2px solid #d6ff3f;
     outline-offset: 4px;
 }
 
@@ -104,7 +104,7 @@
 
 .standing-card__position strong {
     color: #fff;
-    font-family: Play, Arial, sans-serif;
+    font-family: "Oswald", Arial, sans-serif;
     font-size: 76px;
     line-height: 0.9;
 }
@@ -119,7 +119,7 @@
 .standing-card__stage {
     margin: 14px 0 24px;
     color: #aeb6b3;
-    font-family: Roboto, Arial, sans-serif;
+    font-family: "Manrope", Arial, sans-serif;
 }
 
 .standing-card__stats {
@@ -148,13 +148,13 @@
 
 .standing-card__stats dd {
     margin: 0;
-    font-family: Play, Arial, sans-serif;
+    font-family: "Oswald", Arial, sans-serif;
     font-size: 19px;
     font-weight: 700;
 }
 
 .standing-card__stats .standing-card__points dd {
-    color: #f61129;
+    color: #d6ff3f;
 }
 
 .next-match-card {
@@ -169,7 +169,7 @@
     bottom: -102px;
     width: 160px;
     height: 240px;
-    background: rgba(246, 17, 41, 0.16);
+    background: rgba(214, 255, 63, 0.16);
     transform: rotate(28deg);
     pointer-events: none;
 }
@@ -187,8 +187,8 @@
 
 .next-match-card__live {
     padding: 4px 8px;
-    background: #f61129;
-    color: #fff;
+    background: #d6ff3f;
+    color: #151919;
     font-size: 11px;
     font-weight: 700;
 }
@@ -223,7 +223,7 @@
 
 .next-match-card__opponent strong {
     display: block;
-    font-family: Play, Arial, sans-serif;
+    font-family: "Oswald", Arial, sans-serif;
     font-size: 26px;
     line-height: 1.1;
 }
@@ -235,7 +235,7 @@
     gap: 10px 22px;
     margin-top: 20px;
     color: #9ca5a2;
-    font-family: Roboto, Arial, sans-serif;
+    font-family: "Manrope", Arial, sans-serif;
     font-size: 13px;
 }
 
@@ -247,7 +247,7 @@
     align-items: center;
     margin-top: 22px;
     padding: 0 18px;
-    border: 1px solid #f61129;
+    border: 1px solid #d6ff3f;
     color: #fff;
     font-size: 13px;
     letter-spacing: 0.08em;
@@ -257,13 +257,14 @@
 }
 
 .next-match-card__action:hover {
-    background: #f61129;
+    background: #d6ff3f;
+    color: #151919;
 }
 
 .insight-card__empty {
     margin: 34px 0 0;
     color: #9da6a3;
-    font-family: Roboto, Arial, sans-serif;
+    font-family: "Manrope", Arial, sans-serif;
     font-size: 16px;
     line-height: 1.5;
 }
@@ -283,7 +284,7 @@
 
 .team-form__copy > span {
     color: #7f8986;
-    font-family: Roboto, Arial, sans-serif;
+    font-family: "Manrope", Arial, sans-serif;
     font-size: 12px;
 }
 
@@ -298,7 +299,7 @@
     place-items: center;
     border-radius: 50%;
     color: #fff;
-    font-family: Play, Arial, sans-serif;
+    font-family: "Oswald", Arial, sans-serif;
     font-weight: 700;
     text-decoration: none;
 }
@@ -396,7 +397,7 @@
 
 .recent-match__opponent strong {
     overflow: hidden;
-    font-family: Play, Arial, sans-serif;
+    font-family: "Oswald", Arial, sans-serif;
     font-size: 16px;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -409,12 +410,12 @@
 }
 
 .recent-match__score {
-    font-family: Play, Arial, sans-serif;
+    font-family: "Oswald", Arial, sans-serif;
     font-size: 21px;
 }
 
 .recent-match__arrow {
-    color: #f61129;
+    color: #d6ff3f;
 }
 
 .team-leader {
@@ -443,7 +444,7 @@
 
 .team-leader strong {
     overflow: hidden;
-    font-family: Play, Arial, sans-serif;
+    font-family: "Oswald", Arial, sans-serif;
     font-size: 16px;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -451,7 +452,7 @@
 
 .team-leader small {
     margin-top: 5px;
-    color: #f61129;
+    color: #d6ff3f;
     font-size: 12px;
 }
 

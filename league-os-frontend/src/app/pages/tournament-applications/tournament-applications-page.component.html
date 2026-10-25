@@ -45,7 +45,8 @@
         <label
             >Турнир<select
                 #tournamentSelect
-                [value]="tournamentId()"
+                [ngModel]="tournamentId()"
+                [ngModelOptions]="{ standalone: true }"
                 (change)="changeTournament(tournamentSelect)"
                 [disabled]="busy()"
             >
@@ -59,7 +60,8 @@
             <label
                 >Команда<select
                     #teamSelect
-                    [value]="teamId()"
+                    [ngModel]="teamId()"
+                    [ngModelOptions]="{ standalone: true }"
                     (change)="changeTeam(teamSelect)"
                     [disabled]="busy()"
                 >
@@ -428,23 +430,41 @@
                             ></textarea>
                         </label>
                         @for (r of transfers(); track r.id) {
-                            <div class="row">
-                                <span
-                                    >{{ r.player.lastName }}
-                                    {{ r.player.firstName }}:
-                                    {{ r.fromTeam?.name }} →
-                                    {{ r.toTeam.name }}</span
-                                ><button
-                                    (click)="reviewTransfer(r.id, 'approve')"
-                                >
-                                    Подтвердить переход</button
-                                ><button
-                                    (click)="reviewTransfer(r.id, 'reject')"
-                                    [disabled]="!transferComment.trim()"
-                                >
-                                    Отклонить
-                                </button>
-                            </div>
+                            <section
+                                [attr.aria-label]="'Запрос перехода №' + r.id"
+                            >
+                                <div class="row">
+                                    <span
+                                        >{{ r.player.lastName }}
+                                        {{ r.player.firstName }}:
+                                        {{ r.fromTeam?.name }} →
+                                        {{ r.toTeam.name }} · номер
+                                        {{ r.shirtNumber }}</span
+                                    ><button
+                                        (click)="
+                                            reviewTransfer(r.id, 'approve')
+                                        "
+                                    >
+                                        Подтвердить переход</button
+                                    ><button
+                                        (click)="reviewTransfer(r.id, 'reject')"
+                                        [disabled]="!transferComment.trim()"
+                                    >
+                                        Отклонить
+                                    </button>
+                                </div>
+                                @if (r.numberConflict; as conflict) {
+                                    <p class="warning" role="status">
+                                        В команде «{{ r.toTeam.name }}» номер
+                                        {{ r.shirtNumber }} уже занят:
+                                        <strong>{{ conflict.name }}</strong
+                                        >. Перед подтверждением измените номер
+                                        этого игрока в составе команды либо
+                                        оформите новый запрос перехода со
+                                        свободным номером.
+                                    </p>
+                                }
+                            </section>
                         }
                         <p class="hint">
                             Решение меняет только текущую принадлежность. Допуск
