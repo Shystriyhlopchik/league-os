@@ -1,7 +1,4 @@
-<section
-    class="news-preview"
-    [class.news-preview--page]="variant() === 'page'"
->
+<section class="news-preview" [class.news-preview--page]="variant() === 'page'">
     @if (isLoading()) {
         <div class="news-preview__empty">Загрузка новостей...</div>
     } @else if (error()) {
@@ -23,28 +20,33 @@
 
             @if (news().length > 1) {
                 <div class="news-preview__side-list">
-                    @for (item of news(); track item.id; let first = $first) {
-                        @if (!first) {
-                            <app-news-card
-                                class="news-preview__side-item"
-                                [news]="item"
-                                variant="small"
-                            />
-                        }
+                    @for (item of sideNews(); track item.id) {
+                        <app-news-card
+                            class="news-preview__side-item"
+                            [news]="item"
+                            variant="small"
+                        />
+                    }
+                </div>
+            }
+            @if (remainingNews().length) {
+                <div class="news-preview__remaining">
+                    @for (item of remainingNews(); track item.id) {
+                        <app-news-card [news]="item" variant="small" />
                     }
                 </div>
             }
         </div>
 
-<!--        @if (variant() === 'page') {-->
-<!--            <button-->
-<!--                class="news-preview__more"-->
-<!--                type="button"-->
-<!--                [disabled]="isLoading()"-->
-<!--                (click)="loadMore()"-->
-<!--            >-->
-<!--                {{ isLoading() ? 'Загрузка...' : 'Показать ещё' }}-->
-<!--            </button>-->
-<!--        }-->
+        <!--        @if (variant() === 'page') {-->
+        <!--            <button-->
+        <!--                class="news-preview__more"-->
+        <!--                type="button"-->
+        <!--                [disabled]="isLoading()"-->
+        <!--                (click)="loadMore()"-->
+        <!--            >-->
+        <!--                {{ isLoading() ? 'Загрузка...' : 'Показать ещё' }}-->
+        <!--            </button>-->
+        <!--        }-->
     }
 </section>

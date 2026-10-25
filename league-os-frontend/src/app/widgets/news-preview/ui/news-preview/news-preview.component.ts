@@ -16,6 +16,14 @@ export class NewsPreviewComponent {
     readonly limit = input(5);
 
     readonly news = this.store.news;
+    readonly sideNews = computed(() =>
+        this.variant() === 'page'
+            ? this.news().slice(1)
+            : this.news().slice(1, 4),
+    );
+    readonly remainingNews = computed(() =>
+        this.variant() === 'page' ? [] : this.news().slice(4),
+    );
     readonly isLoading = this.store.isLoading;
     readonly isEmpty = this.store.isEmpty;
     readonly error = this.store.error;
