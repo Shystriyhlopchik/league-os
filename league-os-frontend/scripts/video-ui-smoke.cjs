@@ -95,6 +95,22 @@ const http = require("node:http");
             matchId: null,
         }));
         const calls = [];
+        const newsTitles = [
+            "Жеребьёвка «Дворовой лиги»: рейтинг против случайности!",
+            "«Дворовая лига» меняется: первые документы и Совет представителей команд!",
+            "Сегодня определится чемпион «Дворовой лиги»!",
+            "«Альгешево» сыграет в суперфинале «Дворовой лиги»",
+            "Финал уже близко: определились участники решающих матчей турнира",
+            "Не всё идёт по плану. Разбираем спорные моменты Дворовой лиги",
+        ];
+        const news = newsTitles.map((title, i) => ({
+            id: i + 1,
+            title,
+            slug: `layout-fixture-${i + 1}`,
+            content: "Тестовые данные для проверки вёрстки",
+            coverUrl: `/brand/photos/${photos[i % photos.length]}.jpg`,
+            publishedAt: "2026-10-21T12:00:00Z",
+        }));
         await context.route("**/api/**", async (route) => {
             const request = route.request();
             const url = new URL(request.url());
@@ -170,7 +186,9 @@ const http = require("node:http");
                         .slice(0, 8),
                 );
             if (endpoint === "/api/tournaments/active") return json(null);
-            if (endpoint === "/api/players/ticker") return json({ players: [], birthdays: [] });
+            if (endpoint === "/api/news") return json(news);
+            if (endpoint === "/api/players/ticker")
+                return json({ players: [], birthdays: [] });
             if (endpoint === "/api/feature-flags")
                 return json({
                     tournamentBuilder: false,
@@ -188,15 +206,88 @@ const http = require("node:http");
         );
         const page = await context.newPage();
         const browserErrors = [];
-        page.on("pageerror", (error) =>
-            browserErrors.push(error.message),
-        );
-        page.on('console', message => {
+        page.on("pageerror", (error) => browserErrors.push(error.message));
+        page.on("console", (message) => {
             // Angular's ErrorHandler reports caught template failures via console.
             // Asset-network denials in a restricted test runner are not JS errors.
-            if (message.type() === 'error' && /^(ERROR|TypeError|ReferenceError|RangeError)/.test(message.text())) browserErrors.push(message.text());
+            if (
+                message.type() === "error" &&
+                /^(ERROR|TypeError|ReferenceError|RangeError)/.test(
+                    message.text(),
+                )
+            )
+                browserErrors.push(message.text());
         });
         await page.goto(`${origin}/`);
+        await page
+            .locator(".news-preview__remaining app-news-card")
+            .first()
+            .waitFor();
+        for (const width of [1920, 1440, 1024, 768, 375]) {
+            await page.setViewportSize({ width, height: 1100 });
+            const preview = page.locator(".news-preview");
+            await preview.scrollIntoViewIfNeeded();
+            await preview
+                .locator("img")
+                .evaluateAll((images) =>
+                    Promise.all(
+                        images.map((img) => img.decode().catch(() => {})),
+                    ),
+                );
+            await page.evaluate(() => document.fonts.ready);
+            assert.equal(
+                await preview.locator("a").count(),
+                6,
+                "All six news links must remain available",
+            );
+            assert.equal(
+                await page.evaluate(
+                    () => document.documentElement.scrollWidth <= innerWidth,
+                ),
+                true,
+                `News overflow at ${width}`,
+            );
+            if (width >= 1024) {
+                assert.equal(
+                    await preview
+                        .locator(".news-preview__side-list app-news-card")
+                        .count(),
+                    3,
+                );
+                const featured = await preview
+                    .locator(".news-preview__featured .news-card")
+                    .boundingBox();
+                const side = await preview
+                    .locator(".news-preview__side-list")
+                    .boundingBox();
+                const lower = await preview
+                    .locator(".news-preview__remaining")
+                    .boundingBox();
+                assert.ok(
+                    Math.abs(
+                        featured.y + featured.height - side.y - side.height,
+                    ) <= 2,
+                    `Columns must align at ${width}`,
+                );
+                assert.ok(
+                    lower.y >= featured.y + featured.height,
+                    `Remaining articles must be below both columns at ${width}`,
+                );
+                const cards = await preview
+                    .locator(".news-preview__remaining app-news-card")
+                    .all();
+                const left = await cards[0].boundingBox();
+                const right = await cards[1].boundingBox();
+                assert.ok(
+                    Math.abs(left.width - right.width) <= 2,
+                    "Bottom articles must share the row equally",
+                );
+            }
+            await preview.screenshot({
+                path: path.join(output, `news-${width}.png`),
+            });
+        }
+        await page.setViewportSize({ width: 1440, height: 1000 });
         await page.locator("#videos").scrollIntoViewIfNeeded();
         try {
             await page
@@ -333,7 +424,7 @@ const http = require("node:http");
             .waitFor();
         assert.equal(videos.length, 9);
         assert.equal(videos[8].status, "draft");
-        assert.deepEqual(browserErrors, [], 'Unexpected browser errors');
+        assert.deepEqual(browserErrors, [], "Unexpected browser errors");
         console.log(
             JSON.stringify(
                 {
@@ -341,6 +432,8 @@ const http = require("node:http");
                     screenshots: output,
                     checks: [
                         "eight cards",
+                        "six news articles: featured + three side + two below",
+                        "news columns align on 1024/1440/1920 widths",
                         "no initial iframe",
                         "modal stays on site",
                         "one player",
