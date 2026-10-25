@@ -28,6 +28,7 @@ import {
     PlayerLeaderboardMetric,
 } from '../../entities/tournaments/model/player-leader.types';
 import { TopPlayersOvrComponent } from '../../widgets/top-players-ovr/top-players-ovr.component';
+import { VideosComponent } from '../../widgets/videos/videos.component';
 
 @Component({
     selector: 'app-home',
@@ -43,6 +44,7 @@ import { TopPlayersOvrComponent } from '../../widgets/top-players-ovr/top-player
         SponsorsComponent,
         PlayerLeadersListComponent,
         TopPlayersOvrComponent,
+        VideosComponent,
     ],
     templateUrl: './home.component.html',
     styleUrl: './home.component.scss',

@@ -31,6 +31,7 @@ import { TournamentStageParticipantsModule } from './modules/tournament-stage-pa
 import { FeatureFlagsModule } from './common/feature-flags/feature-flags.module';
 import { TeamRankingsModule } from './modules/team-rankings/team-rankings.module';
 import { CommunitiesModule } from './modules/communities/communities.module';
+import { VideosModule } from './modules/videos/videos.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { CommunitiesModule } from './modules/communities/communities.module';
     }),
     FeatureFlagsModule,
     CommunitiesModule,
+    VideosModule,
     TypeOrmModule.forRootAsync({
       imports: undefined,
       inject: [ConfigService],

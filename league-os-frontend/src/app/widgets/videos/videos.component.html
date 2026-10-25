@@ -1,0 +1,65 @@
+@if (loading() || failed() || videos().length) {
+    <section
+        id="videos"
+        class="videos"
+        aria-labelledby="videos-title"
+        [attr.aria-busy]="loading()"
+    >
+        <header class="videos__heading">
+            <div>
+                <p>Наш футбол. В кадре.</p>
+                <h2 id="videos-title">Игра со звуком<span>.</span></h2>
+            </div>
+            <span class="videos__label"
+                >Видео лиги <i aria-hidden="true">↗</i></span
+            >
+        </header>
+        @if (loading()) {
+            <p class="videos__state" role="status">Загружаем видео…</p>
+        } @else if (failed()) {
+            <div class="videos__state" role="status">
+                Не удалось загрузить видео.
+                <button type="button" (click)="load()">Повторить</button>
+            </div>
+        } @else {
+            <div class="videos__grid">
+                @for (video of videos(); track video.id; let i = $index) {
+                    <button
+                        type="button"
+                        class="video-card"
+                        (click)="play(video)"
+                        [attr.aria-label]="'Смотреть: ' + video.title"
+                    >
+                        <span class="video-card__image">
+                            @if (video.coverUrl) {
+                                <img
+                                    [src]="video.coverUrl"
+                                    alt=""
+                                    width="640"
+                                    height="360"
+                                    loading="lazy"
+                                    (error)="imageFailed($event)"
+                                />
+                            }
+                            <span class="video-card__number" aria-hidden="true"
+                                >{{ i + 1 < 10 ? "0" : "" }}{{ i + 1 }}</span
+                            >
+                            <span class="video-card__play" aria-hidden="true"
+                                >▶</span
+                            ><span class="video-card__source">ВК Видео</span>
+                        </span>
+                        <span class="video-card__caption"
+                            ><span class="video-card__title">{{
+                                video.title
+                            }}</span>
+                            <span class="video-card__date"
+                                >{{ video.publishedAt | date: "dd.MM.yyyy" }}
+                                <span aria-hidden="true">↗</span></span
+                            ></span
+                        >
+                    </button>
+                }
+            </div>
+        }
+    </section>
+}
