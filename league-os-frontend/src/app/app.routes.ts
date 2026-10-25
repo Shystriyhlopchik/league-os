@@ -7,10 +7,17 @@ import { guestGuard } from './guards/guest.guard';
 import { matchProtocolLeaveGuard } from './pages/match-protocol/model/match-protocol-leave.guard';
 import { tournamentBuilderFeatureGuard } from './guards/tournament-builder-feature.guard';
 import { communityTournamentGuard } from './guards/community-tournament.guard';
+import { communityVideoGuard } from './guards/community-video.guard';
+import { videosLeaveGuard } from './guards/videos-leave.guard';
 import { teamWorkspaceLeaveGuard } from './pages/team-workspace/team-workspace-leave.guard';
 import { tournamentApplicationsLeaveGuard } from './pages/tournament-applications/tournament-applications-leave.guard';
 
 export const routes: Routes = [
+    {
+        path: 'dashboard/videos', canActivate: [authGuard, communityVideoGuard],
+        canDeactivate: [videosLeaveGuard],
+        loadComponent: () => import('./pages/videos-management/videos-management.component').then(m => m.VideosManagementComponent),
+    },
     {
         path: 'dashboard/my-teams', canActivate: [authGuard],
         canDeactivate: [teamWorkspaceLeaveGuard],

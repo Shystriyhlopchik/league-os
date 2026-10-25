@@ -1,7 +1,7 @@
 :host {
     display: block;
-    color: #f0f5f2;
-    background: #101514;
+    color: #f0f1e9;
+    background: #151919;
 }
 * {
     box-sizing: border-box;
@@ -43,7 +43,7 @@ p {
     font-size: 14px;
 }
 .eyebrow {
-    color: #72df9c;
+    color: #d6ff3f;
     text-transform: uppercase;
     letter-spacing: 0.12em;
     font-size: 11px;
@@ -66,8 +66,8 @@ p {
     margin-bottom: 0;
 }
 .card {
-    background: #1a2220;
-    border: 1px solid #34413b;
+    background: #202625;
+    border: 1px solid #3a433e;
     border-radius: 16px;
     padding: 28px;
     margin: 20px 0;
@@ -121,7 +121,7 @@ input,
 select,
 textarea {
     font: inherit;
-    color: #f0f5f2;
+    color: #f0f1e9;
     background: #111916;
     border: 1px solid #56685e;
     border-radius: 9px;
@@ -135,7 +135,7 @@ textarea:focus-visible,
 button:focus-visible,
 a:focus-visible,
 summary:focus-visible {
-    outline: 2px solid #72df9c;
+    outline: 2px solid #d6ff3f;
     outline-offset: 4px;
 }
 textarea {
@@ -166,7 +166,7 @@ input[type="file"] {
 .check input {
     width: 18px;
     height: 18px;
-    accent-color: #72df9c;
+    accent-color: #d6ff3f;
 }
 button,
 .button {
@@ -193,8 +193,8 @@ button:hover:not(:disabled),
 }
 button.primary {
     color: #10281b;
-    background: #72df9c;
-    border-color: #72df9c;
+    background: #d6ff3f;
+    border-color: #d6ff3f;
 }
 button.primary:hover:not(:disabled) {
     background: #96edb7;
@@ -334,7 +334,7 @@ a {
     color: #a8e9bd;
 }
 .onboarding .done span {
-    border-color: #72df9c;
+    border-color: #d6ff3f;
     background: #244632;
 }
 .section-nav {
@@ -356,7 +356,7 @@ a {
 .section-nav button[aria-current] {
     color: #a2edbc;
     background: #202d26;
-    border-bottom-color: #72df9c;
+    border-bottom-color: #d6ff3f;
 }
 .section-nav span {
     margin-left: 8px;
@@ -372,7 +372,7 @@ a {
     align-items: center;
     flex-wrap: wrap;
     padding: 18px 0;
-    border-bottom: 1px solid #34413b;
+    border-bottom: 1px solid #3a433e;
 }
 .list-row strong,
 .player-row strong {
@@ -464,7 +464,7 @@ summary + p {
 .admin-link {
     margin-top: 32px;
     padding-top: 20px;
-    border-top: 1px solid #34413b;
+    border-top: 1px solid #3a433e;
     display: grid;
     gap: 10px;
     font-size: 14px;
@@ -477,7 +477,7 @@ summary + p {
     align-items: center;
     gap: 16px;
     padding: 18px 0;
-    border-bottom: 1px solid #34413b;
+    border-bottom: 1px solid #3a433e;
 }
 .player-row .grow {
     flex-basis: 120px;

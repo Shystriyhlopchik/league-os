@@ -296,6 +296,28 @@ describe('TournamentApplicationsPageComponent', () => {
         expect(component.selectedPlayers).toEqual([7, 8, 9, 10, 11]);
         expect(component.applicationDirty()).toBeFalse();
     });
+    it('displays the requested tournament even when its options arrive asynchronously', async () => {
+        const data = workspace();
+        data.tournaments.unshift({
+            ...data.tournaments[0],
+            id: 9,
+            name: 'Другой турнир',
+        });
+        api.workspace.and.returnValue(of(data));
+        await recreate({ tournamentId: '5', teamId: '3' });
+
+        const select: HTMLSelectElement = fixture.nativeElement.querySelector(
+            '.context-controls select',
+        );
+        expect(select.value).toBe('5');
+        expect(select.selectedOptions[0].textContent).toContain('Кубок');
+        expect(component.selectedTournament()?.id).toBe(5);
+        const teamSelect: HTMLSelectElement =
+            fixture.nativeElement.querySelectorAll(
+                '.context-controls select',
+            )[1];
+        expect(teamSelect.value).toBe('3');
+    });
     it('saves an incomplete draft with only selected ids and nonempty representatives', async () => {
         component.selectedPlayers = [7, 8];
         component.representatives = ['  Иван Представитель  ', ''];

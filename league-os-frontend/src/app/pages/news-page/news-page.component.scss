@@ -1,12 +1,12 @@
 :host {
     display: block;
     min-height: 100%;
-    background-color: #16191a;
+    background-color: #151919;
 }
 
 .news-page {
     min-height: 100vh;
-    color: #f5f5f5;
+    color: #f0f1e9;
 }
 
 .news-page__container {
@@ -18,8 +18,8 @@
 
 .news-page__title {
     margin: 0 0 24px 16px;
-    color: #f61129;
-    font-family: "Play", Arial, sans-serif;
+    color: #d6ff3f;
+    font-family: "Oswald", Arial, sans-serif;
     font-size: clamp(36px, 5vw, 48px);
     font-weight: 700;
     line-height: 1.2;

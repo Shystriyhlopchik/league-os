@@ -1,74 +1,215 @@
-<section class="top-players" aria-labelledby="top-players-title">
+<section
+    class="top-players"
+    [attr.aria-labelledby]="'top-players-title-' + tournamentId()"
+    [attr.aria-busy]="isLoading()"
+>
     <header class="top-players__header">
         <div>
-            <p>Рейтинг активного турнира</p>
-            <h2 id="top-players-title">ТОП 10 игроков по OVR</h2>
+            <p>{{ tournamentName() || "Рейтинг активного турнира" }}</p>
+            <h2 [id]="'top-players-title-' + tournamentId()">
+                Топ-<span>5</span> игроков<span>.</span>
+            </h2>
         </div>
-        <a routerLink="/players">Все игроки</a>
+        <a routerLink="/players"
+            >Весь рейтинг <span aria-hidden="true">↗</span></a
+        >
     </header>
 
     @if (isLoading()) {
         <p class="top-players__state" role="status">
-            Загружаем рейтинг игроков...
+            Загружаем рейтинг игроков…
         </p>
     } @else if (hasError()) {
-        <p class="top-players__state top-players__state--error" role="alert">
-            Не удалось загрузить рейтинг игроков
-        </p>
+        <div class="top-players__state top-players__state--error" role="alert">
+            <p>Не удалось загрузить рейтинг игроков</p>
+            <button type="button" (click)="reload()">Повторить загрузку</button>
+        </div>
     } @else if (!players().length) {
         <p class="top-players__state">Для рейтинга пока недостаточно данных.</p>
     } @else {
-        <ol class="top-players__list">
-            @for (
-                player of players();
-                track player.playerId;
-                let place = $index
-            ) {
-                <li
-                    class="top-player"
-                    [class.top-player--podium]="place < 3"
+        <div class="top-players__layout">
+            @if (selectedPlayer(); as player) {
+                <article
+                    #spotlight
+                    class="player-spotlight"
+                    [id]="panelId()"
+                    [attr.aria-label]="'Показатели игрока ' + player.name"
                 >
-                    <span class="top-player__place">{{ place + 1 }}</span>
-
-                    <span class="top-player__photo">
-                        @if (
-                            player.photoUrl &&
-                            !failedPhotoIds().has(player.playerId)
-                        ) {
-                            <img
-                                [src]="getMediaUrl(player.photoUrl)"
-                                [alt]="player.name"
-                                (error)="markPhotoAsFailed(player.playerId)"
-                            />
-                        } @else {
-                            {{ getInitials(player.name) }}
+                    <div class="player-spotlight__visual">
+                        @for (portrait of [player]; track portrait.playerId) {
+                            @if (
+                                portrait.photoUrl &&
+                                !failedPhotoIds().has(portrait.playerId)
+                            ) {
+                                <img
+                                    class="player-spotlight__photo"
+                                    [src]="getMediaUrl(portrait.photoUrl)"
+                                    [alt]="portrait.name"
+                                    (error)="
+                                        markPhotoAsFailed(portrait.playerId)
+                                    "
+                                />
+                            } @else {
+                                <div
+                                    class="player-spotlight__fallback"
+                                    aria-hidden="true"
+                                >
+                                    <svg
+                                        viewBox="0 0 320 330"
+                                        focusable="false"
+                                    >
+                                        <path
+                                            d="M105 28 52 50 14 126l60 33 23-36v182h126V123l23 36 60-33-38-76-53-22c-10 18-27 28-55 28s-45-10-55-28Z"
+                                        />
+                                        <path
+                                            class="player-spotlight__collar"
+                                            d="M105 28c10 35 30 50 55 50s45-15 55-50"
+                                        />
+                                    </svg>
+                                    <span class="player-spotlight__shirt">{{
+                                        portrait.shirtNumber ??
+                                            getInitials(portrait.name)
+                                    }}</span>
+                                    <span
+                                        class="player-spotlight__missing-photo"
+                                        >Фотография пока не загружена</span
+                                    >
+                                </div>
+                            }
                         }
-                    </span>
-
-                    <span class="top-player__identity">
-                        <strong>{{ player.name }}</strong>
-                        <span>
-                            {{ player.team.name }} · {{ player.position }}
-                        </span>
-                    </span>
-
-                    <span class="top-player__stats">
-                        <span>
-                            {{ player.stats.goals }} Г ·
-                            {{ player.stats.assists }} А
-                        </span>
-                        <small>Игр: {{ player.stats.matches }}</small>
-                    </span>
-
-                    <span
-                        class="top-player__ovr"
-                        title="Общий рейтинг относительно игроков той же позиции"
-                    >
-                        <strong>{{ player.ratings.ovr }}</strong>
-                        <small>OVR</small>
-                    </span>
-                </li>
+                        <span class="player-spotlight__place"
+                            >0{{ selectedPlace() }}
+                            <span>в рейтинге</span></span
+                        >
+                        <div
+                            class="player-spotlight__ovr"
+                            title="Общий рейтинг относительно игроков той же позиции"
+                        >
+                            <strong>{{ player.ratings.ovr }}</strong
+                            ><span>OVR / общий рейтинг</span>
+                        </div>
+                        <div class="player-spotlight__identity">
+                            <p>
+                                {{ player.positionName }}
+                                @if (player.shirtNumber !== null) {
+                                    · №{{ player.shirtNumber }}
+                                }
+                            </p>
+                            <h3>{{ player.name }}</h3>
+                            <a [routerLink]="['/team', player.team.id]"
+                                >{{ player.team.name }}
+                                <span aria-hidden="true">↗</span></a
+                            >
+                        </div>
+                    </div>
+                    <dl class="player-spotlight__stats">
+                        <div>
+                            <dt>Матчи</dt>
+                            <dd>{{ player.stats.matches }}</dd>
+                        </div>
+                        <div>
+                            <dt>Голы</dt>
+                            <dd>{{ player.stats.goals }}</dd>
+                        </div>
+                        <div>
+                            <dt>Передачи</dt>
+                            <dd>{{ player.stats.assists }}</dd>
+                        </div>
+                    </dl>
+                    <div class="player-spotlight__details">
+                        <span
+                            title="Голы и ассисты в последних пяти сыгранных матчах"
+                            >Форма
+                            <strong>{{ player.ratings.form }}</strong></span
+                        ><span
+                            title="Рейтинг дисциплины с учётом карточек и дисквалификаций"
+                            >Дисциплина
+                            <strong>{{ player.ratings.disc }}</strong></span
+                        >
+                    </div>
+                    @if (player.hasLimitedData) {
+                        <p class="player-spotlight__limited">
+                            Мало игровой практики — рейтинг предварительный.
+                        </p>
+                    }
+                </article>
             }
-        </ol>
+            <div class="top-players__ranking">
+                <p class="top-players__instruction">
+                    Выберите игрока — узнайте, кто стоит за цифрами.
+                </p>
+                <div class="top-players__columns" aria-hidden="true">
+                    <span>Игрок / команда</span><span>Голы + пасы</span
+                    ><span>OVR</span>
+                </div>
+                <ol class="top-players__list">
+                    @for (
+                        player of players();
+                        track player.playerId;
+                        let place = $index
+                    ) {
+                        <li>
+                            <button
+                                type="button"
+                                class="top-player"
+                                [class.top-player--active]="
+                                    selectedPlayer()?.playerId ===
+                                    player.playerId
+                                "
+                                [attr.aria-pressed]="
+                                    selectedPlayer()?.playerId ===
+                                    player.playerId
+                                "
+                                [attr.aria-controls]="panelId()"
+                                (mouseenter)="selectPlayer(player.playerId)"
+                                (focus)="selectPlayer(player.playerId)"
+                                (click)="
+                                    selectPlayer(
+                                        player.playerId,
+                                        $event.detail > 0
+                                    )
+                                "
+                            >
+                                <span class="top-player__place"
+                                    ><span class="sr-only">Место </span>0{{
+                                        place + 1
+                                    }}</span
+                                >
+                                <span class="top-player__identity"
+                                    ><strong>{{ player.name }}</strong
+                                    ><span
+                                        >{{ player.team.name }} ·
+                                        {{ player.positionName }}</span
+                                    ></span
+                                >
+                                <span class="top-player__contribution"
+                                    ><span class="sr-only">Голы: </span
+                                    >{{ player.stats.goals }}
+                                    <span
+                                        class="top-player__plus"
+                                        aria-hidden="true"
+                                        >+</span
+                                    ><span class="sr-only">, передачи: </span
+                                    >{{ player.stats.assists }}</span
+                                >
+                                <span class="top-player__ovr"
+                                    ><strong>{{ player.ratings.ovr }}</strong
+                                    ><span class="sr-only"> OVR</span
+                                    ><span
+                                        class="top-player__arrow"
+                                        aria-hidden="true"
+                                        >↗</span
+                                    ></span
+                                >
+                            </button>
+                        </li>
+                    }
+                </ol>
+                <p class="top-players__note">
+                    OVR — общий рейтинг с учётом позиции. Рассчитывается по
+                    протоколам завершённых матчей, а не по голосованию.
+                </p>
+            </div>
+        </div>
     }
 </section>

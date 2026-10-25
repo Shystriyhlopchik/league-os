@@ -15,9 +15,8 @@ import { catchError, finalize, switchMap, tap } from 'rxjs/operators';
 import { MatchApi } from '../../entities/match/api/match.api';
 import { MatchCardVm } from '../../entities/match/model/match-card.vm';
 import { mapMatchToCardVm } from '../../entities/match/model/match.mapper';
-import { MatchCardComponent } from '../../entities/match/ui/match-card/match-card.component';
+import { MatchScheduleRowComponent } from '../../entities/match/ui/match-schedule-row/match-schedule-row.component';
 import { TournamentsApi } from '../../entities/tournaments/api/tournaments.api';
-import { SectionTitleComponent } from '../../shared/ui/section-title/section-title.component';
 import { SelectComponent } from '../../shared/ui/select/select.component';
 import { SelectOption } from '../../shared/ui/select/select-option.model';
 
@@ -29,12 +28,7 @@ interface MatchDateGroup {
 
 @Component({
     selector: 'app-matches-page',
-    imports: [
-        DatePipe,
-        MatchCardComponent,
-        SectionTitleComponent,
-        SelectComponent,
-    ],
+    imports: [DatePipe, MatchScheduleRowComponent, SelectComponent],
     templateUrl: './matches-page.component.html',
     styleUrl: './matches-page.component.scss',
 })
@@ -52,6 +46,13 @@ export class MatchesPageComponent implements OnInit {
     readonly isLoading = signal(false);
     readonly error = signal<string | null>(null);
     readonly selectedTeamId = signal(this.allTeamsId);
+    readonly selectedStatus = signal<'all' | 'upcoming' | 'finished'>('all');
+    readonly heroPhotoFailed = signal(false);
+    readonly statusFilters = [
+        { value: 'all', label: 'Все матчи' },
+        { value: 'upcoming', label: 'Предстоящие' },
+        { value: 'finished', label: 'Результаты' },
+    ] as const;
 
     readonly title = computed(() => {
         const tournamentName = this.tournamentName();
@@ -83,11 +84,16 @@ export class MatchesPageComponent implements OnInit {
 
     readonly filteredMatches = computed(() => {
         const teamId = this.selectedTeamId();
-        if (teamId === this.allTeamsId) return this.matches();
-
         return this.matches().filter(
             (match) =>
-                match.homeTeamId === teamId || match.awayTeamId === teamId,
+                (teamId === this.allTeamsId ||
+                    match.homeTeamId === teamId ||
+                    match.awayTeamId === teamId) &&
+                (this.selectedStatus() === 'all' ||
+                    (this.selectedStatus() === 'upcoming' &&
+                        match.status === 'scheduled') ||
+                    (this.selectedStatus() === 'finished' &&
+                        match.status === 'finished')),
         );
     });
 
@@ -145,7 +151,14 @@ export class MatchesPageComponent implements OnInit {
                     return this.matchApi.getByTournament(tournament.id);
                 }),
                 tap((matches) => {
-                    const mappedMatches = matches.map(mapMatchToCardVm);
+                    const mappedMatches = matches
+                        .map(mapMatchToCardVm)
+                        .sort(
+                            (left, right) =>
+                                new Date(left.matchDateTime).getTime() -
+                                    new Date(right.matchDateTime).getTime() ||
+                                left.id - right.id,
+                        );
                     this.matches.set(mappedMatches);
 
                     const selectedTeamId = this.selectedTeamId();
@@ -175,16 +188,18 @@ export class MatchesPageComponent implements OnInit {
         void this.router.navigate(['/matches', matchId, 'protocol']);
     }
 
-    private toDateKey(value: string | Date): string {
-        if (typeof value === 'string') {
-            return value.slice(0, 10);
-        }
+    resetFilters(): void {
+        this.selectedTeamId.set(this.allTeamsId);
+        this.selectedStatus.set('all');
+    }
 
+    private toDateKey(value: string | Date): string {
+        const date = new Date(value);
         const pad = (part: number) => String(part).padStart(2, '0');
         return [
-            value.getFullYear(),
-            pad(value.getMonth() + 1),
-            pad(value.getDate()),
+            date.getFullYear(),
+            pad(date.getMonth() + 1),
+            pad(date.getDate()),
         ].join('-');
     }
 }

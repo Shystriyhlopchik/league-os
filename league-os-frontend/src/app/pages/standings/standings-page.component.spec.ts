@@ -3,12 +3,27 @@ import { of } from 'rxjs';
 
 import { MatchApi } from '../../entities/match/api/match.api';
 import { StandingsApi } from '../../entities/standings/api/standings.api';
+import { PublicTournamentView } from '../../entities/standings/model/public-tournament-view.model';
 import { TournamentsApi } from '../../entities/tournaments/api/tournaments.api';
 import { FeatureFlagsApi } from '../../shared/api/feature-flags.api';
 import { StandingsPageComponent } from './standings-page.component';
 
 describe('StandingsPageComponent', () => {
     let fixture: ComponentFixture<StandingsPageComponent>;
+
+    function reloadView(update: (view: PublicTournamentView) => void): void {
+        const view = structuredClone(fixture.componentInstance.view()!);
+        update(view);
+        spyOn(
+            TestBed.inject(StandingsApi),
+            'getPublicTournamentView',
+        ).and.returnValue(of(view));
+        fixture.componentInstance.loadStandings();
+        fixture.detectChanges();
+    }
+
+    const heading = (): string =>
+        fixture.nativeElement.querySelector('h1').textContent.trim();
 
     beforeEach(async () => {
         await TestBed.configureTestingModule({
@@ -137,7 +152,7 @@ describe('StandingsPageComponent', () => {
     });
 
     it('renders the full group table and recent form', () => {
-        expect(fixture.nativeElement.textContent).toContain('Таблица');
+        expect(heading()).toBe('Групповой этап');
         expect(
             fixture.nativeElement.querySelector('th[title="Забитые мячи"]'),
         ).not.toBeNull();
@@ -173,8 +188,121 @@ describe('StandingsPageComponent', () => {
             ?.click();
         fixture.detectChanges();
 
+        expect(heading()).toBe('Плей-офф');
         expect(fixture.nativeElement.textContent).toContain(
             'Сетка появится после завершения группового этапа',
+        );
+    });
+
+    it('opens the API-selected play-offs even when both stages are completed', () => {
+        reloadView((view) => {
+            view.activeStageId = 3;
+            view.stages.forEach((stage) => (stage.status = 'completed'));
+            view.stages[1].bracket = {
+                confirmed: true,
+                matches: [
+                    {
+                        id: 91,
+                        position: 'FINAL',
+                        roundType: 'final',
+                        roundNumber: 1,
+                        status: 'finished',
+                        homeTeam: { id: 5, name: 'Арман' },
+                        awayTeam: { id: 6, name: 'Соперник' },
+                        homeSourceLabel: '',
+                        awaySourceLabel: '',
+                        regularTime: { home: 2, away: 1 },
+                        winnerTeamId: 5,
+                    },
+                ],
+            };
+        });
+        expect(heading()).toBe('Плей-офф');
+        expect(
+            fixture.nativeElement.querySelector('app-knockout-bracket'),
+        ).not.toBeNull();
+        expect(fixture.nativeElement.querySelector('.full-table')).toBeNull();
+        expect(
+            fixture.nativeElement
+                .querySelector('.stage-tabs__button--active')
+                .textContent.trim(),
+        ).toBe('Плей-офф');
+    });
+
+    it('does not treat a preliminary play-off structure as the current stage', () => {
+        reloadView((view) => {
+            view.stages[1].empty = false;
+            view.stages[1].bracket.matches = [
+                {
+                    position: 'FINAL',
+                    roundType: 'final',
+                    roundNumber: 1,
+                    status: 'pending',
+                    homeSourceLabel: 'Победитель SF-1',
+                    awaySourceLabel: 'Победитель SF-2',
+                },
+            ];
+        });
+        expect(heading()).toBe('Групповой этап');
+        expect(
+            fixture.nativeElement.querySelector('.full-table'),
+        ).not.toBeNull();
+    });
+
+    [null, 999].forEach((activeStageId) => {
+        it(`uses the active stage status when the stage id is ${activeStageId}`, () => {
+            reloadView((view) => {
+                view.activeStageId = activeStageId;
+                view.stages[0].status = 'completed';
+                view.stages[1].status = 'active';
+            });
+            expect(heading()).toBe('Плей-офф');
+        });
+    });
+
+    it('uses the last completed stage when there is no active stage id', () => {
+        reloadView((view) => {
+            view.activeStageId = null;
+            view.stages.forEach((stage) => (stage.status = 'completed'));
+            view.stages.reverse();
+        });
+        expect(heading()).toBe('Плей-офф');
+    });
+
+    it('keeps manual access to the completed group stage without changing the tournament stage', () => {
+        reloadView((view) => {
+            view.activeStageId = 3;
+        });
+        fixture.nativeElement.querySelectorAll('.stage-tabs button')[0].click();
+        fixture.detectChanges();
+        expect(heading()).toBe('Групповой этап');
+        expect(fixture.componentInstance.view()?.activeStageId).toBe(3);
+        expect(
+            fixture.nativeElement.querySelector('.full-table'),
+        ).not.toBeNull();
+    });
+
+    it('uses the stage name instead of calling every non-knockout stage a group stage', () => {
+        reloadView((view) => {
+            view.stages[0].type = 'round_robin';
+            view.stages[0].name = 'Регулярный чемпионат';
+        });
+        expect(heading()).toBe('Регулярный чемпионат');
+        expect(
+            fixture.nativeElement
+                .querySelector('.section-heading span')
+                .textContent.trim(),
+        ).toBe('Регулярный чемпионат');
+    });
+
+    it('uses a neutral title when stages have not been published', () => {
+        reloadView((view) => {
+            view.stages = [];
+            view.activeStageId = null;
+        });
+        expect(heading()).toBe('Статистика');
+        expect(fixture.nativeElement.textContent).toContain(
+            'Этапы турнира пока не опубликованы',
         );
     });
 });

@@ -1,8 +1,8 @@
 :host {
     display: block;
     min-height: 100vh;
-    background: #101716;
-    color: #f5f5f5;
+    background: #151919;
+    color: #f0f1e9;
 }
 .news-editor {
     max-width: 900px;
@@ -32,7 +32,7 @@ textarea {
     box-sizing: border-box;
     border: 1px solid #46504e;
     border-radius: 8px;
-    color: #f5f5f5;
+    color: #f0f1e9;
     background: #151b1c;
     font: inherit;
 }
@@ -58,7 +58,7 @@ textarea {
 }
 input:focus,
 textarea:focus {
-    outline: 2px solid #72df9c;
+    outline: 2px solid #d6ff3f;
     outline-offset: 1px;
 }
 label em {
@@ -78,14 +78,14 @@ button {
     padding: 12px 16px;
     border: 1px solid #46504e;
     border-radius: 8px;
-    color: #f5f5f5;
+    color: #f0f1e9;
     background: #30393a;
     cursor: pointer;
 }
 button.primary {
     border: 0;
-    color: #101716;
-    background: #72df9c;
+    color: #151919;
+    background: #d6ff3f;
     font-weight: 800;
 }
 button:disabled {

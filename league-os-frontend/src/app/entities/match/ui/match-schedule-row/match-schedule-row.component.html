@@ -1,0 +1,82 @@
+<button
+    type="button"
+    class="match-schedule"
+    [class.match-schedule--live]="match().status === 'live'"
+    [class.match-schedule--cancelled]="match().status === 'cancelled'"
+    (click)="cardClick.emit(match().id)"
+>
+    <span class="match-schedule__main">
+        <span class="match-schedule__round">{{ roundLabel() }}</span>
+        <span class="match-schedule__teams">
+            <span class="match-schedule__team">
+                @if (
+                    match().homeTeamLogoUrl &&
+                    !failedLogos().has(logoUrl(match().homeTeamLogoUrl))
+                ) {
+                    <img
+                        [src]="logoUrl(match().homeTeamLogoUrl)"
+                        alt=""
+                        loading="lazy"
+                        (error)="
+                            markLogoFailed(logoUrl(match().homeTeamLogoUrl))
+                        "
+                    />
+                } @else {
+                    <span class="match-schedule__fallback" aria-hidden="true">{{
+                        match().homeTeamName.slice(0, 1)
+                    }}</span>
+                }
+                <span>{{ match().homeTeamName }}</span>
+            </span>
+            <span class="match-schedule__separator" aria-hidden="true">—</span>
+            <span class="match-schedule__team">
+                @if (
+                    match().awayTeamLogoUrl &&
+                    !failedLogos().has(logoUrl(match().awayTeamLogoUrl))
+                ) {
+                    <img
+                        [src]="logoUrl(match().awayTeamLogoUrl)"
+                        alt=""
+                        loading="lazy"
+                        (error)="
+                            markLogoFailed(logoUrl(match().awayTeamLogoUrl))
+                        "
+                    />
+                } @else {
+                    <span class="match-schedule__fallback" aria-hidden="true">{{
+                        match().awayTeamName.slice(0, 1)
+                    }}</span>
+                }
+                <span>{{ match().awayTeamName }}</span>
+            </span>
+        </span>
+        <span class="match-schedule__footer"
+            ><span>{{ match().venueName || "Площадка уточняется" }}</span
+            ><span class="match-schedule__action"
+                >{{ match().status === "finished" ? "Протокол" : "О матче" }}
+                <span aria-hidden="true">↗</span></span
+            ></span
+        >
+    </span>
+    <span class="match-schedule__time">
+        @if (showScore()) {
+            <strong class="match-schedule__score"
+                ><span class="match-schedule__sr-only">Счёт </span
+                >{{ match().homeTeamScore ?? "—"
+                }}<span class="match-schedule__colon">:</span
+                >{{ match().awayTeamScore ?? "—" }}</strong
+            >
+        } @else {
+            <strong>{{ match().matchDateTime | date: "HH:mm" }}</strong>
+        }
+        <span class="match-schedule__status">{{ statusLabel() }}</span>
+        <time [attr.datetime]="match().matchDateTime"
+            ><span class="match-schedule__sr-only"
+                >{{ match().matchDateTime | date: "d MMMM y" }}
+            </span>
+            @if (showScore()) {
+                {{ match().matchDateTime | date: "HH:mm" }}
+            }
+        </time>
+    </span>
+</button>

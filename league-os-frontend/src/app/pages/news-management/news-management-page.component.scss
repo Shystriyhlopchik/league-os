@@ -1,8 +1,8 @@
 :host {
     display: block;
     min-height: 100vh;
-    background: #101716;
-    color: #f5f5f5;
+    background: #151919;
+    color: #f0f1e9;
 }
 .news-management {
     max-width: 1050px;
@@ -20,15 +20,15 @@ button {
     padding: 10px 14px;
     border: 1px solid #46504e;
     border-radius: 8px;
-    color: #f5f5f5;
+    color: #f0f1e9;
     background: #222a2d;
     text-decoration: none;
     cursor: pointer;
 }
 .toolbar a {
     border: 0;
-    color: #101716;
-    background: #72df9c;
+    color: #151919;
+    background: #d6ff3f;
     font-weight: 800;
 }
 .news-list {
@@ -62,12 +62,12 @@ button {
 .news-item__heading span {
     padding: 4px 8px;
     border-radius: 999px;
-    color: #ffd91a;
+    color: #d6ff3f;
     background: #3a3725;
     font-size: 12px;
 }
 .news-item__heading .status--published {
-    color: #72df9c;
+    color: #d6ff3f;
     background: #243a2d;
 }
 .news-item p {

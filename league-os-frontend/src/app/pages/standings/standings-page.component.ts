@@ -58,10 +58,13 @@ export class StandingsPageComponent implements OnInit {
         return (
             view.stages.find(
                 (stage) => this.stageKey(stage) === selectedStageKey,
-            ) ??
-            view.stages[0] ??
-            null
+            ) ?? this.defaultStage(view)
         );
+    });
+
+    readonly pageTitle = computed(() => {
+        const stage = this.currentStage();
+        return stage ? this.stageLabel(stage) : 'Статистика';
     });
 
     readonly currentGroup = computed<
@@ -205,12 +208,29 @@ export class StandingsPageComponent implements OnInit {
     }
 
     private syncSelection(view: PublicTournamentView): void {
-        const selectedStage = view.stages.find(
-            (stage) => stage.id === view.activeStageId,
-        );
-        const stage = selectedStage ?? view.stages[0] ?? null;
+        const stage = this.defaultStage(view);
         this.selectedStageKey.set(stage ? this.stageKey(stage) : null);
         this.selectedGroupId.set(stage?.groups[0]?.id ?? null);
+    }
+
+    private defaultStage(
+        view: PublicTournamentView,
+    ): PublicTournamentStage | null {
+        // The API's stage is authoritative. A planned bracket alone does not
+        // mean that the tournament has already moved to the play-offs.
+        return (
+            (view.activeStageId !== null
+                ? view.stages.find((stage) => stage.id === view.activeStageId)
+                : undefined) ??
+            view.stages.find((stage) => stage.status === 'active') ??
+            [...view.stages]
+                .filter((stage) => stage.status === 'completed')
+                .sort((left, right) => right.order - left.order)[0] ??
+            [...view.stages].sort(
+                (left, right) => left.order - right.order,
+            )[0] ??
+            null
+        );
     }
 
     private buildForm(

@@ -1,12 +1,181 @@
+<section
+    class="league-intro"
+    aria-labelledby="league-intro-title"
+    (focusin)="introFocused.set(true)"
+    (focusout)="introFocused.set(false)"
+>
+    @for (slide of introSlides; track slide.src; let i = $index) {
+        <img
+            class="league-intro__photo"
+            [class.league-intro__photo--active]="activeIntroSlide() === i"
+            [src]="slide.src"
+            [alt]="slide.alt"
+            [attr.aria-hidden]="activeIntroSlide() !== i ? 'true' : null"
+            [style.--photo-position]="slide.position"
+            [style.--photo-mobile-position]="slide.mobilePosition"
+            width="1920"
+            height="1280"
+            [attr.fetchpriority]="i === 0 ? 'high' : 'low'"
+            (load)="markIntroLoaded(i)"
+            (error)="markIntroFailed(i)"
+        />
+    }
+    <div class="league-intro__edition">
+        <span>Чебоксары / Дворовая лига</span><span>Футбол. Свои. Район.</span>
+    </div>
+    <div class="league-intro__copy">
+        <p class="league-intro__eyebrow">
+            <span aria-hidden="true">↗</span> Здесь играют свои
+        </p>
+        <h1 id="league-intro-title">Наш район.<br /><span>Наша игра.</span></h1>
+        <p class="league-intro__description">
+            После работы. До финального свистка.<br />Футбол, ради которого мы
+            собираемся.
+        </p>
+        <div class="league-intro__links">
+            <a class="league-intro__primary" routerLink="/matches"
+                >На поле <span aria-hidden="true">↗</span></a
+            >
+            <a class="league-intro__secondary" routerLink="/team"
+                >Команды лиги <span aria-hidden="true">→</span></a
+            >
+        </div>
+    </div>
+    <span class="league-intro__stamp" aria-hidden="true"
+        >Не просто<br />после работы.</span
+    >
+    <div class="league-intro__bottom">
+        <span class="league-intro__motto">Районы разные. Игра одна.</span>
+        <div
+            class="league-intro__controls"
+            role="group"
+            aria-label="Фотографии матчей"
+            (mouseenter)="introControlsHovered.set(true)"
+            (mouseleave)="introControlsHovered.set(false)"
+        >
+            <button
+                type="button"
+                aria-label="Предыдущая фотография"
+                [disabled]="loadedIntroSlides().size < 2"
+                (click)="stepIntro(-1)"
+            >
+                ←
+            </button>
+            <span class="league-intro__counter" aria-live="off"
+                >{{ activeIntroSlide() + 1 }}
+                <span>/ {{ introSlides.length }}</span></span
+            >
+            <button
+                type="button"
+                aria-label="Следующая фотография"
+                [disabled]="loadedIntroSlides().size < 2"
+                (click)="stepIntro(1)"
+            >
+                →
+            </button>
+            @if (!introReducedMotion()) {
+                <button
+                    type="button"
+                    [attr.aria-label]="
+                        introPaused()
+                            ? 'Включить автосмену фотографий'
+                            : 'Приостановить автосмену фотографий'
+                    "
+                    [attr.aria-pressed]="introPaused()"
+                    [disabled]="loadedIntroSlides().size < 2"
+                    (click)="introPaused.set(!introPaused())"
+                >
+                    {{ introPaused() ? "▶" : "Ⅱ" }}
+                </button>
+            }
+        </div>
+        <span>Фото: IVANOV / GEOMETRIA</span>
+    </div>
+</section>
+
+<div class="yard-line" [class.yard-line--paused]="isYardLinePaused()">
+    <div class="yard-line__viewport" aria-hidden="true">
+        <div class="yard-line__track">
+            @for (copy of [0, 1]; track copy) {
+                <div class="yard-line__group">
+                    @for (phrase of [0, 1, 2]; track phrase) {
+                        <span class="yard-line__phrase"
+                            >Играем за своих <i>↗</i> Дворовая лига
+                            <i>↗</i> Наш район. Наша игра. <i>↗</i></span
+                        >
+                    }
+                </div>
+            }
+        </div>
+    </div>
+    <button
+        type="button"
+        [attr.aria-label]="
+            isYardLinePaused()
+                ? 'Продолжить движение ленты'
+                : 'Приостановить движение ленты'
+        "
+        [attr.aria-pressed]="isYardLinePaused()"
+        (click)="isYardLinePaused.set(!isYardLinePaused())"
+    >
+        {{ isYardLinePaused() ? "▶" : "Ⅱ" }}
+    </button>
+</div>
+
 @if (activeTournament(); as tournament) {
-    <app-matches-slider [seasonId]="tournament.season.id" />
+    <section class="home-matches" aria-labelledby="home-matches-title">
+        <header class="editorial-heading">
+            <div>
+                <p>{{ tournament.name }}</p>
+                <h2 id="home-matches-title">
+                    Игра решает<span aria-hidden="true">.</span>
+                </h2>
+            </div>
+            <a routerLink="/matches"
+                >Все матчи <span aria-hidden="true">↗</span></a
+            >
+        </header>
+        <app-matches-slider [seasonId]="tournament.season.id" />
+    </section>
 }
 
 <div class="home__body">
     <div class="home__section">
         <app-advertising-banner />
-        <h2>Новости</h2>
+        <header class="editorial-heading">
+            <div>
+                <p>На поле и за его пределами</p>
+                <h2>Жизнь лиги<span aria-hidden="true">.</span></h2>
+            </div>
+            <a routerLink="/news"
+                >Все новости <span aria-hidden="true">↗</span></a
+            >
+        </header>
         <app-news-preview [limit]="6" />
+        <section class="yard-story" aria-labelledby="yard-story-title">
+            <figure>
+                <img
+                    src="brand/photos/team-emotion.jpg"
+                    alt="Игроки Дворовой лиги эмоционально поддерживают команду"
+                    width="1920"
+                    height="1280"
+                    loading="lazy"
+                />
+                <figcaption>Фотоархив лиги · IVANOV / GEOMETRIA</figcaption>
+            </figure>
+            <div class="yard-story__copy">
+                <p class="yard-story__label">По одну сторону поля</p>
+                <h2 id="yard-story-title">
+                    Здесь знают<br />твоё имя.<br /><span>И твой номер.</span>
+                </h2>
+                <p>
+                    Не зрители. Свои люди.<br />Не просто команды. Свой район.
+                </p>
+                <a routerLink="/team"
+                    >Знакомься с командами <span aria-hidden="true">↗</span></a
+                >
+            </div>
+        </section>
         @if (activeTournament(); as tournament) {
             <app-top-players-ovr [tournamentId]="tournament.id" />
         }
@@ -40,7 +209,7 @@
                 />
             }
         </div>
-        <h2>Наша география</h2>
+        <app-videos />
         <app-teams-map />
         <app-sponsors />
     </div>

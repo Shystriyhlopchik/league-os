@@ -1,7 +1,7 @@
 :host {
     display: block;
     min-height: calc(100vh - 217px);
-    background: #16191a;
+    background: #151919;
     color: #ffffff;
 }
 
@@ -15,8 +15,8 @@
 }
 
 .teams-page__title {
-    font-family: Play, Arial, sans-serif;
-    color: #f61129;
+    font-family: "Oswald", Arial, sans-serif;
+    color: #d6ff3f;
 
     margin: 16px 0 40px;
     font-size: 32px;
@@ -66,7 +66,7 @@
 .teams-page__state button:hover,
 .teams-page__state button:focus-visible {
     background: #27ae60;
-    color: #16191a;
+    color: #151919;
 }
 
 .team-card {
@@ -88,12 +88,12 @@
 
 .team-card__link:hover,
 .team-card__link:focus-visible {
-    color: #f61129;
+    color: #d6ff3f;
     transform: translateY(-4px);
 }
 
 .team-card__link:focus-visible {
-    outline: 2px solid #f61129;
+    outline: 2px solid #d6ff3f;
     outline-offset: 8px;
 }
 

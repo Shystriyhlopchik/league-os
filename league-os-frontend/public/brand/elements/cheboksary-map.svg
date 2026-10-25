@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1817 981">
+  <title>Схематичная карта Чебоксар</title>
+  <defs>
+    <pattern id="grid" width="70" height="70" patternUnits="userSpaceOnUse"><path d="M70 0H0V70" fill="none" stroke="#3a433e" stroke-width="1" opacity=".35"/></pattern>
+    <clipPath id="land"><path d="M180 70 380 35 660 70 880 95 1110 160 1400 220 1650 320 1740 420 1640 540 1490 650 1310 740 1050 810 830 920 580 965 450 930 400 800 300 710 330 580 230 490 110 390 95 240Z"/></clipPath>
+  </defs>
+  <path d="M0 0H1817V981H0Z" fill="url(#grid)"/>
+  <g clip-path="url(#land)">
+    <path d="M0 0H1817V981H0Z" fill="#282f2c"/>
+    <g fill="none" stroke="#3a433e" stroke-width="2">
+      <path d="m170 160 310 45 110 240-130 200 70 300M290 80l20 280-100 70M490 40l-30 290 290 80 240-140 330 100 260-30M190 490l360-20 330 90 230-150 350 100 180-100M360 700l330-40 270 70 140 100M800 100l-80 250 140 280-120 290M1050 160l-150 190 260 210-120 220M1300 220l-120 210 220 210M450 160l230 20 270 60 180 30M400 790l220-90 200 80M610 300l390 150 260-80M1190 610l220-100 250 30"/>
+    </g>
+    <g fill="none" stroke="#a5afa7" stroke-linecap="round" opacity=".65">
+      <path d="M140 260 430 190 630 190 820 270 1080 300 1440 325 1700 410M630 190l60 210 80 170-80 160-150 170-10 81" stroke-width="7"/>
+      <path d="m240 440 220-60 230 20 260-120M330 580l300-80 140 70 270-20 290-90 110-135M400 760l290-30 240-70 330-40 300-100M460 380l-20-190M950 280l40 200-60 180 110 150M1260 620l40-160" stroke-width="4"/>
+    </g>
+    <g fill="#202625" stroke="#52604c" stroke-width="2"><path d="m260 270 150-40 25 100-160 50Z"/><path d="m800 340 140-20 30 100-120 40Z"/><path d="m1100 520 150-30-40 100-120 40Z"/></g>
+  </g>
+  <path d="M180 70 380 35 660 70 880 95 1110 160 1400 220 1650 320 1740 420 1640 540 1490 650 1310 740 1050 810 830 920 580 965 450 930 400 800 300 710 330 580 230 490 110 390 95 240Z" fill="none" stroke="#63705e" stroke-width="2"/>
+  <path d="M280 15Q700-20 1110 105T1770 270" fill="none" stroke="#63705e" stroke-width="2" stroke-dasharray="8 12"/>
+  <g fill="#a5afa7" font-family="Arial, sans-serif" font-size="23" letter-spacing="3">
+    <text x="1140" y="110" transform="rotate(12 1140 110)">ВОЛГА</text>
+    <text x="210" y="210">МОСКОВСКИЙ</text><text x="270" y="245" font-size="16">РАЙОН</text>
+    <text x="570" y="620">ЛЕНИНСКИЙ</text><text x="620" y="655" font-size="16">РАЙОН</text>
+    <text x="1120" y="440">КАЛИНИНСКИЙ</text><text x="1180" y="475" font-size="16">РАЙОН</text>
+    <text x="250" y="860" font-size="18">НОВЫЕ ЛАПСАРЫ</text>
+  </g>
+  <g transform="translate(1640 800)" fill="none" stroke="#a5afa7" stroke-width="2"><path d="M0 70V0m-12 18L0 0l12 18"/><text x="-8" y="-15" fill="#a5afa7" stroke="none" font-family="Arial, sans-serif" font-size="20">С</text></g>
+</svg>

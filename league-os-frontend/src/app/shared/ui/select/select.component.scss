@@ -7,8 +7,8 @@
     display: grid;
     gap: 8px;
     min-width: 0;
-    color: #f5f5f5;
-    font-family: Roboto, "Helvetica Neue", sans-serif;
+    color: #f0f1e9;
+    font-family: "Manrope", "Helvetica Neue", sans-serif;
 }
 
 .select-field__label {
@@ -27,7 +27,7 @@
     position: relative;
     width: 100%;
     border: 1px solid #46504e;
-    color: #f5f5f5;
+    color: #f0f1e9;
     background: #2b3133;
     font: inherit;
     text-align: left;
@@ -90,9 +90,9 @@
     width: 100%;
     border: 0;
     padding: 10px 16px;
-    color: #f5f5f5;
+    color: #f0f1e9;
     background: transparent;
-    font-family: Play, Arial, sans-serif;
+    font-family: "Oswald", Arial, sans-serif;
     font-size: 20px;
     line-height: 1.2;
     text-align: left;
@@ -102,7 +102,7 @@
 .select-field__option:hover,
 .select-field__option:focus-visible,
 .select-field__option--active {
-    color: #f61129;
+    color: #d6ff3f;
     background: transparent;
     outline: 0;
 }

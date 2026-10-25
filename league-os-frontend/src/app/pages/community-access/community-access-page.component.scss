@@ -5,7 +5,8 @@
     max-width: 1180px;
     margin: 0 auto;
     padding: 32px 20px 64px;
-    color: #17212b;
+    color: var(--brand-concrete);
+    font-family: var(--brand-body-font);
 }
 h1 {
     font-size: clamp(28px, 4vw, 42px);
@@ -15,15 +16,15 @@ h2 {
     font-size: 24px;
 }
 a {
-    color: #145b34;
+    color: var(--brand-accent);
     text-underline-offset: 3px;
 }
 .panel {
     margin-top: 24px;
     padding: 24px;
-    background: #fff;
-    border: 1px solid #dce3df;
-    border-radius: 16px;
+    background: var(--brand-surface);
+    border: 1px solid var(--brand-border);
+    border-radius: 6px;
 }
 label {
     display: flex;
@@ -37,12 +38,12 @@ textarea {
     box-sizing: border-box;
     width: 100%;
     min-height: 44px;
-    border: 1px solid #a6b6ac;
-    border-radius: 8px;
+    border: 1px solid #59655d;
+    border-radius: 4px;
     padding: 10px;
     font: inherit;
-    background: #fff;
-    color: #17212b;
+    background: var(--brand-asphalt);
+    color: var(--brand-concrete);
 }
 textarea {
     min-height: 100px;
@@ -69,12 +70,12 @@ form label {
     flex: 1 1 200px;
 }
 button {
-    min-height: 42px;
-    border: 1px solid #21683e;
-    border-radius: 8px;
+    min-height: 44px;
+    border: 1px solid #59655d;
+    border-radius: 4px;
     padding: 8px 14px;
-    background: #f0f8f1;
-    color: #14532d;
+    background: var(--brand-surface-raised);
+    color: var(--brand-concrete);
     font: inherit;
     cursor: pointer;
 }
@@ -83,14 +84,14 @@ button:disabled {
     cursor: default;
 }
 button.danger {
-    color: #992c2c;
-    border-color: #c17a7a;
-    background: #fff5f5;
+    color: #ffc0c0;
+    border-color: #8f4e4e;
+    background: #3a2327;
 }
 button:focus-visible,
 a:focus-visible,
 summary:focus-visible {
-    outline: 3px solid #3b85cc;
+    outline: 3px solid var(--brand-accent);
     outline-offset: 3px;
 }
 .message {
@@ -99,12 +100,12 @@ summary:focus-visible {
     overflow-wrap: anywhere;
 }
 .error {
-    background: #fff0f0;
-    color: #8d1c1c;
+    background: #3a2327;
+    color: #ffc0c0;
 }
 .success {
-    background: #e7f6ec;
-    color: #14532d;
+    background: #243723;
+    color: #d6ff3f;
 }
 .table-scroll {
     overflow-x: auto;
@@ -117,7 +118,7 @@ table {
 th,
 td {
     padding: 14px 10px;
-    border-bottom: 1px solid #e1e7e3;
+    border-bottom: 1px solid var(--brand-border);
     vertical-align: top;
 }
 td button {
@@ -126,7 +127,7 @@ td button {
 }
 small {
     display: block;
-    color: #59665d;
+    color: var(--brand-muted);
     margin-top: 6px;
 }
 nav,
@@ -142,7 +143,7 @@ nav,
 .tournament,
 .audit {
     padding: 12px 0;
-    border-bottom: 1px solid #e1e7e3;
+    border-bottom: 1px solid var(--brand-border);
 }
 .candidate span,
 .tournament span {
