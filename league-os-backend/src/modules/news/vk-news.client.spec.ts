@@ -47,7 +47,7 @@ describe('VkNewsClient', () => {
     expect(fetchMock.mock.calls[0][0]).not.toContain('secret');
   });
 
-  it.each([5, 7, 14, 15, 27, 28, 200])(
+  it.each([5, 7, 14, 15, 27, 28, 100, 200])(
     'sanitizes VK error %s without exposing request_params',
     async (code) => {
       fetchMock.mockResolvedValue(
@@ -72,6 +72,111 @@ describe('VkNewsClient', () => {
       expect(error.uncertain).toBe(false);
     },
   );
+
+  it.each([
+    ['Invalid parameter: guid should be integer', 'guid', 'целое число'],
+    ['Invalid parameter: owner_id is invalid', 'owner_id', 'VK_GROUP_ID'],
+    [
+      'One of the parameters specified was missing or invalid: attachments is invalid',
+      'attachments',
+      'ссылкой на статью',
+    ],
+    ['Invalid attachments', 'attachments', 'ссылкой на статью'],
+    ['Missing parameter: message', 'message', 'отсутствующем или пустом'],
+    ['Missing message', 'message', 'отсутствующем или пустом'],
+    ['Parameter "from_group" must be a string', 'from_group', 'строку'],
+    ['attachments should be a valid URL', 'attachments', 'корректную ссылку'],
+    [
+      'Invalid parameter: access_token is invalid',
+      'access_token',
+      'VK_ACCESS_TOKEN',
+    ],
+    ['Invalid parameter: v is invalid', 'v', 'VK_API_VERSION'],
+  ])(
+    'safely explains parameter error: %s',
+    async (errorMessage, parameter, hint) => {
+      fetchMock.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: {
+              error_code: 100,
+              error_msg: `${errorMessage}; secret-must-not-leak <script>private</script>`,
+              request_params: [
+                { key: 'access_token', value: 'secret-must-not-leak' },
+              ],
+            },
+          }),
+        ),
+      );
+      const error = await client
+        .post('123', 'Текст', 'guid', articleUrl)
+        .catch((e) => e as VkDeliveryError);
+      expect(error).toBeInstanceOf(VkDeliveryError);
+      expect(error.message).toContain('wall.post (код 100)');
+      expect(error.message).toContain(`«${parameter}»`);
+      expect(error.message).toContain(hint);
+      expect(error.message).not.toMatch(/secret|script|private|request_params/);
+      expect(error).toMatchObject({
+        code: 100,
+        retryable: false,
+        uncertain: false,
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each([
+    undefined,
+    null,
+    123,
+    { message: 'Invalid parameter: guid' },
+    'Invalid parameter: unknown_private_parameter secret-must-not-leak',
+    'One of the parameters specified was missing or invalid',
+    'secret-must-not-leak https://private.example/?access_token=secret-must-not-leak',
+    'x'.repeat(4096) + ' Invalid parameter: guid',
+  ])(
+    'keeps a safe fallback for unrecognized parameter details: %p',
+    async (errorMessage) => {
+      fetchMock.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: {
+              error_code: 100,
+              error_msg: errorMessage,
+              request_params: [{ key: 'guid', value: 'secret-must-not-leak' }],
+            },
+          }),
+        ),
+      );
+      await expect(
+        client.post('123', 'Текст', 'guid', articleUrl),
+      ).rejects.toMatchObject({
+        message:
+          'ВК отклонил запрос wall.post (код 100). Отсутствует или некорректен один из параметров. В ответе ВК нет распознаваемого уточнения параметра.',
+        code: 100,
+        retryable: false,
+        uncertain: false,
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('includes the failing read method without attempting a post', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          error: {
+            error_code: 100,
+            error_msg: 'Invalid parameter: v is invalid',
+          },
+        }),
+      ),
+    );
+    await expect(client.check(7)).rejects.toThrow(
+      'groups.getTokenPermissions (код 100)',
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 
   it('allows rate-rejection retry, but treats internal wall errors as uncertain', async () => {
     fetchMock
@@ -176,18 +281,16 @@ describe('VkNewsClient', () => {
     await expect(client.check(7)).resolves.toMatchObject({
       tokenType: 'community',
     });
-    fetchMock
-      .mockReset()
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            response: {
-              mask: 4,
-              permissions: [{ name: 'photos', setting: 4 }],
-            },
-          }),
-        ),
-      );
+    fetchMock.mockReset().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          response: {
+            mask: 4,
+            permissions: [{ name: 'photos', setting: 4 }],
+          },
+        }),
+      ),
+    );
     await expect(client.check(7)).rejects.toThrow('нет разрешения wall');
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
