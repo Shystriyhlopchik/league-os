@@ -236,10 +236,10 @@ export class VkNewsClient {
     if (body.error) {
       const code = body.error.error_code;
       // Never echo upstream request_params/error_msg: they may contain secrets.
-      // For code 100, translate only recognized parameter names and reasons.
+      // Code 100 also retains a bounded, redacted explanation when translation fails.
       const message =
         code === 100
-          ? this.parameterError(method, body.error.error_msg)
+          ? this.parameterError(method, body.error.error_msg, params)
           : code === 27
             ? 'ВК отклонил авторизацию сообщества (код 27). Проверьте тип ключа, его доступ к выбранной группе и поддержку метода. Это не обязательно истёкший токен.'
             : code === 28
@@ -268,7 +268,11 @@ export class VkNewsClient {
     return body.response;
   }
 
-  private parameterError(method: string, upstreamMessage: unknown): string {
+  private parameterError(
+    method: string,
+    upstreamMessage: unknown,
+    params: Record<string, string>,
+  ): string {
     const prefix = `ВК отклонил запрос ${method} (код 100).`;
     const hints = new Map([
       ['owner_id', 'стена сообщества; проверьте VK_GROUP_ID'],
@@ -285,8 +289,7 @@ export class VkNewsClient {
         'ключ доступа; проверьте серверную настройку VK_ACCESS_TOKEN',
       ],
     ]);
-    // Bound parsing work. No arbitrary upstream substring is ever returned,
-    // even when it includes a token, a URL, HTML or request parameter values.
+    // Bound translation work; raw upstream text must never be returned directly.
     const text =
       typeof upstreamMessage === 'string' ? upstreamMessage.slice(0, 4096) : '';
     const patterns = [
@@ -324,6 +327,54 @@ export class VkNewsClient {
         return `${prefix} Параметр «${parameter}» (${hint}). ${reason}`;
       }
     }
-    return `${prefix} Отсутствует или некорректен один из параметров. В ответе ВК нет распознаваемого уточнения параметра.`;
+    const explanation = this.redactedExplanation(upstreamMessage, params);
+    return `${prefix} Отсутствует или некорректен один из параметров. ${
+      explanation
+        ? `Уточнение ВК (очищено): ${explanation}`
+        : 'ВК не передал текстовое уточнение ошибки.'
+    }`;
+  }
+
+  private redactedExplanation(
+    upstreamMessage: unknown,
+    params: Record<string, string>,
+  ): string {
+    if (typeof upstreamMessage !== 'string') return '';
+    const token = this.config.get<string>('VK_ACCESS_TOKEN', '');
+    const values = [
+      token,
+      token.trim(),
+      ...Object.values(params).filter((v) => v.length >= 8),
+    ].filter(Boolean);
+    // Redact before truncating: otherwise a token crossing the length limit
+    // could survive as a partial secret. Include URL/form-encoded representations.
+    const secrets = new Set(
+      values.flatMap((value) => [
+        value,
+        encodeURIComponent(value),
+        new URLSearchParams({ value }).toString().slice('value='.length),
+      ]),
+    );
+    let text = upstreamMessage;
+    for (const value of [...secrets].sort((a, b) => b.length - a.length))
+      text = text.split(value).join('[скрыто]');
+    return (
+      text
+        // Never retain an embedded dump, even if VK puts one inside error_msg.
+        .replace(/\brequest_params\b[\s\S]*/gi, '[служебные данные скрыты]')
+        .replace(
+          /\b(?:access_token|client_secret|authorization|password)\b\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi,
+          '[секрет скрыт]',
+        )
+        .replace(/\bvk1\.[a-z0-9._~+\/-]+/gi, '[ключ скрыт]')
+        .replace(/https?:\/\/[^\s<>"'`]+/gi, '[ссылка скрыта]')
+        .replace(/(["'`])[^"'`\r\n]*\1/g, '[значение скрыто]')
+        .replace(/\b[a-z0-9_+/=-]{32,}\b/gi, '[значение скрыто]')
+        .replace(/<[^>]*>/g, '')
+        .replace(/[\p{Cc}\p{Cf}]/gu, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 500)
+    );
   }
 }
