@@ -191,4 +191,21 @@ describe('NewsPublicationService', () => {
     expect(job!.errorMessage).not.toContain('secret');
     expect(job!.status).toBe('failed');
   });
+
+  it('persists safe parameter diagnostics for the editor without auto-retrying code 100', async () => {
+    const diagnostic =
+      'ВК отклонил запрос wall.post (код 100). Параметр «guid» (идентификатор защиты от повторной публикации). ВК ожидает целое число.';
+    vk.post.mockRejectedValue(
+      new VkDeliveryError(diagnostic, false, false, 100),
+    );
+    await service.enqueue(1, actor);
+    const guid = job!.guid;
+    await service.tick();
+    expect(job!.status).toBe('failed');
+    expect(job!.errorMessage).toBe(diagnostic);
+    expect((await service.status(1, actor))!.errorMessage).toBe(diagnostic);
+    await service.tick();
+    expect(vk.post).toHaveBeenCalledTimes(1);
+    expect(job!.guid).toBe(guid);
+  });
 });

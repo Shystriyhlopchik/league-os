@@ -207,7 +207,10 @@ export class VkNewsClient {
     params: Record<string, string>,
     sendingPost = false,
   ): Promise<T> {
-    let body: { response?: T; error?: { error_code: number } };
+    let body: {
+      response?: T;
+      error?: { error_code: number; error_msg?: unknown };
+    };
     try {
       const response = await fetch(`https://api.vk.com/method/${method}`, {
         method: 'POST',
@@ -232,19 +235,22 @@ export class VkNewsClient {
     }
     if (body.error) {
       const code = body.error.error_code;
-      // Never expose upstream request_params/error_msg: they may contain an access token.
+      // Never echo upstream request_params/error_msg: they may contain secrets.
+      // For code 100, translate only recognized parameter names and reasons.
       const message =
-        code === 27
-          ? 'ВК отклонил авторизацию сообщества (код 27). Проверьте тип ключа, его доступ к выбранной группе и поддержку метода. Это не обязательно истёкший токен.'
-          : code === 28
-            ? 'ВК отклонил авторизацию приложения (код 28). Проверьте тип ключа и доступ приложения к методу.'
-            : code === 5
-              ? 'Ключ доступа ВК недействителен или истёк. Обновите его на сервере.'
-              : [7, 15, 20, 200, 203, 214].includes(code)
-                ? 'ВК запретил публикацию. Проверьте права, тип токена и доступ приложения.'
-                : code === 14
-                  ? 'ВК требует подтверждение CAPTCHA. Автоматическая отправка остановлена.'
-                  : `ВК отклонил запрос (код ${Number.isInteger(code) ? code : 'неизвестен'}).`;
+        code === 100
+          ? this.parameterError(method, body.error.error_msg)
+          : code === 27
+            ? 'ВК отклонил авторизацию сообщества (код 27). Проверьте тип ключа, его доступ к выбранной группе и поддержку метода. Это не обязательно истёкший токен.'
+            : code === 28
+              ? 'ВК отклонил авторизацию приложения (код 28). Проверьте тип ключа и доступ приложения к методу.'
+              : code === 5
+                ? 'Ключ доступа ВК недействителен или истёк. Обновите его на сервере.'
+                : [7, 15, 20, 200, 203, 214].includes(code)
+                  ? 'ВК запретил публикацию. Проверьте права, тип токена и доступ приложения.'
+                  : code === 14
+                    ? 'ВК требует подтверждение CAPTCHA. Автоматическая отправка остановлена.'
+                    : `ВК отклонил запрос (код ${Number.isInteger(code) ? code : 'неизвестен'}).`;
       // Internal errors during wall.post are ambiguous, unlike an explicit rate rejection.
       throw new VkDeliveryError(
         message,
@@ -260,5 +266,64 @@ export class VkNewsClient {
         sendingPost,
       );
     return body.response;
+  }
+
+  private parameterError(method: string, upstreamMessage: unknown): string {
+    const prefix = `ВК отклонил запрос ${method} (код 100).`;
+    const hints = new Map([
+      ['owner_id', 'стена сообщества; проверьте VK_GROUP_ID'],
+      ['from_group', 'публикация от имени сообщества'],
+      ['message', 'текст анонса'],
+      ['attachments', 'вложение со ссылкой на статью'],
+      ['guid', 'идентификатор защиты от повторной публикации'],
+      ['group_id', 'идентификатор сообщества; проверьте VK_GROUP_ID'],
+      ['group_ids', 'список сообществ; проверьте VK_GROUP_ID'],
+      ['fields', 'запрашиваемые поля сообщества'],
+      ['v', 'версия API; проверьте VK_API_VERSION'],
+      [
+        'access_token',
+        'ключ доступа; проверьте серверную настройку VK_ACCESS_TOKEN',
+      ],
+    ]);
+    // Bound parsing work. No arbitrary upstream substring is ever returned,
+    // even when it includes a token, a URL, HTML or request parameter values.
+    const text =
+      typeof upstreamMessage === 'string' ? upstreamMessage.slice(0, 4096) : '';
+    const patterns = [
+      /\b(?:missing\s+)?(?:parameter|param)\s*:?\s*['"`]?([a-z][a-z0-9_]*)\b/gi,
+      /\b(?:invalid|missing|unsupported|unknown)\s+['"`]?([a-z][a-z0-9_]*)\b/gi,
+      /\b([a-z][a-z0-9_]*)['"`]?\s+(?:(?:is|was)\s+)?(?:invalid|missing|required|not\s+(?:valid|supported)|should\s+be|must\s+be|has\s+to\s+be|too\s+long)\b/gi,
+    ];
+    for (const pattern of patterns) {
+      for (const match of text.matchAll(pattern)) {
+        const parameter = match[1].toLowerCase();
+        const hint = hints.get(parameter);
+        if (!hint) continue;
+        const offset = match[0].toLowerCase().lastIndexOf(parameter);
+        const detail = text
+          .slice(match.index! + offset + parameter.length)
+          .split(/[;\r\n]/, 1)[0]
+          .slice(0, 160);
+        const reason =
+          /\b(?:should|must|has to)\s+be\s+(?:an?\s+)?(?:integer|int)\b/i.test(
+            detail,
+          )
+            ? 'ВК ожидает целое число.'
+            : /\b(?:should|must|has to)\s+be\s+(?:an?\s+)?string\b/i.test(
+                  detail,
+                )
+              ? 'ВК ожидает строку.'
+              : /\b(?:should|must|has to)\s+be\s+(?:an?\s+)?(?:valid\s+)?(?:url|link)\b/i.test(
+                    detail,
+                  )
+                ? 'ВК ожидает корректную ссылку.'
+                : /\b(?:required|missing|empty)\b/i.test(detail) ||
+                    /^missing\b/i.test(match[0])
+                  ? 'ВК сообщает об отсутствующем или пустом значении.'
+                  : 'ВК не принял значение или формат параметра.';
+        return `${prefix} Параметр «${parameter}» (${hint}). ${reason}`;
+      }
+    }
+    return `${prefix} Отсутствует или некорректен один из параметров. В ответе ВК нет распознаваемого уточнения параметра.`;
   }
 }
