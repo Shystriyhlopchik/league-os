@@ -27,6 +27,9 @@ export class VideosController {
   @Get() publicList(@Query() query: VideosQuery) {
     return this.service.publicVideos(query);
   }
+  @Get('catalog') publicCatalog(@Query() query: VideosQuery) {
+    return this.service.publicCatalog(query);
+  }
 }
 
 @Controller('communities/:communityId/videos')

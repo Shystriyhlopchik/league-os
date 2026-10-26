@@ -37,7 +37,68 @@
 .header__nav--desktop {
     display: flex;
     align-items: center;
+    gap: 28px;
+}
+.header__group {
+    position: relative;
+}
+.header__group-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #bec6bd;
+    font: 600 13px/1.3 var(--brand-body-font);
+    cursor: pointer;
+}
+.header__group-toggle:hover,
+.header__group-toggle[aria-expanded="true"],
+.header__group--active .header__group-toggle {
+    color: var(--brand-accent);
+}
+.header__chevron {
+    font-size: 20px;
+    transition: transform 0.18s;
+}
+.header__group-toggle[aria-expanded="true"] .header__chevron {
+    transform: rotate(180deg);
+}
+.header__dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: -20px;
+    min-width: 260px;
+    padding: 12px;
+    border: 1px solid var(--brand-border);
+    border-top: 2px solid var(--brand-accent);
+    background: var(--brand-surface);
+    box-shadow: 0 16px 32px #0005;
+}
+.header__dropdown[hidden] {
+    display: none;
+}
+.header__dropdown .header__nav-link {
+    display: flex;
+    justify-content: space-between;
     gap: 20px;
+    padding: 12px;
+}
+.header__dropdown .header__nav-link:hover {
+    background: var(--brand-surface-raised);
+}
+.header__dropdown .header__nav-link--active {
+    box-shadow: inset 2px 0 var(--brand-accent);
+}
+.header__dropdown .header__nav-link span {
+    color: var(--brand-accent);
+}
+.header a:focus-visible,
+.header button:focus-visible {
+    outline: 2px solid var(--brand-accent);
+    outline-offset: 4px;
 }
 .header__nav-link {
     display: inline-flex;
@@ -147,9 +208,35 @@
         );
     }
     .header__nav--mobile .header__nav-link {
-        min-height: 58px;
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        white-space: normal;
+        min-height: 48px;
+        padding: 8px 0;
         border-bottom: 1px solid var(--brand-border);
         font: 500 clamp(22px, 4vw, 30px) / 1.2 var(--brand-display-font);
+    }
+    .header__mobile-group {
+        margin: 24px 0 12px;
+    }
+    .header__mobile-group h2 {
+        margin: 0 0 8px;
+        font: 700 12px/1.4 var(--brand-body-font);
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--brand-accent);
+    }
+    .header__nav--mobile .header__nav-link span {
+        color: var(--brand-muted);
+        font-size: 20px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .header__chevron,
+    .header__menu-line,
+    .header__nav-link {
+        transition: none;
     }
 }
 @media (max-width: 599px) {

@@ -20,20 +20,75 @@
     letter-spacing: 0.12em;
     text-transform: uppercase;
 }
+.videos__heading h1,
 .videos__heading h2 {
     margin: 0;
     font: 600 clamp(34px, 5vw, 64px) / 1.05 var(--brand-display-font);
     text-transform: uppercase;
 }
+.videos__heading h1 span,
 .videos__heading h2 span {
     color: var(--brand-accent);
 }
 .videos__label {
+    text-decoration: none;
     white-space: nowrap;
     color: var(--brand-accent);
     font-size: 12px;
     text-transform: uppercase;
     font-weight: 800;
+}
+.videos__label:hover {
+    text-decoration: underline;
+}
+.videos__label:focus-visible,
+.videos__pagination button:focus-visible {
+    outline: 2px solid var(--brand-accent);
+    outline-offset: 4px;
+}
+.videos--archive {
+    margin: 0 0 64px;
+    padding-top: 0;
+    border-top: 0;
+}
+.videos--archive .videos__heading h1 {
+    font-size: clamp(48px, 7vw, 96px);
+}
+.videos__intro {
+    max-width: 640px;
+    margin: 0 0 32px;
+    color: var(--brand-muted);
+}
+.videos__count {
+    margin: 0 0 20px;
+    color: var(--brand-muted);
+    font-size: 13px;
+}
+.videos__pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 32px;
+    font-size: 13px;
+    color: var(--brand-muted);
+}
+.videos__pagination button {
+    min-height: 44px;
+    padding: 10px 16px;
+    border: 1px solid var(--brand-accent);
+    color: var(--brand-accent);
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
+}
+.videos__pagination button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+.videos__pagination button:not(:disabled):hover {
+    background: var(--brand-accent);
+    color: var(--brand-asphalt);
 }
 .videos__label i {
     font-size: 28px;
@@ -182,9 +237,18 @@
     }
     .videos__heading {
         align-items: start;
+        flex-direction: column;
     }
     .videos__label {
-        display: none;
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+    }
+    .videos--archive {
+        margin-top: 0;
+    }
+    .videos__pagination button {
+        padding: 10px;
     }
     .video-card__title {
         min-height: 0;

@@ -1,19 +1,32 @@
-@if (loading() || failed() || videos().length) {
+@if (archive || loading() || failed() || videos().length) {
     <section
         id="videos"
         class="videos"
+        [class.videos--archive]="archive"
         aria-labelledby="videos-title"
         [attr.aria-busy]="loading()"
     >
         <header class="videos__heading">
             <div>
                 <p>Наш футбол. В кадре.</p>
-                <h2 id="videos-title">Игра со звуком<span>.</span></h2>
+                @if (archive) {
+                    <h1 id="videos-title">Видео лиги<span>.</span></h1>
+                } @else {
+                    <h2 id="videos-title">Игра со звуком<span>.</span></h2>
+                }
             </div>
-            <span class="videos__label"
-                >Видео лиги <i aria-hidden="true">↗</i></span
-            >
+            @if (!archive) {
+                <a class="videos__label" routerLink="/videos"
+                    >Все видео <i aria-hidden="true">↗</i></a
+                >
+            }
         </header>
+        @if (archive) {
+            <p class="videos__intro">
+                Матчи, обзоры и жизнь дворового футбола. Смотрите прямо здесь —
+                без перехода в ВК.
+            </p>
+        }
         @if (loading()) {
             <p class="videos__state" role="status">Загружаем видео…</p>
         } @else if (failed()) {
@@ -21,7 +34,24 @@
                 Не удалось загрузить видео.
                 <button type="button" (click)="load()">Повторить</button>
             </div>
+        } @else if (!videos().length) {
+            <p class="videos__state" role="status">
+                @if (page() > 1) {
+                    На этой странице больше нет видео. Вернитесь на предыдущую.
+                } @else {
+                    Пока нет опубликованных видео. Возвращайтесь после ближайших
+                    игр.
+                }
+            </p>
         } @else {
+            @if (archive) {
+                <p class="videos__count" role="status">
+                    Показано {{ (page() - 1) * limit + 1 }}–{{
+                        (page() - 1) * limit + videos().length
+                    }}
+                    из {{ total() }}
+                </p>
+            }
             <div class="videos__grid">
                 @for (video of videos(); track video.id; let i = $index) {
                     <button
@@ -41,8 +71,10 @@
                                     (error)="imageFailed($event)"
                                 />
                             }
-                            <span class="video-card__number" aria-hidden="true"
-                                >{{ i + 1 < 10 ? "0" : "" }}{{ i + 1 }}</span
+                            <span
+                                class="video-card__number"
+                                aria-hidden="true"
+                                >{{ videoNumber(i) }}</span
                             >
                             <span class="video-card__play" aria-hidden="true"
                                 >▶</span
@@ -60,6 +92,25 @@
                     </button>
                 }
             </div>
+        }
+        @if (archive && (total() > limit || page() > 1)) {
+            <nav class="videos__pagination" aria-label="Страницы видео">
+                <button
+                    type="button"
+                    [disabled]="loading() || page() <= 1"
+                    (click)="load(page() - 1)"
+                >
+                    ← Назад
+                </button>
+                <span>Страница {{ page() }}</span>
+                <button
+                    type="button"
+                    [disabled]="loading() || page() * limit >= total()"
+                    (click)="load(page() + 1)"
+                >
+                    Далее →
+                </button>
+            </nav>
         }
     </section>
 }

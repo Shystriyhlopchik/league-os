@@ -87,6 +87,60 @@ describe('Community videos', () => {
     expect(await service.publicVideos(new VideosQuery())).toEqual([]);
     expect(repo.find).not.toHaveBeenCalled();
   });
+  it('paginates all published videos, not only the home-page selection', async () => {
+    const video = {
+      id: 9,
+      title: 'Обзор',
+      coverUrl: null,
+      embedUrl: 'https://vkvideo.ru/video_ext.php?oid=-1&id=2',
+      publishedAt: null,
+      tournamentId: null,
+      matchId: null,
+    };
+    repo.findAndCount.mockResolvedValue([
+      [
+        {
+          ...video,
+          showOnHome: false,
+          status: 'published',
+          communityId: 2,
+          deletedAt: null,
+        },
+      ],
+      25,
+    ]);
+    const result = await service.publicCatalog(
+      Object.assign(new VideosQuery(), { page: 2, limit: 12 }),
+    );
+    expect(community.findOneBy).toHaveBeenCalledWith({
+      isDefault: true,
+      isActive: true,
+    });
+    expect(repo.findAndCount).toHaveBeenCalledWith({
+      where: { communityId: 2, status: 'published' },
+      order: { publishedAt: 'DESC', id: 'DESC' },
+      skip: 12,
+      take: 12,
+    });
+    expect(result).toEqual({ items: [video], total: 25, page: 2, limit: 12 });
+    expect(access.assertAccess).not.toHaveBeenCalled();
+  });
+  it('keeps the public catalog scoped to an active selected community', async () => {
+    await service.publicCatalog(
+      Object.assign(new VideosQuery(), { communityId: 7 }),
+    );
+    expect(community.findOneBy).toHaveBeenCalledWith({ id: 7, isActive: true });
+  });
+  it('returns an empty catalog when the community is absent or inactive', async () => {
+    community.findOneBy.mockResolvedValue(null);
+    expect(await service.publicCatalog(new VideosQuery())).toEqual({
+      items: [],
+      total: 0,
+      page: 1,
+      limit: 20,
+    });
+    expect(repo.findAndCount).not.toHaveBeenCalled();
+  });
   it.each(['list', 'save', 'archive', 'cover', 'options'])(
     'denies %s without community management access',
     async (action) => {

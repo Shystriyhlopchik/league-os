@@ -12,6 +12,7 @@ describe('Brand header navigation', () => {
         fixture = TestBed.createComponent(HeaderComponent);
         fixture.detectChanges();
     });
+    afterEach(() => fixture.destroy());
     it('uses the supplied vector identity and retains the public routes', () => {
         expect(
             fixture.nativeElement
@@ -26,12 +27,92 @@ describe('Brand header navigation', () => {
             '/ranking',
             '/champion',
             '/news',
+            '/videos',
             '/regulations',
         ]) {
             expect(
                 fixture.nativeElement.querySelector(`a[href="${path}"]`),
             ).not.toBeNull();
         }
+    });
+    it('organizes desktop navigation into three disclosure groups', () => {
+        const toggles = fixture.nativeElement.querySelectorAll(
+            '.header__group-toggle',
+        );
+        expect(
+            Array.from(toggles).map((toggle: any) =>
+                toggle.textContent.trim().replace(/\s*⌄$/, ''),
+            ),
+        ).toEqual(['Турнир', 'Участники', 'Медиа']);
+        const media = fixture.nativeElement.querySelector(
+            '#header-group-media',
+        );
+        expect(media.getAttribute('aria-expanded')).toBe('false');
+        expect(
+            fixture.nativeElement.querySelector('#header-links-media').hidden,
+        ).toBeTrue();
+        media.click();
+        fixture.detectChanges();
+        expect(media.getAttribute('aria-expanded')).toBe('true');
+        expect(
+            fixture.nativeElement.querySelector('#header-links-media').hidden,
+        ).toBeFalse();
+        fixture.nativeElement.querySelector('#header-group-tournament').click();
+        fixture.detectChanges();
+        expect(media.getAttribute('aria-expanded')).toBe('false');
+    });
+    it('closes a dropdown on Escape and returns focus to its toggle', () => {
+        const focus = spyOn(
+            fixture.nativeElement.querySelector('#header-group-media'),
+            'focus',
+        );
+        fixture.componentInstance.toggleGroup('media');
+        fixture.detectChanges();
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        fixture.detectChanges();
+        expect(fixture.componentInstance.openGroup()).toBeNull();
+        expect(focus).toHaveBeenCalled();
+    });
+    it('closes dropdowns after clicking outside or tabbing outside the group', () => {
+        fixture.componentInstance.toggleGroup('media');
+        document.body.click();
+        expect(fixture.componentInstance.openGroup()).toBeNull();
+        fixture.componentInstance.toggleGroup('media');
+        fixture.detectChanges();
+        fixture.nativeElement
+            .querySelector('#header-group-media')
+            .dispatchEvent(
+                new FocusEvent('focusout', {
+                    bubbles: true,
+                    relatedTarget: document.body,
+                }),
+            );
+        expect(fixture.componentInstance.openGroup()).toBeNull();
+    });
+    it('shows all groups expanded on mobile and closes after a link is selected', () => {
+        fixture.componentInstance.toggleMenu();
+        fixture.detectChanges();
+        expect(
+            fixture.nativeElement.querySelectorAll(
+                '#header-menu .header__mobile-group',
+            ).length,
+        ).toBe(3);
+        const video = fixture.nativeElement.querySelector(
+            '#header-menu a[href="/videos"]',
+        );
+        expect(video).not.toBeNull();
+        video.addEventListener('click', (event: MouseEvent) =>
+            event.preventDefault(),
+        );
+        video.dispatchEvent(
+            new MouseEvent('click', {
+                bubbles: true,
+                cancelable: true,
+                ctrlKey: true,
+            }),
+        );
+        fixture.detectChanges();
+        expect(fixture.componentInstance.isMenuOpen()).toBeFalse();
     });
     it('opens and closes mobile navigation and restores body scrolling', () => {
         const before = document.body.style.overflow;
@@ -78,5 +159,10 @@ describe('Brand header navigation', () => {
         );
         expect(link.classList.contains('header__nav-link--active')).toBeTrue();
         expect(link.getAttribute('aria-current')).toBe('page');
+        expect(
+            link
+                .closest('.header__group')
+                .classList.contains('header__group--active'),
+        ).toBeTrue();
     });
 });

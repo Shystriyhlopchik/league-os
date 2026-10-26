@@ -35,6 +35,14 @@ export const routes: Routes = [
             import('./pages/home/home.component').then((m) => m.HomeComponent),
     },
     {
+        path: 'videos',
+        title: 'Видео — Дворовая лига',
+        loadComponent: () =>
+            import('./pages/videos-page/videos-page.component').then(
+                (m) => m.VideosPageComponent,
+            ),
+    },
+    {
         path: 'news',
         loadComponent: () =>
             import('./pages/news-page/news-page.component').then(

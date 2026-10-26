@@ -42,25 +42,52 @@ export class VideosService {
       order: { sortOrder: 'ASC', publishedAt: 'DESC', id: 'DESC' },
       take: 8,
     });
-    return rows.map(
-      ({
-        id,
-        title,
-        coverUrl,
-        embedUrl,
-        publishedAt,
-        tournamentId,
-        matchId,
-      }) => ({
-        id,
-        title,
-        coverUrl,
-        embedUrl,
-        publishedAt,
-        tournamentId,
-        matchId,
-      }),
-    );
+    return rows.map((video) => this.toPublic(video));
+  }
+
+  async publicCatalog(query: VideosQuery) {
+    const { page, limit } = query;
+    const community = await this.db.getRepository(CommunityEntity).findOneBy({
+      ...(query.communityId ? { id: query.communityId } : { isDefault: true }),
+      isActive: true,
+    });
+    if (!community) return { items: [], total: 0, page, limit };
+    // The archive includes published videos outside the eight home-page slots.
+    // TypeORM's default soft-delete scope also excludes archived records.
+    const [rows, total] = await this.db
+      .getRepository(VideoEntity)
+      .findAndCount({
+        where: { communityId: community.id, status: 'published' },
+        order: { publishedAt: 'DESC', id: 'DESC' },
+        skip: (page - 1) * limit,
+        take: limit,
+      });
+    return {
+      items: rows.map((video) => this.toPublic(video)),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  private toPublic({
+    id,
+    title,
+    coverUrl,
+    embedUrl,
+    publishedAt,
+    tournamentId,
+    matchId,
+  }: VideoEntity) {
+    return {
+      id,
+      title,
+      coverUrl,
+      embedUrl,
+      publishedAt,
+      tournamentId,
+      matchId,
+    };
   }
 
   async list(communityId: number, query: VideosQuery, actor: CommunityActor) {

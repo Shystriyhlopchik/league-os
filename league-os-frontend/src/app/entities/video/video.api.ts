@@ -27,12 +27,15 @@ export interface VideoPayload {
     tournamentId: number | null;
     matchId: number | null;
 }
-export interface VideoPage {
-    items: Video[];
+export interface PublicVideoPage {
+    items: PublicVideo[];
     total: number;
-    homeCount: number;
     page: number;
     limit: number;
+}
+export interface VideoPage extends PublicVideoPage {
+    items: Video[];
+    homeCount: number;
 }
 export interface VideoOptions {
     tournaments: { id: number; name: string }[];
@@ -45,6 +48,11 @@ export class VideoApi {
     private readonly base = environment.apiUrl;
     featured() {
         return this.http.get<PublicVideo[]>(`${this.base}/videos`);
+    }
+    catalog(page = 1) {
+        return this.http.get<PublicVideoPage>(`${this.base}/videos/catalog`, {
+            params: { page, limit: 12 },
+        });
     }
     list(communityId: number, page = 1) {
         return this.http.get<VideoPage>(this.admin(communityId), {
