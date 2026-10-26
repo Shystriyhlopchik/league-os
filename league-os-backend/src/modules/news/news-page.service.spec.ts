@@ -1,4 +1,8 @@
-import { newsPageHtml } from './news-page.service';
+import { NewsPageService, newsPageHtml } from './news-page.service';
+import { NewsService } from './news.service';
+import { ConfigService } from '@nestjs/config';
+import { NotFoundException } from '@nestjs/common';
+import { VkNewsClient } from './vk-news.client';
 
 describe('newsPageHtml', () => {
   const template =
@@ -44,5 +48,72 @@ describe('newsPageHtml', () => {
     );
     expect(html).toContain('$&amp; $` $&#39;');
     expect(html.match(/<app-root>/g)).toHaveLength(1);
+  });
+});
+
+describe('News link preview page', () => {
+  let fetchMock: jest.SpyInstance;
+  let news: { findForLinkPreview: jest.Mock };
+  let page: NewsPageService;
+  beforeEach(() => {
+    fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(
+        new Response(
+          '<html><head><title>Site</title></head><body><app-root></app-root></body></html>',
+        ),
+      );
+    news = {
+      findForLinkPreview: jest.fn(async () => ({
+        title: 'Заголовок ВК',
+          pageTitle: 'Заголовок статьи',
+        slug: 'results',
+        excerpt: 'Анонс ВК',
+        content: 'Статья',
+        coverUrl: '/uploads/news/preview.png',
+      })),
+    };
+    page = new NewsPageService(
+      news as unknown as NewsService,
+      new ConfigService({
+        NEWS_HTML_TEMPLATE_URL: 'http://frontend/index.html',
+      }),
+      {
+        articleOrigin: () => 'https://liga-dvora.ru',
+      } as unknown as VkNewsClient,
+    );
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it('renders the uploaded social image as an absolute og:image without calling VK photos APIs', async () => {
+    const html = await page.page('results');
+    expect(html).toContain(
+      'property="og:image" content="https://liga-dvora.ru/uploads/news/preview.png"',
+    );
+    expect(html).toContain('property="og:title" content="Заголовок ВК"');
+    expect(html).toContain('<title>Заголовок статьи — Дворовая лига</title>');
+    expect(html).toContain('property="og:description" content="Анонс ВК"');
+    expect(html).toContain(
+      'property="og:url" content="https://liga-dvora.ru/news/results"',
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('http://frontend/index.html');
+  });
+  it('uses the existing brand photo if neither a social image nor an article cover exists', async () => {
+    news.findForLinkPreview.mockResolvedValue({
+      title: 'Новость',
+      slug: 'results',
+      content: 'Текст',
+    });
+    expect(await page.page('results')).toContain(
+      'https://liga-dvora.ru/brand/photos/team-emotion.jpg',
+    );
+  });
+  it('never renders metadata for a draft or archived article', async () => {
+    news.findForLinkPreview.mockRejectedValue(
+      new NotFoundException('Новость не найдена'),
+    );
+    await expect(page.page('results')).rejects.toThrow('Новость не найдена');
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

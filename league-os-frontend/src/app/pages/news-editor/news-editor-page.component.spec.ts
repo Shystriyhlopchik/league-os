@@ -43,6 +43,7 @@ describe('NewsEditorPageComponent', () => {
             'vkStatus',
             'sendVk',
             'retryVk',
+            'checkVkConnection',
         ]);
         api.communities.and.returnValue(
             of([
@@ -205,5 +206,34 @@ describe('NewsEditorPageComponent', () => {
         expect(fixture.nativeElement.textContent).not.toContain(
             'Отправить анонс в ВК',
         );
+    });
+
+    it('explains that an image belongs to the link card, not a separate VK photo', () => {
+        ready();
+        fixture.detectChanges();
+        expect(fixture.nativeElement.textContent).toContain(
+            'Изображение карточки ссылки ВК',
+        );
+        expect(fixture.nativeElement.textContent).toContain(
+            'Отдельная фотография к посту не прикрепляется',
+        );
+    });
+
+    it('shows a community-key preflight result without creating a post', () => {
+        const page = ready();
+        api.checkVkConnection.and.returnValue(
+            of({
+                configured: true,
+                groupId: '123',
+                groupUrl: 'https://vk.com/club123',
+                tokenType: 'community',
+                publicationVerified: false,
+                message: 'Ключ сообщества принят. Пост не создан.',
+            }),
+        );
+        page.checkConnection();
+        expect(page.notice()).toContain('Пост не создан');
+        expect(api.sendVk).not.toHaveBeenCalled();
+        expect(page.vkConnection()?.publicationVerified).toBeFalse();
     });
 });

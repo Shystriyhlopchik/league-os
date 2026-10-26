@@ -10,7 +10,7 @@ describe('NewsPublicationService', () => {
   let job: NewsPublicationEntity | null;
   let service: NewsPublicationService;
   let vk: {
-    [K in 'requireConnection' | 'image' | 'uploadPhoto' | 'post']: jest.Mock;
+    [K in 'requireConnection' | 'validatePreviewImage' | 'post']: jest.Mock;
   };
   let access: { article: jest.Mock };
   const actor = { id: 12 };
@@ -31,8 +31,7 @@ describe('NewsPublicationService', () => {
         groupId: '123',
         articleOrigin: 'https://liga-dvora.ru',
       })),
-      image: jest.fn(async () => Buffer.from('image')),
-      uploadPhoto: jest.fn(async () => 'photo-123_1'),
+      validatePreviewImage: jest.fn(async () => undefined),
       post: jest.fn(async () => 'https://vk.com/wall-123_99'),
     };
     const newsRepo = {
@@ -120,18 +119,22 @@ describe('NewsPublicationService', () => {
     expect(vk.post).toHaveBeenCalledTimes(1);
   });
 
-  it('uploads an optional photo before wall.post', async () => {
+  it('validates the local preview image but posts only the article link, never a photo', async () => {
     article.vkImageUrl =
       '/uploads/news/00000000-0000-0000-0000-000000000000.jpg';
     await service.enqueue(1, actor);
+    // Older queued jobs may still contain an image path. Delivery must ignore it,
+    // even if the local preview image later becomes unavailable.
+    vk.validatePreviewImage.mockRejectedValue(new Error('preview missing'));
     await service.tick();
-    expect(vk.uploadPhoto).toHaveBeenCalledWith('123', article.vkImageUrl);
+    expect(vk.validatePreviewImage).toHaveBeenCalledWith(article.vkImageUrl);
     expect(vk.post).toHaveBeenCalledWith(
       '123',
       expect.any(String),
       expect.any(String),
-      'photo-123_1',
+      job!.articleUrl,
     );
+    expect(vk.validatePreviewImage).toHaveBeenCalledTimes(1);
   });
 
   it('does not send a job whose article has been unpublished', async () => {
@@ -182,9 +185,7 @@ describe('NewsPublicationService', () => {
   });
 
   it('does not leak unexpected upstream errors into the persisted status', async () => {
-    vk.uploadPhoto.mockRejectedValue(new Error('secret-token'));
-    article.vkImageUrl =
-      '/uploads/news/00000000-0000-0000-0000-000000000000.jpg';
+    vk.post.mockRejectedValue(new Error('secret-token'));
     await service.enqueue(1, actor);
     await service.tick();
     expect(job!.errorMessage).not.toContain('secret');

@@ -8,6 +8,7 @@ export class VkDeliveryError extends Error {
     message: string,
     readonly retryable = false,
     readonly uncertain = false,
+    readonly code?: number,
   ) {
     super(message);
   }
@@ -67,6 +68,33 @@ export class VkNewsClient {
 
   async check(communityId: number) {
     const { groupId } = this.requireConnection(communityId);
+    let tokenType: 'community' | 'user' = 'community';
+    try {
+      const permissions = await this.call<{
+        mask: number;
+        permissions: { name: string; setting: number }[];
+      }>('groups.getTokenPermissions', {});
+      // photos/messages permissions are not needed for a text + link post.
+      if (
+        !permissions ||
+        !Number.isSafeInteger(permissions.mask) ||
+        permissions.mask < 0 ||
+        permissions.mask > 0xffffffff ||
+        (permissions.mask & 8192) === 0
+      )
+        throw new VkDeliveryError(
+          'У ключа сообщества нет разрешения wall. Выдайте ключу доступ к стене.',
+        );
+    } catch (error) {
+      // Preserve support for existing user tokens, but do not treat network errors,
+      // expired keys or a missing wall permission as successful authorization.
+      if (
+        !(error instanceof VkDeliveryError) ||
+        ![27, 28].includes(error.code ?? 0)
+      )
+        throw error;
+      tokenType = 'user';
+    }
     const result = await this.call<
       | {
           groups: {
@@ -77,26 +105,40 @@ export class VkNewsClient {
           }[];
         }
       | { id: number; name: string; is_admin?: number; admin_level?: number }[]
-    >('groups.getById', { group_ids: groupId, fields: 'is_admin,admin_level' });
-    const group = (Array.isArray(result) ? result : result.groups)?.find(
+    >('groups.getById', {
+      group_ids: groupId,
+      ...(tokenType === 'user' ? { fields: 'is_admin,admin_level' } : {}),
+    });
+    const group = (Array.isArray(result) ? result : result?.groups)?.find(
       (g) => String(g.id) === groupId,
     );
-    if (!group || !group.is_admin || (group.admin_level ?? 0) < 2)
+    if (!group)
+      throw new VkDeliveryError(
+        'Сообщество ВК не найдено. Проверьте VK_GROUP_ID.',
+      );
+    if (
+      tokenType === 'user' &&
+      (!group.is_admin || (group.admin_level ?? 0) < 2)
+    )
       throw new VkDeliveryError(
         'Токен должен принадлежать администратору или редактору выбранного сообщества ВК.',
       );
     return {
       ...this.connection(communityId),
       name: group.name,
+      tokenType,
+      publicationVerified: false,
       message:
-        'Сообщество доступно. Возможность публикации окончательно проверяется при отправке анонса.',
+        tokenType === 'community'
+          ? 'Ключ сообщества принят, разрешение wall есть, выбранная группа найдена. Отправится текст со ссылкой; принадлежность ключа выбранной группе и возможность публикации окончательно проверяются при отправке. Пост не создан.'
+          : 'Права пользователя подтверждены. Отправится текст со ссылкой. Возможность публикации окончательно проверяется при отправке. Пост не создан.',
     };
   }
 
-  async image(path: string): Promise<Buffer> {
+  async validatePreviewImage(path: string): Promise<void> {
     if (!/^\/uploads\/news\/[0-9a-f-]{36}\.(jpg|png)$/.test(path))
       throw new VkDeliveryError(
-        'Изображение ВК должно быть загружено через редактор (JPEG или PNG).',
+        'Изображение карточки ссылки должно быть загружено через редактор (JPEG или PNG).',
       );
     try {
       const directory = await realpath(join(process.cwd(), 'uploads', 'news'));
@@ -112,7 +154,6 @@ export class VkNewsClient {
         .subarray(0, 8)
         .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
       if ((!jpeg && !png) || buffer.length > 5 * 1024 * 1024) throw new Error();
-      return buffer;
     } catch {
       throw new VkDeliveryError(
         'Изображение не найдено или повреждено. Загрузите JPEG или PNG до 5 МБ.',
@@ -120,65 +161,27 @@ export class VkNewsClient {
     }
   }
 
-  async uploadPhoto(groupId: string, path: string) {
-    const bytes = await this.image(path);
-    const server = await this.call<{ upload_url: string }>(
-      'photos.getWallUploadServer',
-      { group_id: groupId },
-    );
-    const url = new URL(server.upload_url);
-    // Never send our files or credentials to arbitrary URLs supplied by an upstream response.
-    if (
-      url.protocol !== 'https:' ||
-      url.username ||
-      url.password ||
-      (url.port && url.port !== '443') ||
-      !['vk.com', 'vk.ru', 'userapi.com'].some(
-        (d) => url.hostname === d || url.hostname.endsWith(`.${d}`),
-      )
-    )
-      throw new VkDeliveryError('ВК вернул недопустимый сервер загрузки.');
-    const form = new FormData();
-    form.append(
-      'photo',
-      new Blob([new Uint8Array(bytes)], {
-        type: path.endsWith('.png') ? 'image/png' : 'image/jpeg',
-      }),
-      path.split('/').pop(),
-    );
-    let upload: { server: number; photo: string; hash: string };
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        body: form,
-        redirect: 'error',
-        signal: AbortSignal.timeout(20000),
-      });
-      if (!response.ok) throw new Error();
-      upload = (await response.json()) as typeof upload;
-      if (!upload.server || !upload.photo || !upload.hash) throw new Error();
-    } catch {
-      throw new VkDeliveryError('Не удалось загрузить изображение в ВК.', true);
-    }
-    const saved = await this.call<
-      { owner_id: number; id: number; access_key?: string }[]
-    >('photos.saveWallPhoto', {
-      group_id: groupId,
-      server: String(upload.server),
-      photo: upload.photo,
-      hash: upload.hash,
-    });
-    if (!saved[0]?.id || !saved[0]?.owner_id)
-      throw new VkDeliveryError('ВК не сохранил изображение.');
-    return `photo${saved[0].owner_id}_${saved[0].id}${saved[0].access_key ? `_${saved[0].access_key}` : ''}`;
-  }
-
   async post(
     groupId: string,
     message: string,
     guid: string,
-    attachment?: string,
+    articleUrl: string,
   ) {
+    try {
+      const url = new URL(articleUrl);
+      if (
+        url.origin !== this.articleOrigin() ||
+        url.username ||
+        url.password ||
+        url.hash ||
+        !/^\/news\/[^/]+$/.test(url.pathname)
+      )
+        throw new Error();
+    } catch {
+      throw new VkDeliveryError(
+        'Некорректная ссылка на статью. Проверьте FRONTEND_URL и адрес новости.',
+      );
+    }
     const result = await this.call<{ post_id: number }>(
       'wall.post',
       {
@@ -186,7 +189,7 @@ export class VkNewsClient {
         from_group: '1',
         message,
         guid,
-        ...(attachment ? { attachments: attachment } : {}),
+        attachments: articleUrl,
       },
       true,
     );
@@ -230,18 +233,24 @@ export class VkNewsClient {
     if (body.error) {
       const code = body.error.error_code;
       // Never expose upstream request_params/error_msg: they may contain an access token.
-      const message = [5, 27, 28].includes(code)
-        ? 'Ключ доступа ВК недействителен или истёк. Обновите его на сервере.'
-        : [7, 15, 20, 200, 203, 214].includes(code)
-          ? 'ВК запретил публикацию. Проверьте права, тип токена и доступ приложения.'
-          : code === 14
-            ? 'ВК требует подтверждение CAPTCHA. Автоматическая отправка остановлена.'
-            : `ВК отклонил запрос (код ${Number.isInteger(code) ? code : 'неизвестен'}).`;
+      const message =
+        code === 27
+          ? 'ВК отклонил авторизацию сообщества (код 27). Проверьте тип ключа, его доступ к выбранной группе и поддержку метода. Это не обязательно истёкший токен.'
+          : code === 28
+            ? 'ВК отклонил авторизацию приложения (код 28). Проверьте тип ключа и доступ приложения к методу.'
+            : code === 5
+              ? 'Ключ доступа ВК недействителен или истёк. Обновите его на сервере.'
+              : [7, 15, 20, 200, 203, 214].includes(code)
+                ? 'ВК запретил публикацию. Проверьте права, тип токена и доступ приложения.'
+                : code === 14
+                  ? 'ВК требует подтверждение CAPTCHA. Автоматическая отправка остановлена.'
+                  : `ВК отклонил запрос (код ${Number.isInteger(code) ? code : 'неизвестен'}).`;
       // Internal errors during wall.post are ambiguous, unlike an explicit rate rejection.
       throw new VkDeliveryError(
         message,
         code === 6 || (!sendingPost && code === 10),
         sendingPost && code === 10,
+        Number.isInteger(code) ? code : undefined,
       );
     }
     if (body.response === undefined)

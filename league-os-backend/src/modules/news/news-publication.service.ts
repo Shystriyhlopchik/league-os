@@ -47,12 +47,10 @@ export class NewsPublicationService implements OnModuleInit, OnModuleDestroy {
   async enqueue(newsId: number, actor: CommunityActor) {
     await this.access.article(newsId, actor);
     return this.db.transaction(async (manager) => {
-      const news = await manager
-        .getRepository(NewsEntity)
-        .findOneOrFail({
-          where: { id: newsId },
-          lock: { mode: 'pessimistic_write' },
-        });
+      const news = await manager.getRepository(NewsEntity).findOneOrFail({
+        where: { id: newsId },
+        lock: { mode: 'pessimistic_write' },
+      });
       const repo = manager.getRepository(NewsPublicationEntity);
       const existing = await repo.findOneBy({ newsId, provider: 'vk' });
       if (existing) return existing; // One announcement per article, including double clicks/restarts.
@@ -79,7 +77,7 @@ export class NewsPublicationService implements OnModuleInit, OnModuleDestroy {
         );
       if (news.vkImageUrl) {
         try {
-          await this.vk.image(news.vkImageUrl);
+          await this.vk.validatePreviewImage(news.vkImageUrl);
         } catch {
           throw new BadRequestException(
             'Изображение ВК недоступно. Загрузите JPEG или PNG заново.',
@@ -109,12 +107,10 @@ export class NewsPublicationService implements OnModuleInit, OnModuleDestroy {
   async retry(newsId: number, actor: CommunityActor, confirmedAbsent: boolean) {
     await this.access.article(newsId, actor);
     return this.db.transaction(async (manager) => {
-      const news = await manager
-        .getRepository(NewsEntity)
-        .findOneOrFail({
-          where: { id: newsId },
-          lock: { mode: 'pessimistic_write' },
-        });
+      const news = await manager.getRepository(NewsEntity).findOneOrFail({
+        where: { id: newsId },
+        lock: { mode: 'pessimistic_write' },
+      });
       const repo = manager.getRepository(NewsPublicationEntity);
       const job = await repo.findOneBy({ newsId, provider: 'vk' });
       if (!job) throw new ConflictException('Анонс ещё не отправлялся');
@@ -172,25 +168,20 @@ export class NewsPublicationService implements OnModuleInit, OnModuleDestroy {
     let postUrl: string;
     try {
       this.vk.requireConnection(job.communityId, job.groupId);
-      const news = await this.db
-        .getRepository(NewsEntity)
-        .findOneBy({
-          id: job.newsId,
-          communityId: job.communityId,
-          status: 'published',
-        });
+      const news = await this.db.getRepository(NewsEntity).findOneBy({
+        id: job.newsId,
+        communityId: job.communityId,
+        status: 'published',
+      });
       if (!news)
         throw new VkDeliveryError(
           'Новость снята с публикации или удалена. Анонс не отправлен.',
         );
-      const attachment = job.imageUrl
-        ? await this.vk.uploadPhoto(job.groupId, job.imageUrl)
-        : undefined;
       postUrl = await this.vk.post(
         job.groupId,
         job.message,
         job.guid,
-        attachment,
+        job.articleUrl,
       );
     } catch (error) {
       const known = error instanceof VkDeliveryError;

@@ -7,6 +7,7 @@ export function newsPageHtml(
   template: string,
   news: {
     title: string;
+    pageTitle?: string;
     slug: string;
     excerpt?: string | null;
     content: string;
@@ -31,7 +32,7 @@ export function newsPageHtml(
   const canonical = escape(
     new URL(`/news/${encodeURIComponent(news.slug)}`, origin).href,
   );
-  const head = `<title>${title} — Дворовая лига</title>
+  const head = `<title>${escape(news.pageTitle || news.title)} — Дворовая лига</title>
     <meta name="description" content="${description}">
     <meta property="og:type" content="article">
     <meta property="og:title" content="${title}">
@@ -60,7 +61,7 @@ export class NewsPageService {
 
   async page(slug: string) {
     // Fetch the public article first: drafts/archived articles must return 404, including to bots.
-    const article = await this.news.findBySlug(slug);
+    const article = await this.news.findForLinkPreview(slug);
     const origin = this.vk.articleOrigin();
     if (!this.template || this.template.expires < Date.now()) {
       try {
