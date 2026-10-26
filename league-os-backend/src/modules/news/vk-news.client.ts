@@ -1,7 +1,5 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { readFile, realpath } from 'node:fs/promises';
-import { join, sep } from 'node:path';
 
 export class VkDeliveryError extends Error {
   constructor(
@@ -133,32 +131,6 @@ export class VkNewsClient {
           ? 'Ключ сообщества принят, разрешение wall есть, выбранная группа найдена. Отправится текст со ссылкой; принадлежность ключа выбранной группе и возможность публикации окончательно проверяются при отправке. Пост не создан.'
           : 'Права пользователя подтверждены. Отправится текст со ссылкой. Возможность публикации окончательно проверяется при отправке. Пост не создан.',
     };
-  }
-
-  async validatePreviewImage(path: string): Promise<void> {
-    if (!/^\/uploads\/news\/[0-9a-f-]{36}\.(jpg|png)$/.test(path))
-      throw new VkDeliveryError(
-        'Изображение карточки ссылки должно быть загружено через редактор (JPEG или PNG).',
-      );
-    try {
-      const directory = await realpath(join(process.cwd(), 'uploads', 'news'));
-      const file = await realpath(join(process.cwd(), path.slice(1)));
-      if (!file.startsWith(directory + sep)) throw new Error();
-      const buffer = await readFile(file);
-      const jpeg =
-        buffer.length >= 3 &&
-        buffer[0] === 255 &&
-        buffer[1] === 216 &&
-        buffer[2] === 255;
-      const png = buffer
-        .subarray(0, 8)
-        .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
-      if ((!jpeg && !png) || buffer.length > 5 * 1024 * 1024) throw new Error();
-    } catch {
-      throw new VkDeliveryError(
-        'Изображение не найдено или повреждено. Загрузите JPEG или PNG до 5 МБ.',
-      );
-    }
   }
 
   async post(

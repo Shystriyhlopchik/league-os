@@ -124,9 +124,7 @@
                     </div>
                     <p class="hint">
                         Полная статья остаётся на сайте. В ВК отправятся только
-                        текст анонса со ссылкой на статью, без вложений.
-                        Изображение хранится на сайте в метаданных страницы.
-                        Картинка-превью в посте ВК не гарантируется.
+                        текст анонса со ссылкой на статью, без изображений.
                     </p>
                     @if (vkConnection() && !vkConnection()?.configured) {
                         <p class="message" role="status">
@@ -163,36 +161,6 @@
                             ссылка добавится автоматически</em
                         >
                     </label>
-                    <label
-                        ><span>Изображение для метаданных ссылки</span
-                        ><input
-                            type="file"
-                            accept="image/jpeg,image/png"
-                            (change)="selectVkImage($event)"
-                        /><em
-                            >JPEG или PNG, до 5 МБ. Если не загружать —
-                            используется обложка статьи, а при её отсутствии —
-                            фото лиги. К посту ВК изображение не
-                            прикрепляется.</em
-                        ></label
-                    >
-                    <button
-                        type="button"
-                        (click)="useCoverForVk()"
-                        [disabled]="!coverPreview()"
-                    >
-                        Использовать обложку статьи
-                    </button>
-                    @if (vkImagePreview(); as image) {
-                        <div class="cover-preview">
-                            <img
-                                [src]="image"
-                                alt="Изображение для метаданных ссылки"
-                            /><button type="button" (click)="removeVkImage()">
-                                Удалить изображение карточки
-                            </button>
-                        </div>
-                    }
                     <details class="vk-preview" open>
                         <summary>Предпросмотр анонса</summary>
                         <strong>{{
@@ -207,11 +175,6 @@
                             }}
                         </p>
                         <span>Читать полностью: ссылка на статью на сайте</span>
-                        <small
-                            >В пост отправятся текст и кликабельная ссылка.
-                            Фотография и карточка ссылки не прикрепляются;
-                            картинка-превью в ВК не гарантируется.</small
-                        >
                     </details>
                     @if (vkPublication(); as publication) {
                         <div class="vk-status" aria-live="polite">
@@ -258,7 +221,6 @@
                                 Изменения статьи не меняют уже отправленный
                                 анонс. Повторная попытка использует
                                 первоначальную версию текста и ссылки.
-                                Изображения и карточки ссылки не прикрепляются.
                             </p>
                             @if (
                                 publication.status === "failed" ||

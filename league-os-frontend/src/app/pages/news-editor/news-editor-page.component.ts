@@ -38,10 +38,6 @@ export class NewsEditorPageComponent implements OnInit, OnDestroy {
     readonly vkPublication = signal<NewsPublication | null>(null);
     readonly vkBusy = signal(false);
     readonly vkError = signal('');
-    readonly vkImagePreview = signal<string | null>(null);
-    private vkImageUrl: string | null = null;
-    private selectedVkFile: File | null = null;
-    private vkLocalUrl: string | null = null;
     private poll?: ReturnType<typeof setInterval>;
     private readonly subscriptions = new Subscription();
     private selectedCoverFile: File | null = null;
@@ -115,8 +111,6 @@ export class NewsEditorPageComponent implements OnInit, OnDestroy {
                     this.slugLocked.set(
                         news.slugLocked ?? news.status === 'published',
                     );
-                    this.vkImageUrl = news.vkImageUrl ?? null;
-                    this.vkImagePreview.set(this.vkImageUrl);
                     this.form.patchValue({
                         title: news.title,
                         slug: news.slug,
@@ -177,30 +171,10 @@ export class NewsEditorPageComponent implements OnInit, OnDestroy {
             : of(this.coverUrl);
         coverRequest
             .pipe(
-                switchMap((coverUrl) =>
-                    this.selectedVkFile
-                        ? this.api
-                              .uploadCover(
-                                  this.selectedVkFile,
-                                  this.communityId(),
-                              )
-                              .pipe(
-                                  tap((result) => {
-                                      this.vkImageUrl = result.url;
-                                      this.selectedVkFile = null;
-                                  }),
-                                  map((result) => ({
-                                      coverUrl,
-                                      vkImageUrl: result.url,
-                                  })),
-                              )
-                        : of({ coverUrl, vkImageUrl: this.vkImageUrl }),
-                ),
-                switchMap(({ coverUrl, vkImageUrl }) => {
+                switchMap((coverUrl) => {
                     const payload = {
                         ...basePayload,
                         coverUrl: coverUrl ?? '',
-                        vkImageUrl: vkImageUrl ?? '',
                     };
                     const newsId = this.newsId();
                     return newsId
@@ -272,7 +246,6 @@ export class NewsEditorPageComponent implements OnInit, OnDestroy {
 
     ngOnDestroy(): void {
         this.revokeLocalPreview();
-        if (this.vkLocalUrl) URL.revokeObjectURL(this.vkLocalUrl);
         if (this.poll) clearInterval(this.poll);
         this.subscriptions.unsubscribe();
     }
@@ -340,63 +313,6 @@ export class NewsEditorPageComponent implements OnInit, OnDestroy {
         this.form.markAsDirty();
     }
 
-    selectVkImage(event: Event): void {
-        const input = event.target as HTMLInputElement;
-        const file = input.files?.[0];
-        if (!file) return;
-        if (
-            !['image/jpeg', 'image/png'].includes(file.type) ||
-            file.size > 5 * 1024 * 1024
-        ) {
-            this.vkError.set('Выберите JPEG или PNG размером до 5 МБ');
-            input.value = '';
-            return;
-        }
-        if (this.vkLocalUrl) URL.revokeObjectURL(this.vkLocalUrl);
-        this.vkLocalUrl = URL.createObjectURL(file);
-        this.selectedVkFile = file;
-        this.vkImagePreview.set(this.vkLocalUrl);
-        this.form.markAsDirty();
-        this.vkError.set('');
-    }
-
-    removeVkImage(): void {
-        if (this.vkLocalUrl) URL.revokeObjectURL(this.vkLocalUrl);
-        this.vkLocalUrl = null;
-        this.selectedVkFile = null;
-        this.vkImageUrl = null;
-        this.vkImagePreview.set(null);
-        this.form.markAsDirty();
-    }
-
-    useCoverForVk(): void {
-        if (this.selectedCoverFile) {
-            if (
-                !['image/jpeg', 'image/png'].includes(
-                    this.selectedCoverFile.type,
-                )
-            ) {
-                this.vkError.set(
-                    'Для ВК нужна обложка JPEG или PNG. WebP можно оставить на сайте.',
-                );
-                return;
-            }
-            if (this.vkLocalUrl) URL.revokeObjectURL(this.vkLocalUrl);
-            this.vkLocalUrl = URL.createObjectURL(this.selectedCoverFile);
-            this.selectedVkFile = this.selectedCoverFile;
-            this.vkImagePreview.set(this.vkLocalUrl);
-        } else if (this.coverUrl && /\.(jpg|png)$/.test(this.coverUrl)) {
-            this.removeVkImage();
-            this.vkImageUrl = this.coverUrl;
-            this.vkImagePreview.set(this.coverUrl);
-        } else {
-            this.vkError.set('Сначала загрузите обложку JPEG или PNG.');
-            return;
-        }
-        this.form.markAsDirty();
-        this.vkError.set('');
-    }
-
     refreshVk(): void {
         const id = this.newsId();
         if (!id) return;
@@ -429,7 +345,7 @@ export class NewsEditorPageComponent implements OnInit, OnDestroy {
                 uncertain
                     ? 'Проверьте стену сообщества ВК. Подтверждаете, что пост НЕ появился? Повтор может создать дубль, если пост уже существует.'
                     : retry
-                      ? 'Повторить отправку ранее сохранённого текста и ссылки? Карточку ссылки ВК формирует по метаданным сайта.'
+                      ? 'Повторить отправку ранее сохранённого текста и ссылки?'
                       : 'Опубликовать анонс в подключённом сообществе ВК?',
             )
         )

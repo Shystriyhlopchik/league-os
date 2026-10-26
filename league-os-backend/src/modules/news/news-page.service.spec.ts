@@ -66,7 +66,7 @@ describe('News link preview page', () => {
     news = {
       findForLinkPreview: jest.fn(async () => ({
         title: 'Заголовок ВК',
-          pageTitle: 'Заголовок статьи',
+        pageTitle: 'Заголовок статьи',
         slug: 'results',
         excerpt: 'Анонс ВК',
         content: 'Статья',
@@ -85,7 +85,7 @@ describe('News link preview page', () => {
   });
   afterEach(() => jest.restoreAllMocks());
 
-  it('renders the uploaded social image as an absolute og:image without calling VK photos APIs', async () => {
+  it('renders the article cover as an absolute og:image without calling VK photos APIs', async () => {
     const html = await page.page('results');
     expect(html).toContain(
       'property="og:image" content="https://liga-dvora.ru/uploads/news/preview.png"',
@@ -99,7 +99,7 @@ describe('News link preview page', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0][0]).toBe('http://frontend/index.html');
   });
-  it('uses the existing brand photo if neither a social image nor an article cover exists', async () => {
+  it('uses the existing brand photo if the article has no cover', async () => {
     news.findForLinkPreview.mockResolvedValue({
       title: 'Новость',
       slug: 'results',

@@ -75,15 +75,6 @@ export class NewsPublicationService implements OnModuleInit, OnModuleDestroy {
         throw new BadRequestException(
           'Анонс вместе со ссылкой слишком длинный для ВК',
         );
-      if (news.vkImageUrl) {
-        try {
-          await this.vk.validatePreviewImage(news.vkImageUrl);
-        } catch {
-          throw new BadRequestException(
-            'Изображение ВК недоступно. Загрузите JPEG или PNG заново.',
-          );
-        }
-      }
       return repo.save(
         repo.create({
           newsId,
@@ -94,7 +85,7 @@ export class NewsPublicationService implements OnModuleInit, OnModuleDestroy {
           guid: randomUUID(),
           message,
           articleUrl: url.href,
-          imageUrl: news.vkImageUrl ?? null,
+          imageUrl: null,
           requestedByUserId: actor.id,
           lastRequestedByUserId: actor.id,
           attempts: 0,

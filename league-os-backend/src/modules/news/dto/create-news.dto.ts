@@ -23,6 +23,7 @@ export class CreateNewsDto {
   @MaxLength(12000)
   vkText?: string;
 
+  // Accepted for compatibility with older clients; ignored by publication and metadata.
   @IsOptional()
   @IsString()
   @MaxLength(500)

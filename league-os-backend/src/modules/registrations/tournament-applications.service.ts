@@ -135,11 +135,16 @@ export class TournamentApplicationsService {
       await this.access.assertAccess(id, actor, TournamentAccessAction.PUBLISH);
       if (
         !tournament.registrationRequired ||
-        tournament.registrationOpenedAt ||
-        tournament.lifecycleStatus !== TournamentLifecycleStatus.DRAFT
+        tournament.lifecycleStatus !== TournamentLifecycleStatus.DRAFT ||
+        (await manager.exists(MatchEntity, {
+          where: {
+            tournamentId: id,
+            status: In([MatchStatus.LIVE, MatchStatus.FINISHED]),
+          },
+        }))
       )
         throw new ConflictException(
-          'Настройки заявки фиксируются при первом открытии регистрации',
+          'Первоначальные настройки заявки можно менять только до запуска турнира',
         );
       if (
         dto.minPlayers > dto.maxPlayers ||
@@ -150,8 +155,16 @@ export class TournamentApplicationsService {
         throw new BadRequestException(
           'Проверьте минимальное и максимальное число игроков',
         );
-      if (dto.deadline && new Date(dto.deadline).getTime() <= Date.now())
+      const deadline = dto.deadline ? new Date(dto.deadline).getTime() : null;
+      const previousDeadline = this.policy(tournament).deadline;
+      if (
+        deadline !== null &&
+        deadline <= Date.now() &&
+        deadline !==
+          (previousDeadline ? new Date(previousDeadline).getTime() : null)
+      )
         throw new BadRequestException('Срок регистрации должен быть в будущем');
+      await this.assertPolicyCompatible(manager, tournament, dto);
       tournament.registrationPolicy = {
         ...dto,
         version: 1,
@@ -159,6 +172,75 @@ export class TournamentApplicationsService {
       };
       return manager.save(tournament);
     });
+  }
+
+  private async assertPolicyCompatible(
+    manager: EntityManager,
+    tournament: TournamentEntity,
+    policy: RegistrationPolicyDto,
+  ) {
+    const applications = await manager.find(TournamentApplicationEntity, {
+      where: { tournamentId: tournament.id },
+      relations: { team: true },
+    });
+    // Keep the accepted version protected even if its amendment is a draft or
+    // has been returned. Incomplete, unaccepted drafts may be corrected later.
+    const protectedVersions = applications.flatMap((app) => [
+      ...(app.approvedRevisionId
+        ? [{ app, revisionId: app.approvedRevisionId, kind: 'approved' }]
+        : []),
+      ...(app.status === 'submitted' &&
+      app.currentRevisionId &&
+      app.currentRevisionId !== app.approvedRevisionId
+        ? [{ app, revisionId: app.currentRevisionId, kind: 'submitted' }]
+        : []),
+    ]);
+    if (!protectedVersions.length) return;
+    const revisions = await manager.find(ApplicationRevisionEntity, {
+      where: {
+        id: In([...new Set(protectedVersions.map((v) => v.revisionId))]),
+      },
+    });
+    const byId = new Map(revisions.map((revision) => [revision.id, revision]));
+    const conflicts: {
+      applicationId: number;
+      teamId: number;
+      revisionId: number;
+      message: string;
+    }[] = [];
+    for (const { app, revisionId, kind } of protectedVersions) {
+      const revision = byId.get(revisionId);
+      if (!revision || revision.applicationId !== app.id)
+        throw new ConflictException(
+          'Не удалось проверить сохранённые заявки. Обновите страницу или обратитесь к администратору.',
+        );
+      const players = revision.snapshot.players.length;
+      const representatives = revision.snapshot.representatives.length;
+      if (
+        players >= policy.minPlayers &&
+        players <= policy.maxPlayers &&
+        representatives <= policy.maxRepresentatives
+      )
+        continue;
+      const team = app.team?.name || `Команда №${app.teamId}`;
+      conflicts.push({
+        applicationId: app.id,
+        teamId: app.teamId,
+        revisionId,
+        message: `${team}: ${kind === 'approved' ? 'утверждённая' : 'отправленная'} заявка — ${players} игроков, ${representatives} представителей`,
+      });
+    }
+    if (conflicts.length)
+      throw new ConflictException({
+        code: 'REGISTRATION_POLICY_CONFLICT',
+        message: `Новые лимиты несовместимы с существующими заявками (${conflicts.length}). ${conflicts
+          .slice(0, 5)
+          .map((c) => c.message)
+          .join(
+            '; ',
+          )}. Сначала согласуйте исправленные составы или верните отправленные заявки на доработку.`,
+        conflicts,
+      });
   }
 
   async registration(
@@ -480,7 +562,17 @@ export class TournamentApplicationsService {
     revision: ApplicationRevisionEntity,
   ) {
     const { players, representatives } = revision.snapshot;
-    const policy = revision.policy;
+    // A revision's policy is a historical snapshot. Admission must always use
+    // the current tournament limits, including drafts saved before a change.
+    const policy = this.policy(t);
+    if (
+      app.approvedRevisionId &&
+      revision.id !== app.approvedRevisionId &&
+      !policy.allowAmendments
+    )
+      throw new ConflictException(
+        'Изменения утверждённой заявки запрещены регламентом',
+      );
     if (
       players.length < policy.minPlayers ||
       players.length > policy.maxPlayers ||

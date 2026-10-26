@@ -680,9 +680,10 @@ export class TournamentApplicationsPageComponent {
         return this.run(async () => {
             const settings = this.settings();
             if (
-                action === 'open' &&
                 settings &&
-                !settings.tournament.registrationOpenedAt
+                (this.policyDirty() ||
+                    (action === 'open' &&
+                        !settings.tournament.registrationOpenedAt))
             )
                 await firstValueFrom(
                     this.api.policy(this.tournamentId(), settings.policy),

@@ -88,7 +88,7 @@ describe('NewsService', () => {
     ).rejects.toThrow('PNG, JPEG или WebP');
   });
 
-  it('uses social fields for link metadata without replacing the public article or exposing drafts', async () => {
+  it('uses teaser text and the article cover for metadata, ignoring the legacy VK image', async () => {
     const news = await service.createDraft(
       {
         title: 'Заголовок статьи',
@@ -109,17 +109,35 @@ describe('NewsService', () => {
     await expect(service.findForLinkPreview(news.slug)).resolves.toMatchObject({
       title: 'Заголовок анонса',
       excerpt: 'Описание для ВК',
-      coverUrl: news.vkImageUrl,
+      coverUrl: news.coverUrl,
     });
     const publicArticle = await service.findBySlug(news.slug);
     expect(publicArticle.title).toBe('Заголовок статьи');
     expect(publicArticle.content).toBe('Полная статья');
     expect(publicArticle.coverUrl).toBe('/uploads/news/cover.jpg');
     expect(publicArticle).not.toHaveProperty('vkText');
+    expect(news.vkImageUrl).toBe(
+      '/uploads/news/00000000-0000-0000-0000-000000000000.png',
+    );
     await service.unpublish(news.id, 7);
     await expect(service.findForLinkPreview(news.slug)).rejects.toThrow(
       'Новость не найдена',
     );
+  });
+
+  it('does not use a legacy VK image when the article has no cover', async () => {
+    const news = await service.createDraft(
+      {
+        title: 'Новость без обложки',
+        content: 'Текст',
+        vkImageUrl: '/uploads/news/00000000-0000-0000-0000-000000000000.png',
+      },
+      7,
+      1,
+    );
+    await service.publish(news.id, 7);
+    expect((await service.findForLinkPreview(news.slug)).coverUrl).toBeFalsy();
+    expect(news.vkImageUrl).toBeTruthy();
   });
 
   it('falls back to article metadata and caps link descriptions', async () => {
@@ -151,7 +169,7 @@ describe('NewsService', () => {
     ).rejects.toThrow('менять нельзя');
   });
 
-  it('saves an independent VK teaser and validates managed image paths', async () => {
+  it('saves a text teaser and safely accepts legacy image paths for older clients', async () => {
     const news = await service.createDraft(
       {
         title: 'Новости лиги',

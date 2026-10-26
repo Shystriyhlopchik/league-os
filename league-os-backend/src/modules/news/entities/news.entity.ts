@@ -29,6 +29,7 @@ export class NewsEntity extends BaseEntity {
   @Column({ name: 'vk_text', type: 'text', nullable: true })
   vkText: string | null;
 
+  // Legacy image retained for compatibility/history; no longer used for publication or metadata.
   @Column({ name: 'vk_image_url', type: 'varchar', nullable: true })
   vkImageUrl: string | null;
 

@@ -64,7 +64,7 @@ export class NewsService {
         500,
       ),
       content: news.content,
-      coverUrl: news.vkImageUrl || news.coverUrl,
+      coverUrl: news.coverUrl,
     };
   }
 

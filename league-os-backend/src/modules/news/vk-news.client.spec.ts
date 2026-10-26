@@ -525,20 +525,6 @@ describe('VkNewsClient', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('rejects unsafe image paths before reading files', async () => {
-    await expect(
-      client.validatePreviewImage('/uploads/news/../../.env'),
-    ).rejects.toThrow();
-    await expect(
-      client.validatePreviewImage('https://internal/private'),
-    ).rejects.toThrow();
-    await expect(
-      client.validatePreviewImage(
-        '/uploads/news/00000000-0000-0000-0000-000000000000.webp',
-      ),
-    ).rejects.toThrow();
-  });
-
   it('requires an HTTPS canonical origin in production', () => {
     const invalid = new VkNewsClient(
       new ConfigService({
