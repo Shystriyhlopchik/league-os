@@ -37,6 +37,8 @@ export class SessionStore {
         (this.user()?.communities ?? []).some(c => c.role === 'owner' || c.role === 'admin'),
     );
 
+    readonly canManageCommunityNews = computed(() => this.canManageCommunityTournaments());
+
     updateUser(user: User): void {
         this.user.set(user);
     }

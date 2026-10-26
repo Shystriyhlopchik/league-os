@@ -2,7 +2,14 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { map, Observable } from 'rxjs';
-import { News, NewsAdminPage, SaveNewsRequest } from '../model/news.types';
+import {
+    News,
+    NewsAdminPage,
+    SaveNewsRequest,
+    VkConnection,
+    NewsPublication,
+} from '../model/news.types';
+import { Community } from '../../community/community.api';
 import { NewsDetailVm } from '../model/news-detail.vm';
 import { mapNewsToDetailVm } from '../model/news.mapper';
 
@@ -36,9 +43,13 @@ export class NewsApiService {
             .pipe(map(mapNewsToDetailVm));
     }
 
-    getAdminPage(page = 1, limit = 50): Observable<NewsAdminPage> {
+    getAdminPage(
+        page = 1,
+        limit = 50,
+        communityId?: number,
+    ): Observable<NewsAdminPage> {
         return this.http.get<NewsAdminPage>(`${this.apiUrl}/admin/news`, {
-            params: { page, limit },
+            params: { page, limit, ...(communityId ? { communityId } : {}) },
         });
     }
 
@@ -50,12 +61,13 @@ export class NewsApiService {
         return this.http.post<News>(`${this.apiUrl}/admin/news`, payload);
     }
 
-    uploadCover(file: File): Observable<{ url: string }> {
+    uploadCover(file: File, communityId?: number): Observable<{ url: string }> {
         const body = new FormData();
         body.append('cover', file);
         return this.http.post<{ url: string }>(
             `${this.apiUrl}/admin/news/cover`,
             body,
+            { params: communityId ? { communityId } : {} },
         );
     }
 
@@ -82,5 +94,46 @@ export class NewsApiService {
 
     remove(newsId: number): Observable<void> {
         return this.http.delete<void>(`${this.apiUrl}/admin/news/${newsId}`);
+    }
+
+    communities() {
+        return this.http.get<Community[]>(
+            `${this.apiUrl}/admin/news/communities`,
+        );
+    }
+
+    vkConnection(communityId: number) {
+        return this.http.get<VkConnection>(
+            `${this.apiUrl}/admin/news/vk-connection`,
+            { params: { communityId } },
+        );
+    }
+
+    checkVkConnection(communityId: number) {
+        return this.http.post<VkConnection>(
+            `${this.apiUrl}/admin/news/vk-connection/check`,
+            {},
+            { params: { communityId } },
+        );
+    }
+
+    vkStatus(id: number) {
+        return this.http.get<NewsPublication | null>(
+            `${this.apiUrl}/admin/news/${id}/vk`,
+        );
+    }
+
+    sendVk(id: number) {
+        return this.http.post<NewsPublication>(
+            `${this.apiUrl}/admin/news/${id}/vk`,
+            {},
+        );
+    }
+
+    retryVk(id: number, confirmedAbsent: boolean) {
+        return this.http.post<NewsPublication>(
+            `${this.apiUrl}/admin/news/${id}/vk/retry`,
+            { confirmedAbsent },
+        );
     }
 }

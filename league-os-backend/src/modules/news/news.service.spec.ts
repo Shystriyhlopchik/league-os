@@ -25,6 +25,12 @@ describe('NewsService', () => {
     softDelete: jest.fn(async () => ({ affected: 1 })),
   } as unknown as Repository<NewsEntity>;
   const service = new NewsService(repository);
+  Object.defineProperty(repository, 'manager', {
+    value: {
+      transaction: async (fn: (m: unknown) => unknown) =>
+        fn({ getRepository: () => repository }),
+    },
+  });
 
   beforeEach(() => {
     rows.length = 0;
@@ -80,5 +86,51 @@ describe('NewsService', () => {
     await expect(
       service.saveCover(Buffer.from('not an image'), 'image/png'),
     ).rejects.toThrow('PNG, JPEG или WebP');
+  });
+
+  it('keeps published URLs locked even after unpublishing', async () => {
+    const news = await service.createDraft(
+      { title: 'Новости лиги', content: 'Текст' },
+      7,
+    );
+    await service.publish(news.id, 7);
+    await service.unpublish(news.id, 7);
+    await expect(
+      service.updateDraft(news.id, { slug: 'another-address' }, 7),
+    ).rejects.toThrow('менять нельзя');
+  });
+
+  it('saves an independent VK teaser and validates managed image paths', async () => {
+    const news = await service.createDraft(
+      {
+        title: 'Новости лиги',
+        content: 'Полный текст',
+        vkText: ' Короткий анонс ',
+        vkTitle: ' Для ВК ',
+      },
+      7,
+      1,
+    );
+    expect(news.vkText).toBe('Короткий анонс');
+    expect(news.vkTitle).toBe('Для ВК');
+    expect(news.communityId).toBe(1);
+    await expect(
+      service.updateDraft(
+        news.id,
+        { vkImageUrl: 'https://example.com/photo.jpg' },
+        7,
+      ),
+    ).rejects.toThrow('JPEG или PNG');
+    await expect(
+      service.updateDraft(
+        news.id,
+        {
+          vkImageUrl: '/uploads/news/00000000-0000-0000-0000-000000000000.png',
+        },
+        7,
+      ),
+    ).resolves.toMatchObject({
+      vkImageUrl: expect.stringContaining('/uploads/news/'),
+    });
   });
 });

@@ -17,6 +17,14 @@ form {
     border-radius: 12px;
     background: #222a2d;
 }
+fieldset {
+    display: grid;
+    gap: 18px;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+}
 label {
     display: grid;
     gap: 7px;
@@ -26,6 +34,7 @@ label span {
     font-weight: 700;
 }
 input,
+select,
 textarea {
     width: 100%;
     padding: 12px;
@@ -35,6 +44,69 @@ textarea {
     color: #f0f1e9;
     background: #151b1c;
     font: inherit;
+}
+.vk-panel {
+    display: grid;
+    gap: 16px;
+    border-top: 3px solid #d6ff3f;
+    padding-top: 24px;
+    min-width: 0;
+    h2 {
+        margin: 4px 0 0;
+        font-size: clamp(24px, 4vw, 36px);
+    }
+    a {
+        color: #d6ff3f;
+        overflow-wrap: anywhere;
+    }
+    button {
+        justify-self: start;
+    }
+    .eyebrow {
+        color: #d6ff3f;
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        margin: 0;
+    }
+    .hint {
+        color: #b4beb9;
+        line-height: 1.5;
+        margin: 0;
+    }
+}
+.vk-panel__heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.vk-preview,
+.vk-status {
+    display: grid;
+    gap: 12px;
+    background: #151919;
+    border: 1px solid #46504e;
+    border-radius: 8px;
+    padding: 18px;
+    overflow-wrap: anywhere;
+    p {
+        white-space: pre-wrap;
+        line-height: 1.6;
+    }
+    small {
+        display: block;
+        color: #b4beb9;
+        margin-top: 16px;
+    }
+    summary {
+        cursor: pointer;
+        color: #d6ff3f;
+        margin-bottom: 12px;
+    }
+    strong {
+        display: block;
+    }
 }
 .file-input {
     padding: 9px;

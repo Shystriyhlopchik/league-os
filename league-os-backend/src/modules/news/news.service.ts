@@ -49,10 +49,11 @@ export class NewsService {
     return this.toPublicView(news);
   }
 
-  async findForAdmin(query: ListNewsQueryDto) {
+  async findForAdmin(query: ListNewsQueryDto, communityId?: number) {
     const where: FindOptionsWhere<NewsEntity> = query.status
       ? { status: query.status }
       : {};
+    if (communityId) where.communityId = communityId;
     const [items, total] = await this.newsRepository.findAndCount({
       where,
       order: { updatedAt: 'DESC', id: 'DESC' },
@@ -68,11 +69,12 @@ export class NewsService {
     return news;
   }
 
-  async createDraft(dto: CreateNewsDto, userId: number) {
+  async createDraft(dto: CreateNewsDto, userId: number, communityId?: number) {
     const slug = await this.availableSlug(dto.slug || dto.title);
     return this.newsRepository.save(
       this.newsRepository.create({
         ...this.normalize(dto),
+        communityId,
         slug,
         status: 'draft',
         publishedAt: null,
@@ -83,38 +85,63 @@ export class NewsService {
   }
 
   async updateDraft(newsId: number, dto: UpdateNewsDto, userId: number) {
-    const news = await this.findForAdminById(newsId);
-    if (dto.slug && dto.slug !== news.slug) {
-      news.slug = await this.availableSlug(dto.slug, newsId, false);
-    }
-    Object.assign(news, this.normalize(dto), { updatedByUserId: userId });
-    return this.newsRepository.save(news);
+    return this.withLockedNews(newsId, async (news, repo) => {
+      if (dto.slug && dto.slug !== news.slug) {
+        if (news.slugLocked || news.publishedAt) {
+          throw new ConflictException(
+            'Адрес опубликованной или отправленной в ВК новости менять нельзя',
+          );
+        }
+        news.slug = await this.availableSlug(dto.slug, newsId, false);
+      }
+      Object.assign(news, this.normalize(dto), { updatedByUserId: userId });
+      return repo.save(news);
+    });
   }
 
   async publish(newsId: number, userId: number) {
-    const news = await this.findForAdminById(newsId);
-    if (!news.title.trim() || !news.content.trim()) {
-      throw new ConflictException(
-        'Для публикации заполните заголовок и текст новости',
-      );
-    }
-    news.status = 'published';
-    news.publishedAt ??= new Date();
-    news.updatedByUserId = userId;
-    return this.newsRepository.save(news);
+    return this.withLockedNews(newsId, async (news, repo) => {
+      if (!news.title.trim() || !news.content.trim()) {
+        throw new ConflictException(
+          'Для публикации заполните заголовок и текст новости',
+        );
+      }
+      news.status = 'published';
+      news.slugLocked = true;
+      news.publishedAt ??= new Date();
+      news.updatedByUserId = userId;
+      return repo.save(news);
+    });
   }
 
   async unpublish(newsId: number, userId: number) {
-    const news = await this.findForAdminById(newsId);
-    news.status = 'draft';
-    news.publishedAt = null;
-    news.updatedByUserId = userId;
-    return this.newsRepository.save(news);
+    return this.withLockedNews(newsId, async (news, repo) => {
+      news.status = 'draft';
+      news.publishedAt = null;
+      news.updatedByUserId = userId;
+      return repo.save(news);
+    });
   }
 
   async archive(newsId: number): Promise<void> {
-    await this.findForAdminById(newsId);
-    await this.newsRepository.softDelete(newsId);
+    await this.withLockedNews(newsId, async (_news, repo) => {
+      await repo.softDelete(newsId);
+    });
+  }
+
+  private withLockedNews<T>(
+    newsId: number,
+    action: (news: NewsEntity, repo: Repository<NewsEntity>) => Promise<T>,
+  ): Promise<T> {
+    return this.newsRepository.manager.transaction(async (manager) => {
+      const repo = manager.getRepository(NewsEntity);
+      const news = await repo.findOne({
+        where: { id: newsId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!news) throw new NotFoundException('Новость не найдена');
+      return action(news, repo);
+    });
   }
 
   async saveCover(
@@ -130,8 +157,11 @@ export class NewsService {
 
     const directory = join(process.cwd(), 'uploads', 'news');
     const fileName = `${randomUUID()}.${detected.extension}`;
-    await mkdir(directory, { recursive: true });
-    await writeFile(join(directory, fileName), buffer, { flag: 'wx' });
+    await mkdir(directory, { recursive: true, mode: 0o755 });
+    await writeFile(join(directory, fileName), buffer, {
+      flag: 'wx',
+      mode: 0o644,
+    });
     return { url: `/uploads/news/${fileName}` };
   }
 
@@ -142,6 +172,16 @@ export class NewsService {
     if (dto.content !== undefined) result.content = dto.content.trim();
     if (dto.coverUrl !== undefined)
       result.coverUrl = dto.coverUrl.trim() || null;
+    if (dto.vkTitle !== undefined) result.vkTitle = dto.vkTitle?.trim() || null;
+    if (dto.vkText !== undefined) result.vkText = dto.vkText?.trim() || null;
+    if (dto.vkImageUrl !== undefined) {
+      const url = dto.vkImageUrl?.trim() || '';
+      if (url && !/^\/uploads\/news\/[0-9a-f-]{36}\.(jpg|png)$/.test(url))
+        throw new BadRequestException(
+          'Для ВК загрузите изображение JPEG или PNG',
+        );
+      result.vkImageUrl = url || null;
+    }
     return result;
   }
 

@@ -8,10 +8,30 @@ import {
 } from 'typeorm';
 import { BaseEntity } from '../../../common/base/base.entity';
 import { UserEntity } from '../../users/entities/user.entity';
+import { CommunityEntity } from '../../communities/entities/community.entity';
 
 @Entity('news')
 @Index('IDX_news_publication', ['status', 'publishedAt'])
 export class NewsEntity extends BaseEntity {
+  @Column({ name: 'slug_locked', default: false })
+  slugLocked: boolean;
+
+  @Column({ name: 'community_id' })
+  communityId: number;
+
+  @ManyToOne(() => CommunityEntity)
+  @JoinColumn({ name: 'community_id' })
+  community: CommunityEntity;
+
+  @Column({ name: 'vk_title', type: 'varchar', length: 180, nullable: true })
+  vkTitle: string | null;
+
+  @Column({ name: 'vk_text', type: 'text', nullable: true })
+  vkText: string | null;
+
+  @Column({ name: 'vk_image_url', type: 'varchar', nullable: true })
+  vkImageUrl: string | null;
+
   @Column()
   title: string;
 
