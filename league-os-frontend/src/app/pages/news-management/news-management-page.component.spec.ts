@@ -14,7 +14,20 @@ describe('NewsManagementPageComponent', () => {
             'publish',
             'unpublish',
             'remove',
+            'communities',
         ]);
+        api.communities.and.returnValue(
+            of([
+                {
+                    id: 1,
+                    name: 'Лига',
+                    slug: 'liga',
+                    role: 'admin',
+                    canManageMembers: false,
+                    canManageTournaments: true,
+                },
+            ]),
+        );
         api.getAdminPage.and.returnValue(
             of({
                 items: [
@@ -50,7 +63,7 @@ describe('NewsManagementPageComponent', () => {
         expect(fixture.nativeElement.textContent).toContain('Черновик');
         expect(
             fixture.nativeElement.querySelector(
-                'a[href="/dashboard/new-news/new"]',
+                'a[href^="/dashboard/new-news/new"]',
             ),
         ).not.toBeNull();
         expect(

@@ -1,10 +1,11 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { NewsApiService } from '../../entities/news/api/news.api.service';
 import { News } from '../../entities/news/model/news.types';
 import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.component';
+import { Community } from '../../entities/community/community.api';
 
 @Component({
     selector: 'app-news-management-page',
@@ -15,6 +16,9 @@ import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.com
 export class NewsManagementPageComponent implements OnInit {
     private readonly api = inject(NewsApiService);
     private readonly router = inject(Router);
+    private readonly route = inject(ActivatedRoute);
+    readonly communities = signal<Community[]>([]);
+    readonly communityId = signal(0);
 
     readonly news = signal<News[]>([]);
     readonly loading = signal(true);
@@ -22,6 +26,34 @@ export class NewsManagementPageComponent implements OnInit {
     readonly error = signal('');
 
     ngOnInit(): void {
+        this.api.communities().subscribe({
+            next: (items) => {
+                this.communities.set(items);
+                const requested = Number(
+                    this.route.snapshot.queryParamMap.get('communityId'),
+                );
+                this.communityId.set(
+                    items.find((c) => c.id === requested)?.id ??
+                        items[0]?.id ??
+                        0,
+                );
+                if (this.communityId()) this.load();
+                else {
+                    this.loading.set(false);
+                    this.error.set(
+                        'Нет сообщества с правом управления новостями',
+                    );
+                }
+            },
+            error: () => {
+                this.loading.set(false);
+                this.error.set('Не удалось загрузить сообщества');
+            },
+        });
+    }
+
+    selectCommunity(id: number): void {
+        this.communityId.set(Number(id));
         this.load();
     }
 
@@ -29,7 +61,7 @@ export class NewsManagementPageComponent implements OnInit {
         this.loading.set(true);
         this.error.set('');
         this.api
-            .getAdminPage()
+            .getAdminPage(1, 50, this.communityId())
             .pipe(finalize(() => this.loading.set(false)))
             .subscribe({
                 next: (result) => this.news.set(result.items),
@@ -43,6 +75,13 @@ export class NewsManagementPageComponent implements OnInit {
 
     togglePublication(item: News): void {
         if (this.processingId()) return;
+        if (
+            item.status === 'published' &&
+            !confirm(
+                'Снять статью с публикации? Посты ВК не удаляются, а ссылки на статью станут недоступны.',
+            )
+        )
+            return;
         this.processingId.set(item.id);
         const request =
             item.status === 'published'
@@ -65,7 +104,9 @@ export class NewsManagementPageComponent implements OnInit {
     remove(item: News): void {
         if (
             this.processingId() ||
-            !confirm(`Удалить новость «${item.title}»?`)
+            !confirm(
+                `Удалить новость «${item.title}»? Посты ВК не удалятся; ссылки на статью перестанут работать.`,
+            )
         ) {
             return;
         }

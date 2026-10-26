@@ -1,4 +1,9 @@
 export interface News {
+    communityId?: number;
+    slugLocked?: boolean;
+    vkTitle?: string | null;
+    vkText?: string | null;
+    vkImageUrl?: string | null;
     id: number;
     title: string;
     excerpt?: string | null;
@@ -21,9 +26,33 @@ export interface NewsAdminPage {
 }
 
 export interface SaveNewsRequest {
+    communityId?: number;
+    vkTitle?: string;
+    vkText?: string;
+    vkImageUrl?: string;
     title: string;
     slug?: string;
     excerpt?: string;
     content: string;
     coverUrl?: string;
+}
+
+export interface VkConnection {
+    configured: boolean;
+    groupId: string | null;
+    groupUrl: string | null;
+    name?: string;
+    message?: string;
+}
+
+export interface NewsPublication {
+    id: number;
+    status: 'queued' | 'sending' | 'published' | 'failed' | 'unknown';
+    message: string;
+    imageUrl: string | null;
+    articleUrl: string;
+    postUrl: string | null;
+    errorMessage: string | null;
+    publishedAt: string | null;
+    attempts: number;
 }

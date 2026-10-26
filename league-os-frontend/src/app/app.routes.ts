@@ -8,6 +8,7 @@ import { matchProtocolLeaveGuard } from './pages/match-protocol/model/match-prot
 import { tournamentBuilderFeatureGuard } from './guards/tournament-builder-feature.guard';
 import { communityTournamentGuard } from './guards/community-tournament.guard';
 import { communityVideoGuard } from './guards/community-video.guard';
+import { communityNewsGuard } from './guards/community-news.guard';
 import { videosLeaveGuard } from './guards/videos-leave.guard';
 import { teamWorkspaceLeaveGuard } from './pages/team-workspace/team-workspace-leave.guard';
 import { tournamentApplicationsLeaveGuard } from './pages/tournament-applications/tournament-applications-leave.guard';
@@ -308,7 +309,7 @@ export const routes: Routes = [
             },
             {
                 path: 'new-news',
-                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
+                canActivate: [communityNewsGuard],
                 loadComponent: () =>
                     import(
                         './pages/news-management/news-management-page.component'
@@ -316,7 +317,7 @@ export const routes: Routes = [
             },
             {
                 path: 'new-news/new',
-                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
+                canActivate: [communityNewsGuard],
                 loadComponent: () =>
                     import(
                         './pages/news-editor/news-editor-page.component'
@@ -324,7 +325,7 @@ export const routes: Routes = [
             },
             {
                 path: 'new-news/:newsId/edit',
-                canActivate: [roleGuard([UserRole.SuperAdmin, UserRole.Admin])],
+                canActivate: [communityNewsGuard],
                 loadComponent: () =>
                     import(
                         './pages/news-editor/news-editor-page.component'

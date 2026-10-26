@@ -11,5 +11,5 @@ export interface DashboardAction {
 
     variant: string;
     feature?: 'tournamentBuilder';
-    capability?: 'communityVideos';
+    capability?: 'communityVideos' | 'communityNews';
 }

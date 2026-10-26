@@ -68,6 +68,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+      NEWS_HTML_TEMPLATE_URL: http://frontend/index.html
       POSTGRES_HOST: database
       POSTGRES_PORT: 5432
     depends_on:

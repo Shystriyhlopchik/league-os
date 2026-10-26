@@ -85,6 +85,7 @@ export class DashboardPageComponent {
             title: 'Написать новость',
             description: 'Создание, редактирование и публикация новостей сайта',
             route: '/dashboard/new-news',
+            capability: 'communityNews',
             roles: [UserRole.Admin, UserRole.SuperAdmin],
             variant: '#2ECC71',
         },
@@ -107,7 +108,9 @@ export class DashboardPageComponent {
     readonly availableActions = computed(() => {
         return this.actions.filter(
             (action) =>
-                (action.capability === 'communityVideos'
+                (action.capability === 'communityNews'
+                    ? this.sessionStore.canManageCommunityNews()
+                    : action.capability === 'communityVideos'
                     ? this.sessionStore.canManageCommunityVideos()
                     : action.feature === 'tournamentBuilder'
                     ? this.sessionStore.canManageCommunityTournaments()

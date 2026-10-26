@@ -6,7 +6,24 @@
     />
 
     <div class="toolbar">
-        <a routerLink="/dashboard/new-news/new">Создать новость</a>
+        <label
+            >Сообщество
+            <select
+                [value]="communityId()"
+                (change)="selectCommunity(+$any($event.target).value)"
+            >
+                @for (community of communities(); track community.id) {
+                    <option [value]="community.id">{{ community.name }}</option>
+                }
+            </select></label
+        >
+        @if (communityId()) {
+            <a
+                routerLink="/dashboard/new-news/new"
+                [queryParams]="{ communityId: communityId() }"
+                >Создать новость</a
+            >
+        }
     </div>
 
     @if (error()) {
