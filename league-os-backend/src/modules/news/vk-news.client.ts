@@ -182,6 +182,8 @@ export class VkNewsClient {
         'Некорректная ссылка на статью. Проверьте FRONTEND_URL и адрес новости.',
       );
     }
+    // The article URL is already part of the frozen message. Do not also send
+    // it as attachments: VK can reject that link card with link_photo_sizing_rule.
     const result = await this.call<{ post_id: number }>(
       'wall.post',
       {
@@ -189,7 +191,6 @@ export class VkNewsClient {
         from_group: '1',
         message,
         guid,
-        attachments: articleUrl,
       },
       true,
     );

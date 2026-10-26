@@ -184,6 +184,39 @@ describe('NewsPublicationService', () => {
     expect(vk.post).toHaveBeenCalledTimes(1);
   });
 
+  it('manually retries an existing link-photo failure with the same text, URL and guid', async () => {
+    vk.post.mockRejectedValueOnce(
+      new VkDeliveryError(
+        'Violated: link_photo_sizing_rule. No photo given',
+        false,
+        false,
+        100,
+      ),
+    );
+    await service.enqueue(1, actor);
+    const original = { ...job! };
+    await service.tick();
+    expect(job!.status).toBe('failed');
+    await service.tick();
+    expect(vk.post).toHaveBeenCalledTimes(1);
+    await service.retry(1, actor, false);
+    expect(job!.id).toBe(original.id);
+    expect(job!.guid).toBe(original.guid);
+    expect(job!.message).toBe(original.message);
+    expect(job!.message).toContain(original.articleUrl);
+    await service.tick();
+    expect(vk.post).toHaveBeenLastCalledWith(
+      original.groupId,
+      original.message,
+      original.guid,
+      original.articleUrl,
+    );
+    expect(job!.status).toBe('published');
+    expect(job!.postUrl).toBe('https://vk.com/wall-123_99');
+    expect(job!.errorMessage).toBeNull();
+    expect(vk.post).toHaveBeenCalledTimes(2);
+  });
+
   it('does not leak unexpected upstream errors into the persisted status', async () => {
     vk.post.mockRejectedValue(new Error('secret-token'));
     await service.enqueue(1, actor);

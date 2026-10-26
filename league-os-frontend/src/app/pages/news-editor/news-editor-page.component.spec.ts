@@ -110,6 +110,16 @@ describe('NewsEditorPageComponent', () => {
         return page;
     }
 
+    it('explains that VK receives text and a link without an attached image or card', () => {
+        ready();
+        fixture.detectChanges();
+        const text = fixture.nativeElement.textContent.replace(/\s+/g, ' ');
+        expect(text).toContain('Фотография и карточка ссылки не прикрепляются');
+        expect(text).toContain('Картинка-превью в посте ВК не гарантируется');
+        expect(text).not.toContain('ВК сам формирует карточку ссылки');
+        expect(api.sendVk).not.toHaveBeenCalled();
+    });
+
     it('does not send a draft or unsaved changes', () => {
         const page = ready();
         page.published.set(false);
