@@ -32,19 +32,52 @@ describe('VkNewsClient', () => {
   });
 
   it('sends as the community with a stable guid and only returns confirmed post IDs', async () => {
+    const message = `Анонс\n\nЧитать полностью: ${articleUrl}`;
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ response: { post_id: 99 } })),
     );
     await expect(
-      client.post('123', 'Анонс', 'same-guid', articleUrl),
+      client.post('123', message, 'same-guid', articleUrl),
     ).resolves.toBe('https://vk.com/wall-123_99');
     const body = fetchMock.mock.calls[0][1].body as URLSearchParams;
     expect(body.get('from_group')).toBe('1');
     expect(body.get('owner_id')).toBe('-123');
     expect(body.get('guid')).toBe('same-guid');
-    expect(body.get('attachments')).toBe(articleUrl);
-    expect(body.get('attachments')).not.toContain('photo-');
+    expect(body.get('message')).toBe(message);
+    expect(body.has('attachments')).toBe(false);
+    expect(body.has('link_photo_id')).toBe(false);
+    expect([...body.keys()].sort()).toEqual(
+      ['owner_id', 'from_group', 'message', 'guid', 'access_token', 'v'].sort(),
+    );
     expect(fetchMock.mock.calls[0][0]).not.toContain('secret');
+  });
+
+  it('does not trigger VK link-photo validation by attaching the article URL', async () => {
+    // Regression for the observed VK rejection, not a live API call.
+    fetchMock.mockImplementation(async (_url, options) => {
+      const body = options.body as URLSearchParams;
+      return new Response(
+        JSON.stringify(
+          body.has('attachments')
+            ? {
+                error: {
+                  error_code: 100,
+                  error_msg:
+                    'One of the parameters specified was missing or invalid: Violated: link_photo_sizing_rule. No photo given',
+                },
+              }
+            : { response: { post_id: 99 } },
+        ),
+      );
+    });
+    const message = `Анонс\n\nЧитать полностью: ${articleUrl}&utm_medium=social`;
+    await expect(
+      client.post('123', message, 'stable-guid', articleUrl),
+    ).resolves.toBe('https://vk.com/wall-123_99');
+    const body = fetchMock.mock.calls[0][1].body as URLSearchParams;
+    expect(body.get('message')).toBe(message);
+    expect(body.get('guid')).toBe('stable-guid');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it.each([5, 7, 14, 15, 27, 28, 100, 200])(
