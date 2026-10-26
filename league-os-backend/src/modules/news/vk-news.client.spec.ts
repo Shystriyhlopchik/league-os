@@ -130,10 +130,8 @@ describe('VkNewsClient', () => {
     null,
     123,
     { message: 'Invalid parameter: guid' },
-    'Invalid parameter: unknown_private_parameter secret-must-not-leak',
-    'One of the parameters specified was missing or invalid',
-    'secret-must-not-leak https://private.example/?access_token=secret-must-not-leak',
-    'x'.repeat(4096) + ' Invalid parameter: guid',
+    '',
+    '   ',
   ])(
     'keeps a safe fallback for unrecognized parameter details: %p',
     async (errorMessage) => {
@@ -152,7 +150,7 @@ describe('VkNewsClient', () => {
         client.post('123', 'Текст', 'guid', articleUrl),
       ).rejects.toMatchObject({
         message:
-          'ВК отклонил запрос wall.post (код 100). Отсутствует или некорректен один из параметров. В ответе ВК нет распознаваемого уточнения параметра.',
+          'ВК отклонил запрос wall.post (код 100). Отсутствует или некорректен один из параметров. ВК не передал текстовое уточнение ошибки.',
         code: 100,
         retryable: false,
         uncertain: false,
@@ -160,6 +158,133 @@ describe('VkNewsClient', () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
     },
   );
+
+  it.each([
+    'One of the parameters specified was missing or invalid',
+    'Invalid parameter: copyright is unavailable for this token type',
+    'Unsupported operation for this token type',
+  ])(
+    'retains a redacted explanation when a parameter cannot be translated: %s',
+    async (explanation) => {
+      fetchMock.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: { error_code: 100, error_msg: explanation },
+          }),
+        ),
+      );
+      await expect(
+        client.post('123', 'Текст', 'guid', articleUrl),
+      ).rejects.toMatchObject({
+        message: expect.stringContaining(
+          `Уточнение ВК (очищено): ${explanation}`,
+        ),
+        code: 100,
+        retryable: false,
+        uncertain: false,
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('redacts tokens, quoted values, URLs, payload values and embedded dumps from fallback details', async () => {
+    const message = 'Частный текст анонса';
+    const guid = '9fd7aa81-c478-4b91-970a-25a3f5e4838b';
+    const opaque = 'a'.repeat(70);
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          error: {
+            error_code: 100,
+            error_msg: `Unsupported operation. secret-must-not-leak ${message} ${encodeURIComponent(message)} ${guid} ${articleUrl} vk1.a.OTHER_PRIVATE_KEY "private quoted value" ${opaque} password=private-password request_params [{"key":"access_token","value":"another-secret"}]`,
+            request_params: [
+              { key: 'access_token', value: 'do-not-read-this-secret' },
+            ],
+          },
+        }),
+      ),
+    );
+    const error = await client
+      .post('123', message, guid, articleUrl)
+      .catch((e) => e as VkDeliveryError);
+    expect(error.message).toContain('Unsupported operation.');
+    for (const value of [
+      'secret-must-not-leak',
+      message,
+      encodeURIComponent(message),
+      guid,
+      articleUrl,
+      'OTHER_PRIVATE_KEY',
+      'private quoted value',
+      opaque,
+      'private-password',
+      'another-secret',
+      'do-not-read-this-secret',
+      'request_params',
+    ])
+      expect(error.message).not.toContain(value);
+    expect(error).toMatchObject({
+      code: 100,
+      retryable: false,
+      uncertain: false,
+    });
+  });
+
+  it('redacts encoded credentials and credentials crossing the output limit before truncating', async () => {
+    const token = 'vk1.a.' + 'private+/credential?='.repeat(10);
+    const encoded = encodeURIComponent(token);
+    const formEncoded = new URLSearchParams({ value: token })
+      .toString()
+      .slice(6);
+    const configuredClient = new VkNewsClient(
+      new ConfigService({
+        VK_ACCESS_TOKEN: token,
+        FRONTEND_URL: 'https://liga-dvora.ru',
+        NODE_ENV: 'production',
+      }),
+    );
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          error: {
+            error_code: 100,
+            error_msg: `Unsupported operation ${encoded} ${formEncoded} ${'word '.repeat(80)}${token}`,
+          },
+        }),
+      ),
+    );
+    const error = await configuredClient
+      .post('123', 'Текст', 'guid', articleUrl)
+      .catch((e) => e as VkDeliveryError);
+    expect(error.message).not.toContain(token);
+    expect(error.message).not.toContain('credential');
+    expect(error.message).not.toContain('private');
+    expect(error.message).not.toContain(encoded);
+    expect(error.message).not.toContain(formEncoded);
+    expect(
+      error.message.split('Уточнение ВК (очищено): ')[1].length,
+    ).toBeLessThanOrEqual(500);
+  });
+
+  it('bounds fallback text and removes markup and control characters', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          error: {
+            error_code: 100,
+            error_msg:
+              '<b>Unsupported operation</b>\n\u202E' + 'details '.repeat(1000),
+          },
+        }),
+      ),
+    );
+    const error = await client
+      .post('123', 'Текст', 'guid', articleUrl)
+      .catch((e) => e as VkDeliveryError);
+    expect(error.message).toContain('Unsupported operation');
+    expect(error.message).not.toMatch(/[<>\n\u202E]/);
+    expect(error.message.split('Уточнение ВК (очищено): ')[1].length).toBe(500);
+  });
 
   it('includes the failing read method without attempting a post', async () => {
     fetchMock.mockResolvedValueOnce(
