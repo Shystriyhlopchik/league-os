@@ -43,6 +43,8 @@ export interface VkConnection {
     groupUrl: string | null;
     name?: string;
     message?: string;
+    tokenType?: 'community' | 'user';
+    publicationVerified?: boolean;
 }
 
 export interface NewsPublication {

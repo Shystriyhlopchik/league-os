@@ -49,6 +49,25 @@ export class NewsService {
     return this.toPublicView(news);
   }
 
+  async findForLinkPreview(slug: string) {
+    const news = await this.newsRepository.findOne({
+      where: { slug, status: 'published' },
+    });
+    if (!news) throw new NotFoundException('Новость не найдена');
+    // Only metadata uses the social teaser; the article API keeps its own title/content.
+    return {
+      title: news.vkTitle?.trim() || news.title,
+      pageTitle: news.title,
+      slug: news.slug,
+      excerpt: (news.vkText?.trim() || news.excerpt || news.content).slice(
+        0,
+        500,
+      ),
+      content: news.content,
+      coverUrl: news.vkImageUrl || news.coverUrl,
+    };
+  }
+
   async findForAdmin(query: ListNewsQueryDto, communityId?: number) {
     const where: FindOptionsWhere<NewsEntity> = query.status
       ? { status: query.status }

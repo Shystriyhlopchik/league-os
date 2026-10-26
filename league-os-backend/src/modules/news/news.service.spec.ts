@@ -88,6 +88,57 @@ describe('NewsService', () => {
     ).rejects.toThrow('PNG, JPEG или WebP');
   });
 
+  it('uses social fields for link metadata without replacing the public article or exposing drafts', async () => {
+    const news = await service.createDraft(
+      {
+        title: 'Заголовок статьи',
+        content: 'Полная статья',
+        excerpt: 'Описание статьи',
+        coverUrl: '/uploads/news/cover.jpg',
+        vkTitle: 'Заголовок анонса',
+        vkText: 'Описание для ВК',
+        vkImageUrl: '/uploads/news/00000000-0000-0000-0000-000000000000.png',
+      },
+      7,
+      1,
+    );
+    await expect(service.findForLinkPreview(news.slug)).rejects.toThrow(
+      'Новость не найдена',
+    );
+    await service.publish(news.id, 7);
+    await expect(service.findForLinkPreview(news.slug)).resolves.toMatchObject({
+      title: 'Заголовок анонса',
+      excerpt: 'Описание для ВК',
+      coverUrl: news.vkImageUrl,
+    });
+    const publicArticle = await service.findBySlug(news.slug);
+    expect(publicArticle.title).toBe('Заголовок статьи');
+    expect(publicArticle.content).toBe('Полная статья');
+    expect(publicArticle.coverUrl).toBe('/uploads/news/cover.jpg');
+    expect(publicArticle).not.toHaveProperty('vkText');
+    await service.unpublish(news.id, 7);
+    await expect(service.findForLinkPreview(news.slug)).rejects.toThrow(
+      'Новость не найдена',
+    );
+  });
+
+  it('falls back to article metadata and caps link descriptions', async () => {
+    const news = await service.createDraft(
+      {
+        title: 'Заголовок статьи',
+        content: 'X'.repeat(600),
+        coverUrl: '/uploads/news/cover.jpg',
+      },
+      7,
+      1,
+    );
+    await service.publish(news.id, 7);
+    const preview = await service.findForLinkPreview(news.slug);
+    expect(preview.title).toBe(news.title);
+    expect(preview.coverUrl).toBe(news.coverUrl);
+    expect(preview.excerpt).toHaveLength(500);
+  });
+
   it('keeps published URLs locked even after unpublishing', async () => {
     const news = await service.createDraft(
       { title: 'Новости лиги', content: 'Текст' },
