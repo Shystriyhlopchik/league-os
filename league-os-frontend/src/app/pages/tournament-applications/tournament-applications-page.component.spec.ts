@@ -185,6 +185,8 @@ describe('TournamentApplicationsPageComponent', () => {
                 'submit',
                 'review',
                 'settings',
+                'policy',
+                'registration',
                 'list',
                 'members',
                 'transfers',
@@ -208,6 +210,15 @@ describe('TournamentApplicationsPageComponent', () => {
             }),
         );
         api.list.and.returnValue(of([]));
+        api.policy.and.callFake((_id, value) => {
+            server.policy = { ...value };
+            return of({});
+        });
+        api.registration.and.callFake((_id, action) => {
+            server.tournament.registrationStatus =
+                action === 'open' ? 'open' : 'closed';
+            return of({});
+        });
         api.members.and.returnValue(of([]));
         api.transfers.and.returnValue(of([]));
         api.reviewTransfer.and.returnValue(of({}));
@@ -766,6 +777,96 @@ describe('TournamentApplicationsPageComponent', () => {
         await component.selectWorkflow('review');
         expect(component.section()).toBe('registration');
         expect(component.settings()?.policy.minPlayers).toBe(6);
+    });
+
+    async function openRegistrationSettings() {
+        component.tournaments.update((items) =>
+            items.map((t) => ({ ...t, canReview: true })),
+        );
+        await component.selectMode('management');
+        await settle();
+    }
+
+    it('lets organizers save settings after registration opened, before launch', async () => {
+        server.policy.allowAmendments = false;
+        await openRegistrationSettings();
+        const inputs = [
+            ...fixture.nativeElement.querySelectorAll('.grid input'),
+        ] as HTMLInputElement[];
+        expect(inputs.length).toBe(7);
+        expect(inputs.every((input) => !input.disabled)).toBeTrue();
+        expect(fixture.nativeElement.textContent).toContain(
+            'Сохранить настройки',
+        );
+        component.settings()!.policy.allowAmendments = true;
+        await component.savePolicy();
+        await settle();
+        expect(api.policy).toHaveBeenCalledWith(
+            5,
+            jasmine.objectContaining({ allowAmendments: true }),
+        );
+        expect(component.settings()!.policy.allowAmendments).toBeTrue();
+        expect(component.policyDirty()).toBeFalse();
+    });
+
+    it('locks initial settings after explicit launch, not after registration opens', async () => {
+        server.tournament.lifecycleStatus = 'published';
+        await openRegistrationSettings();
+        const inputs = [
+            ...fixture.nativeElement.querySelectorAll('.grid input'),
+        ] as HTMLInputElement[];
+        expect(inputs.length).toBe(7);
+        expect(inputs.every((input) => input.disabled)).toBeTrue();
+        expect(fixture.nativeElement.textContent).not.toContain(
+            'Сохранить настройки',
+        );
+    });
+
+    it('shows a policy conflict without discarding organizer edits', async () => {
+        await openRegistrationSettings();
+        component.settings()!.policy.maxPlayers = 10;
+        const message = 'Новые лимиты несовместимы: Команда — 12 игроков';
+        api.policy.and.returnValue(throwError(() => ({ error: { message } })));
+        await component.savePolicy();
+        await settle();
+        expect(component.error()).toBe(message);
+        expect(component.settings()!.policy.maxPlayers).toBe(10);
+        expect(component.policyDirty()).toBeTrue();
+    });
+
+    it('saves edited settings before reopening registration', async () => {
+        server.tournament.registrationStatus = 'closed';
+        await openRegistrationSettings();
+        component.settings()!.policy.allowAmendments = false;
+        await component.registration('open');
+        expect(api.policy).toHaveBeenCalledTimes(1);
+        expect(api.registration).toHaveBeenCalledWith(5, 'open');
+        expect(api.policy).toHaveBeenCalledBefore(api.registration);
+        expect(server.policy.allowAmendments).toBeFalse();
+    });
+
+    it('does not reopen registration if changed settings conflict with applications', async () => {
+        server.tournament.registrationStatus = 'closed';
+        await openRegistrationSettings();
+        component.settings()!.policy.minPlayers = 6;
+        api.policy.and.returnValue(
+            throwError(() => ({ error: { message: 'Составы несовместимы' } })),
+        );
+        await component.registration('open');
+        expect(api.registration).not.toHaveBeenCalled();
+        expect(component.error()).toBe('Составы несовместимы');
+        expect(component.settings()!.policy.minPlayers).toBe(6);
+    });
+
+    it('does not silently discard changed settings when closing registration', async () => {
+        await openRegistrationSettings();
+        component.settings()!.policy.allowAmendments = false;
+        spyOn(window, 'confirm').and.returnValue(true);
+        await component.registration('close');
+        expect(api.policy).toHaveBeenCalledBefore(api.registration);
+        expect(api.registration).toHaveBeenCalledWith(5, 'close');
+        expect(server.policy.allowAmendments).toBeFalse();
+        expect(component.section()).toBe('review');
     });
     it('disables approval after cutoff but still allows returning with a comment', async () => {
         setApplication('submitted', 20, 99);

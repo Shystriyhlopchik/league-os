@@ -17,7 +17,6 @@ postgresDescribe('VK publication on disposable PostgreSQL', () => {
       groupId: '123',
       articleOrigin: 'https://liga-dvora.ru',
     }),
-    validatePreviewImage: jest.fn(),
     post: jest.fn(async () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
       return 'https://vk.com/wall-123_1';

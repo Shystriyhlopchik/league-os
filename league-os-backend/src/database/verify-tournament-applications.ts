@@ -222,21 +222,17 @@ async function main() {
       },
     });
     await service.registration(tournament.id, 'open', admin);
-    await assert.rejects(
-      () =>
-        service.configure(
-          tournament.id,
-          {
-            maxPlayers: 12,
-            minPlayers: 5,
-            maxRepresentatives: 2,
-            minMatchPlayers: 5,
-            maxMatchPlayers: 12,
-            allowAmendments: true,
-          },
-          admin,
-        ),
-      /фиксируются/,
+    await service.configure(
+      tournament.id,
+      {
+        maxPlayers: 12,
+        minPlayers: 5,
+        maxRepresentatives: 2,
+        minMatchPlayers: 5,
+        maxMatchPlayers: 12,
+        allowAmendments: true,
+      },
+      admin,
     );
     let app = await service.save(
       tournament.id,
@@ -314,6 +310,50 @@ async function main() {
       { id: app.id },
     );
     const revision = approved.approvedRevisionId;
+    const beforeChange = service.policy(
+      await service.tournament(tournament.id),
+    );
+    await service.configure(
+      tournament.id,
+      { ...beforeChange, allowAmendments: false },
+      admin,
+    );
+    await assert.rejects(
+      () =>
+        service.save(
+          tournament.id,
+          teams[0].id,
+          {
+            playerIds: ids,
+            representatives: [],
+            expectedRevisionId: app.currentRevisionId!,
+          },
+          actor,
+        ),
+      /запрещены регламентом/,
+    );
+    await service.configure(
+      tournament.id,
+      { ...beforeChange, allowAmendments: true },
+      admin,
+    );
+    assert.equal(
+      (
+        await db.manager.findOneByOrFail(TournamentApplicationEntity, {
+          id: app.id,
+        })
+      ).approvedRevisionId,
+      revision,
+    );
+    await assert.rejects(
+      () =>
+        service.configure(
+          tournament.id,
+          { ...beforeChange, minPlayers: 6 },
+          admin,
+        ),
+      /несовместимы/,
+    );
     const amendment = await service.save(
       tournament.id,
       teams[0].id,
@@ -334,6 +374,19 @@ async function main() {
       (await service.matchRoster(tournament.id, teams[0].id))?.length,
       5,
       'pending amendment must not replace roster',
+    );
+    await assert.rejects(
+      () =>
+        service.configure(
+          tournament.id,
+          {
+            ...beforeChange,
+            maxPlayers: 5,
+            maxMatchPlayers: 5,
+          },
+          admin,
+        ),
+      /несовместимы/,
     );
     await assert.rejects(
       () =>

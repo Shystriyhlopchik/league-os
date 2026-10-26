@@ -10,7 +10,7 @@ describe('NewsPublicationService', () => {
   let job: NewsPublicationEntity | null;
   let service: NewsPublicationService;
   let vk: {
-    [K in 'requireConnection' | 'validatePreviewImage' | 'post']: jest.Mock;
+    [K in 'requireConnection' | 'post']: jest.Mock;
   };
   let access: { article: jest.Mock };
   const actor = { id: 12 };
@@ -31,7 +31,6 @@ describe('NewsPublicationService', () => {
         groupId: '123',
         articleOrigin: 'https://liga-dvora.ru',
       })),
-      validatePreviewImage: jest.fn(async () => undefined),
       post: jest.fn(async () => 'https://vk.com/wall-123_99'),
     };
     const newsRepo = {
@@ -119,23 +118,24 @@ describe('NewsPublicationService', () => {
     expect(vk.post).toHaveBeenCalledTimes(1);
   });
 
-  it('validates the local preview image but posts only the article link, never a photo', async () => {
-    article.vkImageUrl =
-      '/uploads/news/00000000-0000-0000-0000-000000000000.jpg';
-    await service.enqueue(1, actor);
-    // Older queued jobs may still contain an image path. Delivery must ignore it,
-    // even if the local preview image later becomes unavailable.
-    vk.validatePreviewImage.mockRejectedValue(new Error('preview missing'));
-    await service.tick();
-    expect(vk.validatePreviewImage).toHaveBeenCalledWith(article.vkImageUrl);
-    expect(vk.post).toHaveBeenCalledWith(
-      '123',
-      expect.any(String),
-      expect.any(String),
-      job!.articleUrl,
-    );
-    expect(vk.validatePreviewImage).toHaveBeenCalledTimes(1);
-  });
+  it.each(['/uploads/news/missing.jpg', '/uploads/news/../../.env', null])(
+    'ignores a legacy VK image when queuing and delivering text: %s',
+    async (image) => {
+      article.vkImageUrl = image;
+      await service.enqueue(1, actor);
+      expect(job!.imageUrl).toBeNull();
+      // Older queued jobs may still contain an image path. It is not used.
+      job!.imageUrl = image;
+      await service.tick();
+      expect(job!.status).toBe('published');
+      expect(vk.post).toHaveBeenCalledWith(
+        '123',
+        expect.any(String),
+        expect.any(String),
+        job!.articleUrl,
+      );
+    },
+  );
 
   it('does not send a job whose article has been unpublished', async () => {
     await service.enqueue(1, actor);

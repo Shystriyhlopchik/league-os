@@ -110,13 +110,21 @@ describe('NewsEditorPageComponent', () => {
         return page;
     }
 
-    it('explains that VK receives text and a link without an attached image or card', () => {
+    it('shows a text-only VK editor and keeps only the article cover upload', () => {
         ready();
         fixture.detectChanges();
         const text = fixture.nativeElement.textContent.replace(/\s+/g, ' ');
-        expect(text).toContain('Фотография и карточка ссылки не прикрепляются');
-        expect(text).toContain('Картинка-превью в посте ВК не гарантируется');
-        expect(text).not.toContain('ВК сам формирует карточку ссылки');
+        expect(text).toContain(
+            'текст анонса со ссылкой на статью, без изображений',
+        );
+        expect(text).not.toContain('Изображение для метаданных ссылки');
+        expect(text).not.toContain('Использовать обложку статьи');
+        expect(text).not.toContain('Удалить изображение карточки');
+        expect(text).toContain('Обложка');
+        const uploads =
+            fixture.nativeElement.querySelectorAll('input[type="file"]');
+        expect(uploads.length).toBe(1);
+        expect(uploads[0].accept).toContain('image/webp');
         expect(api.sendVk).not.toHaveBeenCalled();
     });
 
@@ -144,6 +152,10 @@ describe('NewsEditorPageComponent', () => {
             }),
         );
         expect(api.sendVk).not.toHaveBeenCalled();
+        expect(api.uploadCover).not.toHaveBeenCalled();
+        expect(api.update.calls.mostRecent().args[1]).not.toEqual(
+            jasmine.objectContaining({ vkImageUrl: jasmine.anything() }),
+        );
         expect(page.form.pristine).toBeTrue();
     });
 
@@ -184,15 +196,29 @@ describe('NewsEditorPageComponent', () => {
         expect(api.retryVk).toHaveBeenCalledWith(11, true);
     });
 
-    it('marks cover-only edits as unsaved and rejects WebP for VK', () => {
+    it('uploads and saves the article cover once, without a separate VK image', () => {
         const page = ready();
-        page.selectVkImage({
+        const cover = new File(['x'], 'image.webp', { type: 'image/webp' });
+        spyOn(URL, 'createObjectURL').and.returnValue('blob:article-cover');
+        spyOn(URL, 'revokeObjectURL');
+        api.uploadCover.and.returnValue(
+            of({ url: '/uploads/news/article-cover.webp' }),
+        );
+        page.selectCover({
             target: {
-                files: [new File(['x'], 'image.webp', { type: 'image/webp' })],
+                files: [cover],
                 value: '',
             },
         } as unknown as Event);
-        expect(page.vkError()).toContain('JPEG или PNG');
+        expect(page.form.dirty).toBeTrue();
+        page.save(false);
+        expect(api.uploadCover).toHaveBeenCalledOnceWith(cover, 1);
+        expect(api.update.calls.mostRecent().args[1].coverUrl).toBe(
+            '/uploads/news/article-cover.webp',
+        );
+        expect(api.update.calls.mostRecent().args[1]).not.toEqual(
+            jasmine.objectContaining({ vkImageUrl: jasmine.anything() }),
+        );
         page.removeCover();
         expect(page.form.dirty).toBeTrue();
     });
@@ -218,15 +244,15 @@ describe('NewsEditorPageComponent', () => {
         );
     });
 
-    it('explains that an image belongs to the link card, not a separate VK photo', () => {
-        ready();
-        fixture.detectChanges();
-        expect(fixture.nativeElement.textContent).toContain(
-            'Изображение карточки ссылки ВК',
+    it('does not mention link cards in the manual retry confirmation', () => {
+        const page = ready();
+        page.vkPublication.set({ ...job, status: 'failed' });
+        const confirm = spyOn(window, 'confirm').and.returnValue(true);
+        page.sendVk(true);
+        expect(confirm).toHaveBeenCalledWith(
+            'Повторить отправку ранее сохранённого текста и ссылки?',
         );
-        expect(fixture.nativeElement.textContent).toContain(
-            'Отдельная фотография к посту не прикрепляется',
-        );
+        expect(api.retryVk).toHaveBeenCalledWith(11, false);
     });
 
     it('shows a community-key preflight result without creating a post', () => {

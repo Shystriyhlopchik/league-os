@@ -132,7 +132,8 @@
                             <h2>2. Открыть приём заявок</h2>
                             <p>
                                 {{ labels[s.tournament.registrationStatus] }}.
-                                После открытия настройки заявки фиксируются.
+                                Настройки можно менять до запуска турнира, даже
+                                после открытия приёма заявок.
                             </p>
                             <div class="grid">
                                 <label
@@ -142,7 +143,8 @@
                                         max="12"
                                         [(ngModel)]="s.policy.maxPlayers"
                                         [disabled]="
-                                            !!s.tournament.registrationOpenedAt
+                                            s.tournament.lifecycleStatus !==
+                                            'draft'
                                         "
                                 /></label>
                                 <label
@@ -152,7 +154,8 @@
                                         max="12"
                                         [(ngModel)]="s.policy.minPlayers"
                                         [disabled]="
-                                            !!s.tournament.registrationOpenedAt
+                                            s.tournament.lifecycleStatus !==
+                                            'draft'
                                         "
                                 /></label>
                                 <label
@@ -164,7 +167,8 @@
                                             s.policy.maxRepresentatives
                                         "
                                         [disabled]="
-                                            !!s.tournament.registrationOpenedAt
+                                            s.tournament.lifecycleStatus !==
+                                            'draft'
                                         "
                                 /></label>
                                 <label
@@ -174,7 +178,8 @@
                                         max="12"
                                         [(ngModel)]="s.policy.minMatchPlayers"
                                         [disabled]="
-                                            !!s.tournament.registrationOpenedAt
+                                            s.tournament.lifecycleStatus !==
+                                            'draft'
                                         "
                                 /></label>
                                 <label
@@ -184,7 +189,8 @@
                                         max="12"
                                         [(ngModel)]="s.policy.maxMatchPlayers"
                                         [disabled]="
-                                            !!s.tournament.registrationOpenedAt
+                                            s.tournament.lifecycleStatus !==
+                                            'draft'
                                         "
                                 /></label>
                                 <label
@@ -193,7 +199,8 @@
                                         placeholder="2026-11-01T23:59:00+03:00"
                                         [(ngModel)]="s.policy.deadline"
                                         [disabled]="
-                                            !!s.tournament.registrationOpenedAt
+                                            s.tournament.lifecycleStatus !==
+                                            'draft'
                                         "
                                 /></label>
                                 <label class="check"
@@ -201,14 +208,15 @@
                                         type="checkbox"
                                         [(ngModel)]="s.policy.allowAmendments"
                                         [disabled]="
-                                            !!s.tournament.registrationOpenedAt
+                                            s.tournament.lifecycleStatus !==
+                                            'draft'
                                         "
                                     />Разрешить доработку утверждённого
                                     состава</label
                                 >
                             </div>
                             <div class="actions">
-                                @if (!s.tournament.registrationOpenedAt) {
+                                @if (s.tournament.lifecycleStatus === "draft") {
                                     <button (click)="savePolicy()">
                                         Сохранить настройки
                                     </button>
@@ -238,11 +246,15 @@
                                 >
                             </div>
                             <p class="hint">
-                                Сохраните настройки перед открытием. Закрытие
-                                регистрации не утверждает заявки автоматически.
-                                До запуска турнира рассмотрите все отправленные
-                                заявки. Доработки принятого состава разрешены до
-                                начала первого матча 4-го тура во всём турнире,
+                                Новые лимиты не должны противоречить уже
+                                отправленным и утверждённым составам. После
+                                запуска первоначальные настройки блокируются.
+                                Изменённые настройки сохраняются перед открытием
+                                или закрытием регистрации. Закрытие регистрации
+                                не утверждает заявки автоматически. До запуска
+                                турнира рассмотрите все отправленные заявки.
+                                Доработки принятого состава разрешены до начала
+                                первого матча 4-го тура во всём турнире,
                                 независимо от срока первоначальной регистрации.
                             </p>
                         </section>

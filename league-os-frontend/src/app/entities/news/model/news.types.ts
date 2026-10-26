@@ -3,7 +3,6 @@ export interface News {
     slugLocked?: boolean;
     vkTitle?: string | null;
     vkText?: string | null;
-    vkImageUrl?: string | null;
     id: number;
     title: string;
     excerpt?: string | null;
@@ -29,7 +28,6 @@ export interface SaveNewsRequest {
     communityId?: number;
     vkTitle?: string;
     vkText?: string;
-    vkImageUrl?: string;
     title: string;
     slug?: string;
     excerpt?: string;
