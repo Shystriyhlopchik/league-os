@@ -1,3 +1,4 @@
+import { ArrowUpRightComponent } from '../../shared/ui/arrow-up-right/arrow-up-right.component';
 import { DOCUMENT } from '@angular/common';
 import {
     ChangeDetectionStrategy,
@@ -17,7 +18,7 @@ import { PlayerCard } from '../../entities/player-card/model/player-card.types';
 
 @Component({
     selector: 'app-top-players-ovr',
-    imports: [RouterLink],
+    imports: [ArrowUpRightComponent, RouterLink],
     templateUrl: './top-players-ovr.component.html',
     styleUrl: './top-players-ovr.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,

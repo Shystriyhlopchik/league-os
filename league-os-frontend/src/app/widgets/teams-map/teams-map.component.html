@@ -7,8 +7,8 @@
             </h2>
         </div>
         <a class="teams-map__all" routerLink="/team"
-            >Все команды <span aria-hidden="true">↗</span></a
-        >
+            >Все команды <span aria-hidden="true" appArrowUpRight></span
+        ></a>
     </header>
     <div class="teams-map__layout">
         <div class="teams-map__explorer">
@@ -88,8 +88,8 @@
                         ><span
                             class="teams-map__choice-arrow"
                             aria-hidden="true"
-                            >↗</span
-                        >
+                            appArrowUpRight
+                        ></span>
                     </button>
                 }
             </div>
@@ -120,8 +120,8 @@
                     }
                 }
                 <span class="teams-map__photo-tag"
-                    >Игра за пределами экрана ↗</span
-                >
+                    >Игра за пределами экрана <span appArrowUpRight></span
+                ></span>
                 <p class="teams-map__credit">
                     Общий фотоархив лиги · IVANOV / GEOMETRIA
                 </p>
@@ -147,8 +147,8 @@
                 <a
                     class="teams-map__team-link"
                     [routerLink]="['/team', selectedTeam().slug]"
-                    >О команде <span aria-hidden="true">↗</span></a
-                >
+                    >О команде <span aria-hidden="true" appArrowUpRight></span
+                ></a>
                 <p class="teams-map__archive-note">
                     Фото из общего архива, не фотография выбранной команды.
                 </p>

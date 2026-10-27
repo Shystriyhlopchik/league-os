@@ -11,8 +11,8 @@
                 <h2 id="videos-title">Игра со звуком<span>.</span></h2>
             </div>
             <span class="videos__label"
-                >Видео лиги <i aria-hidden="true">↗</i></span
-            >
+                >Видео лиги <i aria-hidden="true" appArrowUpRight></i
+            ></span>
         </header>
         @if (loading()) {
             <p class="videos__state" role="status">Загружаем видео…</p>
@@ -54,9 +54,11 @@
                             }}</span>
                             <span class="video-card__date"
                                 >{{ video.publishedAt | date: "dd.MM.yyyy" }}
-                                <span aria-hidden="true">↗</span></span
-                            ></span
-                        >
+                                <span
+                                    aria-hidden="true"
+                                    appArrowUpRight
+                                ></span></span
+                        ></span>
                     </button>
                 }
             </div>

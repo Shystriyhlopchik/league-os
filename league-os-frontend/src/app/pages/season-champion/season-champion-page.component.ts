@@ -1,3 +1,4 @@
+import { ArrowUpRightComponent } from '../../shared/ui/arrow-up-right/arrow-up-right.component';
 import { DatePipe } from '@angular/common';
 import {
     Component,
@@ -20,7 +21,7 @@ import {
 
 @Component({
     selector: 'app-season-champion-page',
-    imports: [DatePipe, RouterLink],
+    imports: [ArrowUpRightComponent, DatePipe, RouterLink],
     templateUrl: './season-champion-page.component.html',
     styleUrl: './season-champion-page.component.scss',
 })

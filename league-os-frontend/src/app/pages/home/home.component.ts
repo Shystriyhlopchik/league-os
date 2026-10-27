@@ -1,3 +1,4 @@
+import { ArrowUpRightComponent } from '../../shared/ui/arrow-up-right/arrow-up-right.component';
 import { DOCUMENT } from '@angular/common';
 import {
     Component,
@@ -33,6 +34,7 @@ import { VideosComponent } from '../../widgets/videos/videos.component';
 @Component({
     selector: 'app-home',
     imports: [
+        ArrowUpRightComponent,
         RouterLink,
         MatchesSliderComponent,
         StatisticsPreviewComponent,

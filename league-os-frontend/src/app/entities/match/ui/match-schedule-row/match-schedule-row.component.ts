@@ -1,3 +1,4 @@
+import { ArrowUpRightComponent } from '../../../../shared/ui/arrow-up-right/arrow-up-right.component';
 import { DatePipe } from '@angular/common';
 import {
     ChangeDetectionStrategy,
@@ -11,7 +12,7 @@ import { MatchCardVm } from '../../model/match-card.vm';
 
 @Component({
     selector: 'app-match-schedule-row',
-    imports: [DatePipe],
+    imports: [ArrowUpRightComponent, DatePipe],
     templateUrl: './match-schedule-row.component.html',
     styleUrl: './match-schedule-row.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,

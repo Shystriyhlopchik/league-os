@@ -10,6 +10,7 @@ import { of } from 'rxjs';
 import { TournamentsApi } from '../../entities/tournaments/api/tournaments.api';
 import { StandingsApi } from '../../entities/standings/api/standings.api';
 import { HomeComponent } from './home.component';
+import { ArrowUpRightComponent } from '../../shared/ui/arrow-up-right/arrow-up-right.component';
 
 describe('Yard editorial home', () => {
     let fixture: ComponentFixture<HomeComponent>;
@@ -29,7 +30,10 @@ describe('Yard editorial home', () => {
             ],
         })
             .overrideComponent(HomeComponent, {
-                set: { imports: [RouterLink], schemas: [NO_ERRORS_SCHEMA] },
+                set: {
+                    imports: [RouterLink, ArrowUpRightComponent],
+                    schemas: [NO_ERRORS_SCHEMA],
+                },
             })
             .compileComponents();
         fixture = TestBed.createComponent(HomeComponent);
@@ -42,6 +46,19 @@ describe('Yard editorial home', () => {
         expect(fixture.nativeElement.textContent).toContain(
             'IVANOV / GEOMETRIA',
         );
+    });
+    it('uses vector arrows in the story link and moving strip, not emoji-prone text', () => {
+        expect(
+            fixture.nativeElement.querySelector(
+                '.yard-story a span[appArrowUpRight] svg',
+            ),
+        ).not.toBeNull();
+        expect(
+            fixture.nativeElement.querySelectorAll(
+                '.yard-line i[appArrowUpRight] svg',
+            ).length,
+        ).toBe(18);
+        expect(fixture.nativeElement.textContent).not.toContain('↗');
     });
     it('keeps calendar and team navigation and does not invent tournament results', () => {
         expect(

@@ -1,3 +1,4 @@
+import { ArrowUpRightComponent } from '../../shared/ui/arrow-up-right/arrow-up-right.component';
 import {
     ChangeDetectionStrategy,
     Component,
@@ -16,7 +17,7 @@ import { VideoPlayerComponent } from '../../entities/video/video-player.componen
 @Component({
     selector: 'app-videos',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [DatePipe, DialogModule],
+    imports: [ArrowUpRightComponent, DatePipe, DialogModule],
     templateUrl: './videos.component.html',
     styleUrl: './videos.component.scss',
 })
