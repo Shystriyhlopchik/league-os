@@ -15,7 +15,7 @@ import { catchError, of, shareReplay, switchMap } from 'rxjs';
 import { MatchesSliderComponent } from '../../widgets/matches-slide/matches-slider/matches-slider.component';
 import { StatisticsPreviewComponent } from '../../widgets/statistics-preview/statistics-preview.component';
 import { NewsPreviewComponent } from '../../widgets/news-preview/ui/news-preview/news-preview.component';
-import { AdvertisingBannerComponent } from '../../widgets/advertising-banner/advertising-banner.component';
+import { YandexAdComponent } from '../../widgets/yandex-ad/yandex-ad.component';
 import { StatsSummaryComponent } from '../../widgets/stats-summary/stats-summary.component';
 import { TeamsMapComponent } from '../../widgets/teams-map/teams-map.component';
 import { TournamentsApi } from '../../entities/tournaments/api/tournaments.api';
@@ -39,7 +39,7 @@ import { VideosComponent } from '../../widgets/videos/videos.component';
         MatchesSliderComponent,
         StatisticsPreviewComponent,
         NewsPreviewComponent,
-        AdvertisingBannerComponent,
+        YandexAdComponent,
         StatsSummaryComponent,
         TeamsMapComponent,
         SelectComponent,

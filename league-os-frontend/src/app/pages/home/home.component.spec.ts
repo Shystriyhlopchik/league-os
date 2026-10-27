@@ -60,6 +60,14 @@ describe('Yard editorial home', () => {
         ).toBe(18);
         expect(fixture.nativeElement.textContent).not.toContain('↗');
     });
+    it('places the RTB slot after news and leaves no inline ad script in the template', () => {
+        const news = fixture.nativeElement.querySelector('app-news-preview');
+        expect(news.nextElementSibling.tagName).toBe('APP-YANDEX-AD');
+        expect(
+            fixture.nativeElement.querySelectorAll('app-yandex-ad').length,
+        ).toBe(1);
+        expect(fixture.nativeElement.querySelector('script')).toBeNull();
+    });
     it('keeps calendar and team navigation and does not invent tournament results', () => {
         expect(
             fixture.nativeElement.querySelector('a[href="/matches"]'),
