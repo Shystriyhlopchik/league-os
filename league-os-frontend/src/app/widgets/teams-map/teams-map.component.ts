@@ -1,3 +1,4 @@
+import { ArrowUpRightComponent } from '../../shared/ui/arrow-up-right/arrow-up-right.component';
 import { DOCUMENT } from '@angular/common';
 import {
     ChangeDetectionStrategy,
@@ -13,7 +14,7 @@ import { RouterLink } from '@angular/router';
 
 @Component({
     selector: 'app-teams-map',
-    imports: [RouterLink],
+    imports: [ArrowUpRightComponent, RouterLink],
     templateUrl: './teams-map.component.html',
     styleUrl: './teams-map.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,

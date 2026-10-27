@@ -11,8 +11,8 @@
             </h2>
         </div>
         <a routerLink="/players"
-            >Весь рейтинг <span aria-hidden="true">↗</span></a
-        >
+            >Весь рейтинг <span aria-hidden="true" appArrowUpRight></span
+        ></a>
     </header>
 
     @if (isLoading()) {
@@ -98,8 +98,8 @@
                             <h3>{{ player.name }}</h3>
                             <a [routerLink]="['/team', player.team.id]"
                                 >{{ player.team.name }}
-                                <span aria-hidden="true">↗</span></a
-                            >
+                                <span aria-hidden="true" appArrowUpRight></span
+                            ></a>
                         </div>
                     </div>
                     <dl class="player-spotlight__stats">
@@ -198,9 +198,9 @@
                                     ><span
                                         class="top-player__arrow"
                                         aria-hidden="true"
-                                        >↗</span
+                                        appArrowUpRight
                                     ></span
-                                >
+                                ></span>
                             </button>
                         </li>
                     }

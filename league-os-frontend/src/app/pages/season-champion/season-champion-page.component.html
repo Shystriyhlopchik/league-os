@@ -17,7 +17,7 @@
                 <section class="champion-hero" aria-labelledby="champion-title">
                     <div class="champion-hero__identity">
                         <p class="champion-hero__eyebrow">
-                            <span aria-hidden="true">↗</span>
+                            <span aria-hidden="true" appArrowUpRight></span>
                             {{ page.season.name }}
                             @if (page.season.year) {
                                 · {{ page.season.year }}
@@ -58,8 +58,8 @@
                             ><span
                                 class="champion-team__arrow"
                                 aria-hidden="true"
-                                >↗</span
-                            >
+                                appArrowUpRight
+                            ></span>
                         </a>
                         <a class="champion-hero__squad-link" href="#squad-title"
                             >Те, кто сделал этот сезон
@@ -123,8 +123,9 @@
                             }}</time>
                         }
                         <a [routerLink]="['/tournaments', page.tournament.id]"
-                            >Весь турнир <span aria-hidden="true">↗</span></a
-                        >
+                            >Весь турнир
+                            <span aria-hidden="true" appArrowUpRight></span
+                        ></a>
                     </div>
                 </section>
                 <section class="champion-squad" aria-labelledby="squad-title">
@@ -229,7 +230,7 @@
                             состава.
                         </p>
                         <a [routerLink]="['/tournaments', page.tournament.id]"
-                            >Смотреть турнир ↗</a
+                            >Смотреть турнир <span appArrowUpRight></span></a
                         ><small>Фото: IVANOV / GEOMETRIA</small>
                     </div>
                 </section>

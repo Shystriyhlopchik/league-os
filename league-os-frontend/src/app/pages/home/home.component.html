@@ -25,7 +25,7 @@
     </div>
     <div class="league-intro__copy">
         <p class="league-intro__eyebrow">
-            <span aria-hidden="true">↗</span> Здесь играют свои
+            <span aria-hidden="true" appArrowUpRight></span> Здесь играют свои
         </p>
         <h1 id="league-intro-title">Наш район.<br /><span>Наша игра.</span></h1>
         <p class="league-intro__description">
@@ -34,8 +34,8 @@
         </p>
         <div class="league-intro__links">
             <a class="league-intro__primary" routerLink="/matches"
-                >На поле <span aria-hidden="true">↗</span></a
-            >
+                >На поле <span aria-hidden="true" appArrowUpRight></span
+            ></a>
             <a class="league-intro__secondary" routerLink="/team"
                 >Команды лиги <span aria-hidden="true">→</span></a
             >
@@ -100,9 +100,10 @@
                 <div class="yard-line__group">
                     @for (phrase of [0, 1, 2]; track phrase) {
                         <span class="yard-line__phrase"
-                            >Играем за своих <i>↗</i> Дворовая лига
-                            <i>↗</i> Наш район. Наша игра. <i>↗</i></span
-                        >
+                            >Играем за своих <i appArrowUpRight></i> Дворовая
+                            лига <i appArrowUpRight></i> Наш район. Наша игра.
+                            <i appArrowUpRight></i
+                        ></span>
                     }
                 </div>
             }
@@ -132,8 +133,8 @@
                 </h2>
             </div>
             <a routerLink="/matches"
-                >Все матчи <span aria-hidden="true">↗</span></a
-            >
+                >Все матчи <span aria-hidden="true" appArrowUpRight></span
+            ></a>
         </header>
         <app-matches-slider [seasonId]="tournament.season.id" />
     </section>
@@ -148,8 +149,8 @@
                 <h2>Жизнь лиги<span aria-hidden="true">.</span></h2>
             </div>
             <a routerLink="/news"
-                >Все новости <span aria-hidden="true">↗</span></a
-            >
+                >Все новости <span aria-hidden="true" appArrowUpRight></span
+            ></a>
         </header>
         <app-news-preview [limit]="6" />
         <section class="yard-story" aria-labelledby="yard-story-title">
@@ -172,8 +173,9 @@
                     Не зрители. Свои люди.<br />Не просто команды. Свой район.
                 </p>
                 <a routerLink="/team"
-                    >Знакомься с командами <span aria-hidden="true">↗</span></a
-                >
+                    >Знакомься с командами
+                    <span aria-hidden="true" appArrowUpRight></span
+                ></a>
             </div>
         </section>
         @if (activeTournament(); as tournament) {
