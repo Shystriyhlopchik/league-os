@@ -1,0 +1,31 @@
+:host {
+    display: block;
+    min-width: 0;
+}
+:host(.yan-ad--inactive) {
+    display: none;
+}
+.yan-ad {
+    margin: 32px 16px;
+    min-width: 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--brand-border);
+}
+.yan-ad__label {
+    margin: 0 0 12px;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--brand-muted);
+}
+.yan-ad__slot {
+    width: 100%;
+    min-width: 0;
+    // Reserve space before loading, without clipping or overlaying the creative.
+    min-height: 250px;
+}
+@media (max-width: 599px) {
+    .yan-ad {
+        margin-block: 24px;
+    }
+}

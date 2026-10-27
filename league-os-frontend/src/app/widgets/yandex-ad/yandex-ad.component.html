@@ -1,0 +1,6 @@
+@if (enabled && !unavailable()) {
+    <aside class="yan-ad" aria-label="Реклама">
+        <p class="yan-ad__label">Реклама</p>
+        <div #slot class="yan-ad__slot" [id]="containerId"></div>
+    </aside>
+}
