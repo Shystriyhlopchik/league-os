@@ -11,6 +11,7 @@ import { TournamentsApi } from '../../entities/tournaments/api/tournaments.api';
 import { StandingsApi } from '../../entities/standings/api/standings.api';
 import { HomeComponent } from './home.component';
 import { ArrowUpRightComponent } from '../../shared/ui/arrow-up-right/arrow-up-right.component';
+import { Tournament } from '../../entities/tournaments/model/tournaments.model';
 
 describe('Yard editorial home', () => {
     let fixture: ComponentFixture<HomeComponent>;
@@ -60,13 +61,29 @@ describe('Yard editorial home', () => {
         ).toBe(18);
         expect(fixture.nativeElement.textContent).not.toContain('↗');
     });
-    it('places the RTB slot after news and leaves no inline ad script in the template', () => {
-        const news = fixture.nativeElement.querySelector('app-news-preview');
-        expect(news.nextElementSibling.tagName).toBe('APP-YANDEX-AD');
+    it('keeps one RTB slot after the story even without an active tournament', () => {
+        const story = fixture.nativeElement.querySelector('.yard-story');
+        expect(story.nextElementSibling.tagName).toBe('APP-YANDEX-AD');
         expect(
             fixture.nativeElement.querySelectorAll('app-yandex-ad').length,
         ).toBe(1);
         expect(fixture.nativeElement.querySelector('script')).toBeNull();
+    });
+    it('places the RTB slot immediately before the top five players', () => {
+        spyOn(fixture.componentInstance, 'activeTournament').and.returnValue({
+            id: 1,
+            name: 'Тестовый турнир',
+            season: { id: 1 },
+        } as Tournament);
+        fixture.detectChanges();
+        const topFive = fixture.nativeElement.querySelector(
+            'app-top-players-ovr',
+        );
+        expect(topFive).not.toBeNull();
+        expect(topFive.previousElementSibling.tagName).toBe('APP-YANDEX-AD');
+        expect(
+            fixture.nativeElement.querySelectorAll('app-yandex-ad').length,
+        ).toBe(1);
     });
     it('keeps calendar and team navigation and does not invent tournament results', () => {
         expect(
