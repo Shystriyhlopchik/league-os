@@ -86,19 +86,10 @@
             >
                 Новости
             </a>
-            <a
-                class="header__nav-link"
-                routerLinkActive="header__nav-link--active"
-                ariaCurrentWhenActive="page"
-                [routerLinkActiveOptions]="{ exact: true }"
-                routerLink="/regulations"
-                (click)="closeMenu()"
-            >
-                Регламент соревнований
-            </a>
-            <!--            <a class="header__nav-link" routerLinkActive="header__nav-link--active" ariaCurrentWhenActive="page" [routerLinkActiveOptions]="{ exact: true }" routerLink="/" (click)="closeMenu()">-->
-            <!--                О лиге-->
-            <!--            </a>-->
+            <ng-container
+                [ngTemplateOutlet]="aboutMenu"
+                [ngTemplateOutletContext]="{ id: 'desktop' }"
+            />
         </nav>
 
         <div class="header__actions">
@@ -252,16 +243,10 @@
             >
                 Новости
             </a>
-            <a
-                class="header__nav-link"
-                routerLinkActive="header__nav-link--active"
-                ariaCurrentWhenActive="page"
-                [routerLinkActiveOptions]="{ exact: true }"
-                routerLink="/regulations"
-                (click)="closeMenu()"
-            >
-                Регламент соревнований
-            </a>
+            <ng-container
+                [ngTemplateOutlet]="aboutMenu"
+                [ngTemplateOutletContext]="{ id: 'mobile' }"
+            />
             <a
                 class="header__nav-link"
                 routerLinkActive="header__nav-link--active"
@@ -275,3 +260,48 @@
         </nav>
     }
 </header>
+
+<ng-template #aboutMenu let-id="id">
+    <div
+        class="header__about"
+        routerLinkActive="header__about--active"
+        (focusout)="onAboutFocusOut($event)"
+    >
+        <button
+            class="header__nav-link header__about-toggle"
+            type="button"
+            [attr.aria-expanded]="isAboutOpen()"
+            [attr.aria-controls]="'header-about-' + id"
+            (click)="isAboutOpen.set(!isAboutOpen())"
+        >
+            О лиге
+            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12">
+                <path
+                    d="m2 4 4 4 4-4"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                />
+            </svg>
+        </button>
+        <ul
+            class="header__submenu"
+            [id]="'header-about-' + id"
+            [hidden]="!isAboutOpen()"
+            aria-label="О лиге"
+        >
+            @for (link of aboutLinks; track link.path) {
+                <li>
+                    <a
+                        class="header__nav-link"
+                        [routerLink]="link.path"
+                        routerLinkActive="header__nav-link--active"
+                        ariaCurrentWhenActive="page"
+                        (click)="closeMenu()"
+                        >{{ link.label }}</a
+                    >
+                </li>
+            }
+        </ul>
+    </div>
+</ng-template>

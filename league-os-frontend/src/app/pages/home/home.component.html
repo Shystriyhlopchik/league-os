@@ -153,7 +153,6 @@
             ></a>
         </header>
         <app-news-preview [limit]="6" />
-        <app-yandex-ad />
         <section class="yard-story" aria-labelledby="yard-story-title">
             <figure>
                 <img
@@ -179,6 +178,7 @@
                 ></a>
             </div>
         </section>
+        <app-yandex-ad />
         @if (activeTournament(); as tournament) {
             <app-top-players-ovr [tournamentId]="tournament.id" />
         }

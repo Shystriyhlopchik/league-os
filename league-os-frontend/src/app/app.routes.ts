@@ -49,6 +49,24 @@ export const routes: Routes = [
             ).then((m) => m.CompetitionRegulationsPageComponent),
     },
     {
+        path: 'about',
+        children: [
+            { path: '', pathMatch: 'full', redirectTo: 'philosophy' },
+            {
+                path: 'philosophy',
+                data: { title: 'Философия' },
+                loadComponent: () => import('./pages/about-league/about-league-page.component')
+                    .then(m => m.AboutLeaguePageComponent),
+            },
+            {
+                path: 'history',
+                data: { title: 'История' },
+                loadComponent: () => import('./pages/about-league/about-league-page.component')
+                    .then(m => m.AboutLeaguePageComponent),
+            },
+        ],
+    },
+    {
         path: 'team',
         loadComponent: () =>
             import('./pages/team/team.component').then((m) => m.TeamComponent),

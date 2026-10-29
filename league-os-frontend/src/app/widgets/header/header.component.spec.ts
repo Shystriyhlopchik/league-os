@@ -7,7 +7,14 @@ describe('Brand header navigation', () => {
     beforeEach(async () => {
         await TestBed.configureTestingModule({
             imports: [HeaderComponent],
-            providers: [provideRouter([{ path: 'matches', children: [] }])],
+            providers: [
+                provideRouter([
+                    { path: 'matches', children: [] },
+                    { path: 'regulations', children: [] },
+                    { path: 'about/philosophy', children: [] },
+                    { path: 'about/history', children: [] },
+                ]),
+            ],
         }).compileComponents();
         fixture = TestBed.createComponent(HeaderComponent);
         fixture.detectChanges();
@@ -27,12 +34,109 @@ describe('Brand header navigation', () => {
             '/champion',
             '/news',
             '/regulations',
+            '/about/philosophy',
+            '/about/history',
         ]) {
             expect(
                 fixture.nativeElement.querySelector(`a[href="${path}"]`),
             ).not.toBeNull();
         }
     });
+    it('groups league links in a collapsed desktop submenu', () => {
+        const group = fixture.nativeElement.querySelector(
+            '.header__nav--desktop .header__about',
+        );
+        const toggle = group.querySelector('button');
+        const list = group.querySelector('ul');
+        expect(toggle.textContent).toContain('О лиге');
+        expect(toggle.getAttribute('aria-controls')).toBe(list.id);
+        expect(toggle.getAttribute('aria-expanded')).toBe('false');
+        expect(list.hidden).toBeTrue();
+        expect(
+            Array.from(group.querySelectorAll('a')).map((a: any) =>
+                a.getAttribute('href'),
+            ),
+        ).toEqual(['/regulations', '/about/philosophy', '/about/history']);
+        toggle.click();
+        fixture.detectChanges();
+        expect(list.hidden).toBeFalse();
+        expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    });
+    it('closes the submenu on an outside click', () => {
+        fixture.componentInstance.isAboutOpen.set(true);
+        fixture.detectChanges();
+        document.body.click();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.isAboutOpen()).toBeFalse();
+    });
+    it('closes only the submenu first on Escape and restores toggle focus', () => {
+        fixture.componentInstance.toggleMenu();
+        fixture.componentInstance.isAboutOpen.set(true);
+        fixture.detectChanges();
+        const toggle = fixture.nativeElement.querySelector(
+            '#header-menu .header__about-toggle',
+        );
+        const focus = spyOn(toggle, 'focus');
+        fixture.componentInstance.onEscape();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.isAboutOpen()).toBeFalse();
+        expect(fixture.componentInstance.isMenuOpen()).toBeTrue();
+        expect(focus).toHaveBeenCalled();
+        fixture.componentInstance.onEscape();
+        expect(fixture.componentInstance.isMenuOpen()).toBeFalse();
+    });
+    it('closes the submenu when keyboard focus leaves the group', () => {
+        fixture.componentInstance.isAboutOpen.set(true);
+        fixture.detectChanges();
+        const group = fixture.nativeElement.querySelector('.header__about');
+        group.dispatchEvent(
+            new FocusEvent('focusout', {
+                relatedTarget: group.querySelector('a'),
+            }),
+        );
+        expect(fixture.componentInstance.isAboutOpen()).toBeTrue();
+        group.dispatchEvent(
+            new FocusEvent('focusout', { relatedTarget: document.body }),
+        );
+        expect(fixture.componentInstance.isAboutOpen()).toBeFalse();
+    });
+    it('supports mobile submenu navigation and closes both levels after selection', async () => {
+        fixture.componentInstance.toggleMenu();
+        fixture.detectChanges();
+        const mobile = fixture.nativeElement.querySelector('#header-menu');
+        mobile.querySelector('.header__about-toggle').click();
+        fixture.detectChanges();
+        expect(mobile.querySelector('ul').hidden).toBeFalse();
+        mobile.querySelector('a[href="/about/history"]').click();
+        fixture.detectChanges();
+        await fixture.whenStable();
+        expect(fixture.componentInstance.isAboutOpen()).toBeFalse();
+        expect(fixture.componentInstance.isMenuOpen()).toBeFalse();
+        expect(TestBed.inject(Router).url).toBe('/about/history');
+    });
+    for (const path of [
+        '/regulations',
+        '/about/philosophy',
+        '/about/history',
+    ]) {
+        it(`highlights the parent and current child at ${path}`, async () => {
+            await TestBed.inject(Router).navigateByUrl(path);
+            fixture.detectChanges();
+            await fixture.whenStable();
+            fixture.detectChanges();
+            const group = fixture.nativeElement.querySelector(
+                '.header__nav--desktop .header__about',
+            );
+            expect(
+                group.classList.contains('header__about--active'),
+            ).toBeTrue();
+            expect(
+                group
+                    .querySelector(`a[href="${path}"]`)
+                    .getAttribute('aria-current'),
+            ).toBe('page');
+        });
+    }
     it('opens and closes mobile navigation and restores body scrolling', () => {
         const before = document.body.style.overflow;
         const toggle = fixture.nativeElement.querySelector(
