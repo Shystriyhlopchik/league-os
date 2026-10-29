@@ -1,0 +1,137 @@
+<div class="about-page">
+    <div class="about-page__topbar">
+        <p class="about-page__eyebrow">Дворовая лига · О лиге</p>
+        <nav class="about-page__nav" aria-label="Разделы о лиге">
+            <a routerLink="/regulations">Регламент соревнований</a>
+            <a
+                routerLink="/about/philosophy"
+                routerLinkActive="is-active"
+                ariaCurrentWhenActive="page"
+                >Философия</a
+            >
+            <a
+                routerLink="/about/history"
+                routerLinkActive="is-active"
+                ariaCurrentWhenActive="page"
+                >История</a
+            >
+        </nav>
+    </div>
+    @if (page()["title"] === "Философия") {
+        <article class="philosophy" aria-labelledby="philosophy-title">
+            <header class="philosophy__hero">
+                <div class="philosophy__hero-copy">
+                    <h1 id="philosophy-title">
+                        <span class="philosophy__league">Дворовая лига.</span
+                        >{{ " " }} <span>Мы мыслим</span>{{ " " }}
+                        <em>иначе.</em>
+                    </h1>
+                    <p class="philosophy__intro">
+                        Во всём, что мы делаем, мы бросаем вызов привычным
+                        подходам к организации любительского футбола.
+                    </p>
+                    <span class="philosophy__hero-note" aria-hidden="true"
+                        >На поле и за его пределами</span
+                    >
+                </div>
+                <figure class="philosophy__photo">
+                    <img
+                        src="/brand/photos/philosophy-match.jpg"
+                        alt="Футболисты Дворовой лиги борются за мяч в вечернем матче"
+                        width="1280"
+                        height="853"
+                        fetchpriority="high"
+                    />
+                    <figcaption>Наш футбол. Наши люди.</figcaption>
+                </figure>
+            </header>
+
+            <section
+                class="philosophy__manifesto"
+                aria-labelledby="philosophy-belief"
+            >
+                <p class="philosophy__chapter">Наш подход</p>
+                <div class="philosophy__belief">
+                    <h2 id="philosophy-belief">
+                        <strong>Мы верим, что футбол может быть другим.</strong>
+                    </h2>
+                    <p>
+                        Современнее, ярче, доступнее. Что даже дворовые
+                        соревнования могут быть организованы на уровне больших
+                        спортивных событий.
+                    </p>
+                    <p>
+                        Мы переосмысливаем привычные форматы, объединяя
+                        современный дизайн, информационные технологии и
+                        инициативу людей. Мы создаём среду, в которой каждый
+                        может проявить себя — не только на футбольном поле, но и
+                        за его пределами.
+                    </p>
+                </div>
+            </section>
+
+            <p class="philosophy__statement">
+                <strong
+                    >Мы создаём не просто футбольный турнир. Мы создаём
+                    сообщество, где идеи становятся реальностью, таланты
+                    получают возможность раскрыться, а каждый человек может
+                    стать частью чего-то большего.</strong
+                >
+            </p>
+
+            <section
+                class="philosophy__community"
+                aria-labelledby="philosophy-community-title"
+            >
+                <header class="philosophy__community-heading">
+                    <p class="philosophy__chapter">
+                        Одно поле. Разные возможности.
+                    </p>
+                    <h2 id="philosophy-community-title">
+                        <strong
+                            >«Дворовая лига» объединяет людей вокруг футбола и
+                            создаёт возможности для каждого.</strong
+                        >
+                    </h2>
+                </header>
+                <ol class="philosophy__audiences">
+                    @for (audience of audiences; track audience.id) {
+                        <li
+                            class="philosophy__audience"
+                            [attr.aria-labelledby]="'audience-' + audience.id"
+                        >
+                            <span
+                                class="philosophy__number"
+                                aria-hidden="true"
+                                >{{ audience.number }}</span
+                            >
+                            <h3 [id]="'audience-' + audience.id">
+                                {{ audience.title }}:
+                            </h3>
+                            <p>{{ audience.text }}</p>
+                        </li>
+                    }
+                </ol>
+            </section>
+
+            <footer class="philosophy__closing">
+                <p class="philosophy__motto">
+                    <strong>Дворовая лига. Больше, чем футбол.</strong>
+                </p>
+                <nav
+                    class="philosophy__actions"
+                    aria-label="Жизнь Дворовой лиги"
+                >
+                    <a routerLink="/matches"
+                        >Смотреть матчи <span appArrowUpRight></span
+                    ></a>
+                    <a routerLink="/news"
+                        >Новости лиги <span appArrowUpRight></span
+                    ></a>
+                </nav>
+            </footer>
+        </article>
+    } @else {
+        <app-league-history />
+    }
+</div>
