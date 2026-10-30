@@ -77,6 +77,8 @@ describe('Tournament lifecycle HTTP integration', () => {
     assignGroups: jest.fn(),
     previewSchedule: jest.fn(async () => ({ totalMatches: 30 })),
     generateSchedule: jest.fn(),
+    saveManualMatch: jest.fn(async () => ({ id: 50 })),
+    removeManualMatch: jest.fn(async () => ({ cancelledMatches: 1 })),
   };
   const qualification = {
     preview: jest.fn(async () => ({ id: 90, status: 'preview' })),
@@ -165,6 +167,68 @@ describe('Tournament lifecycle HTTP integration', () => {
 
   afterAll(async () => app.close());
   beforeEach(() => jest.clearAllMocks());
+
+  it('lets an organizer create, edit and remove a manual fixture', async () => {
+    const body = {
+      groupId: 1,
+      roundNumber: 2,
+      homeTeamId: 101,
+      awayTeamId: 102,
+    };
+    const url = '/tournaments/10/stages/20/schedule/matches';
+    await request(app.getHttpServer())
+      .post(url)
+      .set('x-test-user-id', '2')
+      .send(body)
+      .expect(201);
+    expect(groupScheduling.saveManualMatch).toHaveBeenCalledWith(10, 20, body);
+    await request(app.getHttpServer())
+      .patch(`${url}/50`)
+      .set('x-test-user-id', '2')
+      .send(body)
+      .expect(200);
+    expect(groupScheduling.saveManualMatch).toHaveBeenCalledWith(
+      10,
+      20,
+      body,
+      50,
+    );
+    await request(app.getHttpServer())
+      .delete(`${url}/50`)
+      .set('x-test-user-id', '2')
+      .expect(200);
+    expect(groupScheduling.removeManualMatch).toHaveBeenCalledWith(10, 20, 50);
+  });
+  it('rejects unauthorized calendar writes and malformed pairings', async () => {
+    const url = '/tournaments/10/stages/20/schedule/matches';
+    const body = {
+      groupId: 1,
+      roundNumber: 2,
+      homeTeamId: 101,
+      awayTeamId: 102,
+    };
+    await request(app.getHttpServer()).post(url).send(body).expect(401);
+    await request(app.getHttpServer())
+      .post(url)
+      .set('x-test-user-id', '3')
+      .send(body)
+      .expect(403);
+    await request(app.getHttpServer())
+      .patch(`${url}/50`)
+      .set('x-test-user-id', '3')
+      .send(body)
+      .expect(403);
+    await request(app.getHttpServer())
+      .delete(`${url}/50`)
+      .set('x-test-user-id', '3')
+      .expect(403);
+    await request(app.getHttpServer())
+      .post(url)
+      .set('x-test-user-id', '2')
+      .send({ ...body, roundNumber: 1.5 })
+      .expect(400);
+    expect(groupScheduling.saveManualMatch).not.toHaveBeenCalled();
+  });
 
   it('creates a tournament for the authenticated owner', async () => {
     await request(app.getHttpServer())

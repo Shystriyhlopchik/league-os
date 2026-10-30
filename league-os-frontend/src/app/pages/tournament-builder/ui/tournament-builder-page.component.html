@@ -1906,25 +1906,174 @@
                 <section class="step-card preparation-calendar">
                     <h2>Подготовка календаря</h2>
                     <p class="hint">
-                        Сначала сохраните распределение команд. После
-                        формирования пар изменение групп блокируется. До запуска
-                        матчи скрыты от зрителей и недоступны для ввода
-                        результатов.
+                        Сохраните распределение команд, затем сформируйте пары
+                        автоматически или добавьте матчи вручную. После
+                        добавления первой пары состав групп блокируется. До
+                        запуска календарь скрыт от зрителей и недоступен для
+                        ввода результатов.
                     </p>
                     @if (groupStage()) {
                         <button
                             class="button button--primary"
                             (click)="generateCalendar()"
                             [disabled]="
-                                operation() !== null ||
-                                draft().registrationStatus !== 'closed' ||
-                                store.structureLocked()
+                                operation() !== null || !canEditPairings()
                             "
                         >
-                            Сохранить группы и сформировать пары
+                            Сформировать пары автоматически
+                        </button>
+                        <button
+                            type="button"
+                            class="button button--secondary"
+                            (click)="openManualMatch()"
+                            [disabled]="
+                                operation() !== null || !canEditPairings()
+                            "
+                        >
+                            Добавить матч вручную
                         </button>
                     }
+                    @if (manualEditorOpen() && canEditPairings()) {
+                        <form
+                            class="section-block manual-calendar"
+                            (ngSubmit)="saveManualMatch()"
+                        >
+                            <h3>
+                                {{
+                                    editingMatchId
+                                        ? "Изменить пару и тур"
+                                        : "Новый матч"
+                                }}
+                            </h3>
+                            <p class="hint">
+                                Добавляйте матчи постепенно. Дату, время и
+                                площадку можно назначить ниже. Перед запуском
+                                каждая пара должна сыграть предусмотренное число
+                                кругов.
+                            </p>
+                            <div class="form-grid">
+                                <label class="field"
+                                    >Группа
+                                    <select
+                                        name="manualGroup"
+                                        [ngModel]="manualMatch.groupId"
+                                        (ngModelChange)="
+                                            changeManualGroup($event)
+                                        "
+                                        [disabled]="operation() !== null"
+                                        required
+                                    >
+                                        <option [ngValue]="0" disabled>
+                                            Выберите группу
+                                        </option>
+                                        @for (
+                                            group of groupStage()?.groups ?? [];
+                                            track group.clientKey
+                                        ) {
+                                            <option [ngValue]="group.serverId">
+                                                {{ group.name || group.key }}
+                                            </option>
+                                        }
+                                    </select>
+                                </label>
+                                <label class="field"
+                                    >Тур
+                                    <input
+                                        name="manualRound"
+                                        type="number"
+                                        min="1"
+                                        max="10000"
+                                        step="1"
+                                        required
+                                        [(ngModel)]="manualMatch.roundNumber"
+                                        [disabled]="operation() !== null"
+                                    />
+                                </label>
+                                <label class="field"
+                                    >Хозяева
+                                    <select
+                                        name="manualHome"
+                                        [(ngModel)]="manualMatch.homeTeamId"
+                                        [disabled]="operation() !== null"
+                                        required
+                                    >
+                                        <option [ngValue]="0" disabled>
+                                            Выберите команду
+                                        </option>
+                                        @for (
+                                            team of manualGroupTeams();
+                                            track team.teamId
+                                        ) {
+                                            <option
+                                                [ngValue]="team.teamId"
+                                                [disabled]="
+                                                    team.teamId ===
+                                                    manualMatch.awayTeamId
+                                                "
+                                            >
+                                                {{ team.name }}
+                                            </option>
+                                        }
+                                    </select>
+                                </label>
+                                <label class="field"
+                                    >Гости
+                                    <select
+                                        name="manualAway"
+                                        [(ngModel)]="manualMatch.awayTeamId"
+                                        [disabled]="operation() !== null"
+                                        required
+                                    >
+                                        <option [ngValue]="0" disabled>
+                                            Выберите команду
+                                        </option>
+                                        @for (
+                                            team of manualGroupTeams();
+                                            track team.teamId
+                                        ) {
+                                            <option
+                                                [ngValue]="team.teamId"
+                                                [disabled]="
+                                                    team.teamId ===
+                                                    manualMatch.homeTeamId
+                                                "
+                                            >
+                                                {{ team.name }}
+                                            </option>
+                                        }
+                                    </select>
+                                </label>
+                            </div>
+                            @if (manualMatchError()) {
+                                <p class="field-error" role="alert">
+                                    {{ manualMatchError() }}
+                                </p>
+                            }
+                            <div class="wizard-actions">
+                                <button
+                                    type="button"
+                                    class="button button--ghost"
+                                    (click)="manualEditorOpen.set(false)"
+                                    [disabled]="operation() !== null"
+                                >
+                                    Отмена
+                                </button>
+                                <button
+                                    type="submit"
+                                    class="button button--primary"
+                                    [disabled]="operation() !== null"
+                                >
+                                    {{
+                                        editingMatchId
+                                            ? "Сохранить пару и тур"
+                                            : "Добавить матч"
+                                    }}
+                                </button>
+                            </div>
+                        </form>
+                    }
                     @if (
+                        applicationsRequired() &&
                         draft().registrationStatus !== "closed" &&
                         !store.structureLocked()
                     ) {
@@ -2013,10 +2162,79 @@
                                 >
                                     Сохранить время и площадку
                                 </button>
+                                @if (
+                                    canEditPairings() &&
+                                    match.stageId === groupStage()?.serverId &&
+                                    match.groupId &&
+                                    match.status === "scheduled"
+                                ) {
+                                    <div class="calendar-row__actions">
+                                        <button
+                                            type="button"
+                                            class="button button--secondary"
+                                            (click)="openManualMatch(match)"
+                                            [disabled]="operation() !== null"
+                                        >
+                                            Изменить пару / тур
+                                        </button>
+                                        @if (
+                                            removeMatchConfirmation() ===
+                                            match.id
+                                        ) {
+                                            <span
+                                                >Убрать матч из календаря?</span
+                                            >
+                                            <button
+                                                type="button"
+                                                class="button button--secondary"
+                                                (click)="
+                                                    removePreparedMatch(
+                                                        match.id
+                                                    )
+                                                "
+                                                [disabled]="
+                                                    operation() !== null
+                                                "
+                                            >
+                                                Подтвердить удаление
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="button button--ghost"
+                                                (click)="
+                                                    removeMatchConfirmation.set(
+                                                        null
+                                                    )
+                                                "
+                                                [disabled]="
+                                                    operation() !== null
+                                                "
+                                            >
+                                                Отмена
+                                            </button>
+                                        } @else {
+                                            <button
+                                                type="button"
+                                                class="button button--ghost"
+                                                (click)="
+                                                    removeMatchConfirmation.set(
+                                                        match.id
+                                                    )
+                                                "
+                                                [disabled]="
+                                                    operation() !== null
+                                                "
+                                            >
+                                                Удалить матч
+                                            </button>
+                                        }
+                                    </div>
+                                }
                             </div>
                         } @empty {
                             <p class="empty-state">
-                                Матчи пока не сформированы.
+                                Матчи пока не сформированы. Добавьте первый матч
+                                вручную или воспользуйтесь генератором пар.
                             </p>
                         }
                     }

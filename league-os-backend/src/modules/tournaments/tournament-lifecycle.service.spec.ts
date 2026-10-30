@@ -19,6 +19,7 @@ import { createYardLeagueRules } from './validation/yard-league-rules.fixture';
 import { CommunitiesService } from '../communities/communities.service';
 import { CommunityMemberEntity } from '../communities/entities/community-member.entity';
 import { SeasonEntity } from '../seasons/entities/season.entity';
+import { MatchRoundType } from '../matches/enums/match-round-type.enum';
 
 const repository = <T>() =>
   ({
@@ -165,18 +166,14 @@ describe('TournamentLifecycleService', () => {
 
   it('uses configuration-only validation when saving a draft rule version', async () => {
     const config = createYardLeagueRules();
-    jest
-      .mocked(tournaments.findOne)
-      .mockResolvedValue({
-        id: 10,
-        lifecycleStatus: TournamentLifecycleStatus.DRAFT,
-      } as TournamentEntity);
-    jest
-      .mocked(txTournaments.findOne)
-      .mockResolvedValue({
-        id: 10,
-        lifecycleStatus: TournamentLifecycleStatus.DRAFT,
-      } as TournamentEntity);
+    jest.mocked(tournaments.findOne).mockResolvedValue({
+      id: 10,
+      lifecycleStatus: TournamentLifecycleStatus.DRAFT,
+    } as TournamentEntity);
+    jest.mocked(txTournaments.findOne).mockResolvedValue({
+      id: 10,
+      lifecycleStatus: TournamentLifecycleStatus.DRAFT,
+    } as TournamentEntity);
     jest.mocked(txVersions.findOne).mockResolvedValue(null);
     await service.createRuleVersion(10, { config }, 42);
     expect(validation.validate).toHaveBeenCalledWith(10, config, true);
@@ -385,6 +382,65 @@ describe('TournamentLifecycleService', () => {
         status: TournamentStatus.ACTIVE,
       },
     );
+  });
+
+  it('validates manual calendar completeness, round collisions and scheduling before launch', async () => {
+    jest.mocked(tournaments.findOne).mockResolvedValue({
+      id: 10,
+      registrationRequired: true,
+      registrationStatus: 'closed',
+      lifecycleStatus: TournamentLifecycleStatus.DRAFT,
+    } as TournamentEntity);
+    let fixtures = [
+      { homeTeamId: 101, awayTeamId: 103, roundNumber: 1 },
+      { homeTeamId: 102, awayTeamId: 103, roundNumber: 2 },
+      { homeTeamId: 101, awayTeamId: 102, roundNumber: 3 },
+    ].map((m, index) => ({
+      ...m,
+      id: index + 1,
+      stageId: 20,
+      groupId: 1,
+      roundType: MatchRoundType.GROUP_ROUND,
+      venueId: 5,
+      matchDatetime: new Date('2026-11-01T15:00:00'),
+    }));
+    Object.assign(dataSource, {
+      manager: {
+        exists: jest.fn(async () => false),
+        find: jest.fn(async (entity) =>
+          entity === MatchEntity
+            ? fixtures
+            : [
+                {
+                  id: 20,
+                  key: 'groups',
+                  name: 'Групповой этап',
+                  groups: [{ id: 1 }],
+                  participants: [101, 102, 103].map((teamId) => ({
+                    groupId: 1,
+                    tournamentTeam: { teamId },
+                  })),
+                },
+              ],
+        ),
+      },
+    });
+    const dto = { mode: 'launch' as const, config: createYardLeagueRules() };
+    expect((await service.preview(10, dto)).valid).toBe(true);
+    fixtures[1].roundNumber = 1;
+    expect(
+      (await service.preview(10, dto)).errors.map((e) => e.code),
+    ).toContain('CALENDAR_INCOMPLETE');
+    fixtures[1].roundNumber = 2;
+    fixtures[0].venueId = 0;
+    expect(
+      (await service.preview(10, dto)).errors.map((e) => e.code),
+    ).toContain('CALENDAR_NOT_SCHEDULED');
+    fixtures[0].venueId = 5;
+    fixtures = fixtures.slice(0, 2);
+    expect(
+      (await service.preview(10, dto)).errors.map((e) => e.code),
+    ).toContain('CALENDAR_INCOMPLETE');
   });
 
   it('completes a tournament only after every non-cancelled match is finished', async () => {

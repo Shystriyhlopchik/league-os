@@ -60,6 +60,7 @@ import { RequireFeature } from '../../common/feature-flags/require-feature.decor
 import { LaunchPlayoffDto } from './dto/launch-playoff.dto';
 import { PlayoffLaunchService } from './playoff-launch.service';
 import { UpdateCalendarMatchDto } from './dto/update-calendar-match.dto';
+import { ManualScheduleMatchDto } from './dto/manual-schedule-match.dto';
 
 @Controller('tournaments')
 export class TournamentsController {
@@ -552,6 +553,56 @@ export class TournamentsController {
       tournamentId,
       stageId,
       dto,
+    );
+  }
+
+  @Post(':tournamentId/stages/:stageId/schedule/matches')
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  createManualScheduleMatch(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Param('stageId', ParseIntPipe) stageId: number,
+    @Body() dto: ManualScheduleMatchDto,
+  ) {
+    return this.groupSchedulingService.saveManualMatch(
+      tournamentId,
+      stageId,
+      dto,
+    );
+  }
+
+  @Patch(':tournamentId/stages/:stageId/schedule/matches/:matchId')
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  updateManualScheduleMatch(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Param('stageId', ParseIntPipe) stageId: number,
+    @Param('matchId', ParseIntPipe) matchId: number,
+    @Body() dto: ManualScheduleMatchDto,
+  ) {
+    return this.groupSchedulingService.saveManualMatch(
+      tournamentId,
+      stageId,
+      dto,
+      matchId,
+    );
+  }
+
+  @Delete(':tournamentId/stages/:stageId/schedule/matches/:matchId')
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  removeManualScheduleMatch(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Param('stageId', ParseIntPipe) stageId: number,
+    @Param('matchId', ParseIntPipe) matchId: number,
+  ) {
+    return this.groupSchedulingService.removeManualMatch(
+      tournamentId,
+      stageId,
+      matchId,
     );
   }
 

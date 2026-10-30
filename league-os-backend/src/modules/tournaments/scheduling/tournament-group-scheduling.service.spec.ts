@@ -73,18 +73,28 @@ describe('TournamentGroupSchedulingService', () => {
   } as unknown as Repository<TournamentTeamEntity>;
   const storedMatches: MatchEntity[] = [];
   const matchRepository = {
-    find: jest.fn(async () => storedMatches),
+    find: jest.fn(async () =>
+      storedMatches.filter((m) => m.status !== MatchStatus.CANCELLED),
+    ),
     create: jest.fn((value) => value),
     save: jest.fn(async (values: MatchEntity[]) => {
-      values.forEach((value, index) => {
-        value.id = storedMatches.length + index + 1;
+      values.forEach((value) => {
+        if (!value.id) {
+          value.id = storedMatches.length + 1;
+          storedMatches.push(value);
+        }
       });
-      storedMatches.push(...values);
       return values;
     }),
-    update: jest.fn(),
+    update: jest.fn(async (where, values) => {
+      if (typeof where.id === 'number') {
+        const match = storedMatches.find((m) => m.id === where.id);
+        if (match) Object.assign(match, values);
+      }
+    }),
   } as unknown as Repository<MatchEntity>;
   const manager = {
+    exists: jest.fn(async () => false),
     getRepository: jest.fn((entity) => {
       if (entity === TournamentEntity) return tournamentRepository;
       if (entity === TournamentStageEntity) return stageRepository;
@@ -116,6 +126,9 @@ describe('TournamentGroupSchedulingService', () => {
     stage.status = TournamentStageStatus.PENDING;
     tournament.lifecycleStatus = TournamentLifecycleStatus.PUBLISHED;
     tournament.registrationRequired = false;
+    tournament.registrationStatus = 'closed';
+    stage.configuration = { type: 'group_stage', legs: 1 };
+    manager.exists.mockResolvedValue(false);
   });
 
   it('previews exactly 30 matches for three groups of five', async () => {
@@ -160,6 +173,146 @@ describe('TournamentGroupSchedulingService', () => {
 
     expect(regenerated.createdMatches).toBe(60);
     expect(matchRepository.update).toHaveBeenCalledTimes(1);
+  });
+  const manualMatch = {
+    groupId: 1,
+    roundNumber: 1,
+    homeTeamId: 101,
+    awayTeamId: 102,
+  };
+  it('creates a manual pairing without generating the entire calendar', async () => {
+    tournament.lifecycleStatus = TournamentLifecycleStatus.DRAFT;
+    const match = await service.saveManualMatch(10, 20, manualMatch);
+    expect(storedMatches).toHaveLength(1);
+    expect(match).toMatchObject({
+      ...manualMatch,
+      stageId: 20,
+      tournamentId: 10,
+      status: MatchStatus.SCHEDULED,
+    });
+    expect(tournamentRepository.findOne).toHaveBeenCalledWith(
+      expect.objectContaining({ lock: { mode: 'pessimistic_write' } }),
+    );
+  });
+  it('rejects self-play and teams outside the selected group', async () => {
+    tournament.lifecycleStatus = TournamentLifecycleStatus.DRAFT;
+    await expect(
+      service.saveManualMatch(10, 20, { ...manualMatch, awayTeamId: 101 }),
+    ).rejects.toThrow('сама с собой');
+    await expect(
+      service.saveManualMatch(10, 20, { ...manualMatch, awayTeamId: 106 }),
+    ).rejects.toThrow('одной группы');
+    await expect(
+      service.saveManualMatch(10, 20, { ...manualMatch, groupId: 99 }),
+    ).rejects.toThrow('одной группы');
+    expect(matchRepository.save).not.toHaveBeenCalled();
+  });
+  it('rejects reversed duplicate pairs and a team playing twice in one round', async () => {
+    tournament.lifecycleStatus = TournamentLifecycleStatus.DRAFT;
+    await service.saveManualMatch(10, 20, manualMatch);
+    await expect(
+      service.saveManualMatch(10, 20, {
+        ...manualMatch,
+        roundNumber: 2,
+        homeTeamId: 102,
+        awayTeamId: 101,
+      }),
+    ).rejects.toThrow('число кругов');
+    await expect(
+      service.saveManualMatch(10, 20, { ...manualMatch, awayTeamId: 103 }),
+    ).rejects.toThrow('уже играет в этом туре');
+    await service.saveManualMatch(10, 20, {
+      ...manualMatch,
+      roundNumber: 2,
+      awayTeamId: 103,
+    });
+    expect(storedMatches).toHaveLength(2);
+  });
+  it('allows a return pairing for a two-leg stage but not an extra third meeting', async () => {
+    tournament.lifecycleStatus = TournamentLifecycleStatus.DRAFT;
+    stage.configuration = { type: 'group_stage', legs: 2 };
+    await service.saveManualMatch(10, 20, manualMatch);
+    await service.saveManualMatch(10, 20, {
+      ...manualMatch,
+      roundNumber: 2,
+      homeTeamId: 102,
+      awayTeamId: 101,
+    });
+    await expect(
+      service.saveManualMatch(10, 20, { ...manualMatch, roundNumber: 3 }),
+    ).rejects.toThrow('число кругов');
+  });
+  it('edits a pairing in place and retains the scheduled date and venue', async () => {
+    tournament.lifecycleStatus = TournamentLifecycleStatus.DRAFT;
+    const match = await service.saveManualMatch(10, 20, manualMatch);
+    match.venueId = 5;
+    match.matchDatetime = new Date('2026-11-01T15:00:00');
+    const edited = await service.saveManualMatch(
+      10,
+      20,
+      { ...manualMatch, roundNumber: 3, awayTeamId: 103 },
+      match.id,
+    );
+    expect(edited).toMatchObject({
+      id: match.id,
+      roundNumber: 3,
+      awayTeamId: 103,
+      venueId: 5,
+    });
+    expect(edited.matchDatetime).toEqual(match.matchDatetime);
+  });
+  it('does not edit or remove a missing or started match', async () => {
+    tournament.lifecycleStatus = TournamentLifecycleStatus.DRAFT;
+    await expect(
+      service.saveManualMatch(10, 20, manualMatch, 999),
+    ).rejects.toThrow('не найден');
+    await expect(service.removeManualMatch(10, 20, 999)).rejects.toThrow(
+      'не найден',
+    );
+    const match = await service.saveManualMatch(10, 20, manualMatch);
+    match.status = MatchStatus.LIVE;
+    await expect(
+      service.saveManualMatch(10, 20, manualMatch, match.id),
+    ).rejects.toThrow('не начатых');
+    await expect(service.removeManualMatch(10, 20, match.id)).rejects.toThrow(
+      'Нельзя удалить',
+    );
+  });
+  it('soft-cancels a single preparation match without removing its history', async () => {
+    tournament.lifecycleStatus = TournamentLifecycleStatus.DRAFT;
+    const match = await service.saveManualMatch(10, 20, manualMatch);
+    await service.removeManualMatch(10, 20, match.id);
+    expect(matchRepository.update).toHaveBeenCalledWith(
+      { id: match.id },
+      { status: MatchStatus.CANCELLED },
+    );
+  });
+  it('allows replacing a cancelled pairing without restoring the old match', async () => {
+    tournament.lifecycleStatus = TournamentLifecycleStatus.DRAFT;
+    const match = await service.saveManualMatch(10, 20, manualMatch);
+    await service.removeManualMatch(10, 20, match.id);
+    await service.saveManualMatch(10, 20, manualMatch);
+    expect(storedMatches).toHaveLength(2);
+    expect(storedMatches[0].status).toBe(MatchStatus.CANCELLED);
+  });
+  it('blocks manual changes after launch and before application review is complete', async () => {
+    await expect(service.saveManualMatch(10, 20, manualMatch)).rejects.toThrow(
+      'до запуска',
+    );
+    await expect(service.removeManualMatch(10, 20, 1)).rejects.toThrow(
+      'до запуска',
+    );
+    tournament.lifecycleStatus = TournamentLifecycleStatus.DRAFT;
+    tournament.registrationRequired = true;
+    tournament.registrationStatus = 'open';
+    await expect(service.saveManualMatch(10, 20, manualMatch)).rejects.toThrow(
+      'закройте',
+    );
+    tournament.registrationStatus = 'closed';
+    manager.exists.mockResolvedValue(true);
+    await expect(service.saveManualMatch(10, 20, manualMatch)).rejects.toThrow(
+      'рассмотрите',
+    );
   });
   it('soft-cancels a preparation calendar only before launch', async () => {
     tournament.lifecycleStatus = TournamentLifecycleStatus.DRAFT;

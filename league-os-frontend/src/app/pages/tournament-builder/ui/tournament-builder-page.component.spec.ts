@@ -6,7 +6,7 @@ import {
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { Router } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import {
     TournamentBuilderApi,
     TournamentBuilderSnapshot,
@@ -277,6 +277,128 @@ describe('TournamentBuilderPageComponent', () => {
         await component.generateCalendar();
         expect(api.generateSchedule).toHaveBeenCalledWith(22, 31, 2);
         expect(api.calendar).toHaveBeenCalledWith(22);
+    });
+    describe('manual preparation calendar', () => {
+        beforeEach(() => {
+            component.store.patch({
+                tournamentId: 22,
+                registrationRequired: true,
+                registrationStatus: 'closed',
+                participants: [
+                    { teamId: 7, name: 'Водоканал', groupKey: 'A' },
+                    { teamId: 8, name: 'КРИКС', groupKey: 'A' },
+                    { teamId: 9, name: 'Голд', groupKey: 'B' },
+                ],
+            });
+            component.store.mutate((d) => {
+                d.stages[0].serverId = 31;
+                d.stages[0].groups[0].serverId = 41;
+            });
+            component.store.dirty.set(false);
+            component.workflowPhase.set('preparation');
+            spyOn(
+                TestBed.inject(TournamentApplicationApi),
+                'calendar',
+            ).and.returnValue(of({ stages: [], matches: [], venues: [] }));
+        });
+        it('offers only teams from the selected group and creates one match', async () => {
+            const api = TestBed.inject(TournamentApplicationApi);
+            spyOn(api, 'saveManualMatch').and.returnValue(of({}));
+            await component.openManualMatch();
+            expect(component.manualGroupTeams().map((t) => t.teamId)).toEqual([
+                7, 8,
+            ]);
+            component.manualMatch = {
+                groupId: 41,
+                roundNumber: 3,
+                homeTeamId: 7,
+                awayTeamId: 8,
+            };
+            await component.saveManualMatch();
+            expect(api.saveManualMatch).toHaveBeenCalledWith(
+                22,
+                31,
+                component.manualMatch,
+                undefined,
+            );
+            expect(component.manualEditorOpen()).toBeFalse();
+        });
+        it('edits pairings from an existing calendar, including automatically generated ones', async () => {
+            const api = TestBed.inject(TournamentApplicationApi);
+            spyOn(api, 'saveManualMatch').and.returnValue(of({}));
+            await component.openManualMatch({
+                id: 5,
+                stageId: 31,
+                groupId: 41,
+                roundNumber: 2,
+                homeTeamId: 7,
+                awayTeamId: 8,
+                home: 'Водоканал',
+                away: 'КРИКС',
+                status: 'scheduled',
+                matchDatetime: null,
+            });
+            component.manualMatch.roundNumber = 4;
+            await component.saveManualMatch();
+            expect(api.saveManualMatch).toHaveBeenCalledWith(
+                22,
+                31,
+                { groupId: 41, roundNumber: 4, homeTeamId: 7, awayTeamId: 8 },
+                5,
+            );
+        });
+        it('shows field errors without sending an invalid pairing', async () => {
+            const api = TestBed.inject(TournamentApplicationApi);
+            spyOn(api, 'saveManualMatch').and.returnValue(of({}));
+            await component.openManualMatch();
+            await component.saveManualMatch();
+            fixture.detectChanges();
+            expect(
+                fixture.nativeElement.querySelector(
+                    '.manual-calendar [role="alert"]',
+                ).textContent,
+            ).toContain('Выберите группу');
+            expect(api.saveManualMatch).not.toHaveBeenCalled();
+        });
+        it('keeps the editor open and shows the server conflict next to the form', async () => {
+            spyOn(
+                TestBed.inject(TournamentApplicationApi),
+                'saveManualMatch',
+            ).and.returnValue(
+                throwError(() => ({
+                    error: { message: 'Команда уже играет в этом туре' },
+                })),
+            );
+            await component.openManualMatch();
+            component.manualMatch = {
+                groupId: 41,
+                roundNumber: 1,
+                homeTeamId: 7,
+                awayTeamId: 8,
+            };
+            await component.saveManualMatch();
+            expect(component.manualEditorOpen()).toBeTrue();
+            expect(component.manualMatchError()).toContain('уже играет');
+        });
+        it('requires confirmation before removing one match', async () => {
+            const api = TestBed.inject(TournamentApplicationApi);
+            spyOn(api, 'removeManualMatch').and.returnValue(of({}));
+            await component.removePreparedMatch(5);
+            expect(api.removeManualMatch).not.toHaveBeenCalled();
+            component.removeMatchConfirmation.set(5);
+            await component.removePreparedMatch(5);
+            expect(api.removeManualMatch).toHaveBeenCalledWith(22, 31, 5);
+        });
+        it('does not allow editing pairs after launch or while registration is open', async () => {
+            component.store.patch({ registrationStatus: 'open' });
+            await component.openManualMatch();
+            expect(component.manualEditorOpen()).toBeFalse();
+            component.store.patch({
+                registrationStatus: 'closed',
+                lifecycleStatus: 'published',
+            });
+            expect(component.canEditPairings()).toBeFalse();
+        });
     });
     it('does not rewrite unchanged stages or participants when saving before launch', async () => {
         const api = TestBed.inject(TournamentBuilderApi);

@@ -18,6 +18,7 @@ import { firstValueFrom } from 'rxjs';
 import { CommunityApi } from '../../../entities/community/community.api';
 import {
     ManagedCalendar,
+    ManualScheduleMatch,
     TournamentApplicationApi,
 } from '../../../entities/tournament-application/tournament-application.api';
 import {
@@ -93,6 +94,22 @@ export class TournamentBuilderPageComponent implements OnInit {
         'setup',
     );
     readonly preparedCalendar = signal<ManagedCalendar | null>(null);
+    readonly manualEditorOpen = signal(false);
+    readonly manualMatchError = signal('');
+    readonly removeMatchConfirmation = signal<number | null>(null);
+    editingMatchId?: number;
+    manualMatch: ManualScheduleMatch = {
+        groupId: 0,
+        roundNumber: 1,
+        homeTeamId: 0,
+        awayTeamId: 0,
+    };
+    readonly canEditPairings = computed(
+        () =>
+            !this.store.structureLocked() &&
+            (!this.applicationsRequired() ||
+                this.draft().registrationStatus === 'closed'),
+    );
     resetCalendarConfirmed = false;
     readonly availableCommunities = signal<{ id: number; name: string }[]>([]);
     readonly availableSeasons = signal<
@@ -371,6 +388,137 @@ export class TournamentBuilderPageComponent implements OnInit {
         }
     }
 
+    async openManualMatch(
+        match?: ManagedCalendar['matches'][number],
+    ): Promise<void> {
+        if (this.operation() || !this.canEditPairings()) return;
+        if (this.store.dirty()) await this.saveDraft();
+        const stage = this.groupStage();
+        if (
+            this.store.dirty() ||
+            !stage?.serverId ||
+            !this.draft().tournamentId
+        )
+            return;
+        this.editingMatchId = match?.id;
+        this.manualMatch = {
+            groupId: match?.groupId ?? stage.groups[0]?.serverId ?? 0,
+            roundNumber: match?.roundNumber ?? 1,
+            homeTeamId: match?.homeTeamId ?? 0,
+            awayTeamId: match?.awayTeamId ?? 0,
+        };
+        this.manualMatchError.set('');
+        this.removeMatchConfirmation.set(null);
+        this.manualEditorOpen.set(true);
+    }
+
+    manualGroupTeams(): TournamentParticipantDraft[] {
+        const group = this.groupStage()?.groups.find(
+            (g) => g.serverId === this.manualMatch.groupId,
+        );
+        return group
+            ? this.draft().participants.filter((p) => p.groupKey === group.key)
+            : [];
+    }
+
+    changeManualGroup(groupId: number): void {
+        this.manualMatch = {
+            ...this.manualMatch,
+            groupId,
+            homeTeamId: 0,
+            awayTeamId: 0,
+        };
+        this.manualMatchError.set('');
+    }
+
+    async saveManualMatch(): Promise<void> {
+        const stageId = this.groupStage()?.serverId;
+        const tournamentId = this.draft().tournamentId;
+        if (
+            this.operation() ||
+            !this.canEditPairings() ||
+            !stageId ||
+            !tournamentId
+        )
+            return;
+        const body = { ...this.manualMatch };
+        if (
+            !body.groupId ||
+            !body.homeTeamId ||
+            !body.awayTeamId ||
+            !Number.isInteger(body.roundNumber) ||
+            body.roundNumber < 1 ||
+            body.roundNumber > 10000
+        ) {
+            this.manualMatchError.set(
+                'Выберите группу, две команды и целый номер тура от 1 до 10000.',
+            );
+            return;
+        }
+        if (body.homeTeamId === body.awayTeamId) {
+            this.manualMatchError.set('Выберите разные команды.');
+            return;
+        }
+        this.operation.set('calendar');
+        this.manualMatchError.set('');
+        try {
+            await firstValueFrom(
+                this.registrationsApi.saveManualMatch(
+                    tournamentId,
+                    stageId,
+                    body,
+                    this.editingMatchId,
+                ),
+            );
+            this.manualEditorOpen.set(false);
+            await this.loadPreparationCalendar();
+            this.store.notice.set(
+                'Матч сохранён. Проверьте дату, время и площадку. Перед запуском календарь должен быть полным.',
+            );
+        } catch (error) {
+            this.applyBackendError(error);
+            this.manualMatchError.set(
+                this.store.notice() ?? 'Не удалось сохранить матч.',
+            );
+        } finally {
+            this.operation.set(null);
+        }
+    }
+
+    async removePreparedMatch(matchId: number): Promise<void> {
+        const stageId = this.groupStage()?.serverId;
+        const tournamentId = this.draft().tournamentId;
+        if (
+            this.operation() ||
+            !this.canEditPairings() ||
+            !stageId ||
+            !tournamentId ||
+            this.removeMatchConfirmation() !== matchId
+        )
+            return;
+        this.operation.set('calendar');
+        try {
+            await firstValueFrom(
+                this.registrationsApi.removeManualMatch(
+                    tournamentId,
+                    stageId,
+                    matchId,
+                ),
+            );
+            this.removeMatchConfirmation.set(null);
+            if (this.editingMatchId === matchId)
+                this.manualEditorOpen.set(false);
+            await this.loadPreparationCalendar();
+            this.store.notice.set(
+                'Матч убран из календаря. История сохранена; перед запуском добавьте недостающую пару.',
+            );
+        } catch (error) {
+            this.applyBackendError(error);
+        } finally {
+            this.operation.set(null);
+        }
+    }
+
     async resetCalendar(): Promise<void> {
         if (
             !this.resetCalendarConfirmed ||
@@ -388,6 +536,7 @@ export class TournamentBuilderPageComponent implements OnInit {
                 ),
             );
             this.resetCalendarConfirmed = false;
+            this.manualEditorOpen.set(false);
             await this.loadPreparationCalendar();
             this.store.notice.set(
                 'Подготовленные матчи отменены и скрыты. Можно изменить группы и сформировать новые пары. История матчей сохранена.',
