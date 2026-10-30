@@ -1934,6 +1934,9 @@
                         </button>
                     }
                     @if (groupStage()) {
+                        @if (store.dirty() && canEditPairings()) {
+                            <button type="button" class="button button--secondary" (click)="saveDraft()" [disabled]="operation() !== null">Сохранить группы для импорта Excel</button>
+                        }
                         <app-calendar-import
                             [tournamentId]="draft().tournamentId ?? 0"
                             [stageId]="groupStage()?.serverId ?? 0"

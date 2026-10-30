@@ -27,6 +27,8 @@ import { PlayerSuspensionsService } from '../player-suspensions/player-suspensio
 import { FeatureFlagGuard } from '../../common/feature-flags/feature-flag.guard';
 import { FeatureFlagsService } from '../../common/feature-flags/feature-flags.service';
 import { PlayoffLaunchService } from './playoff-launch.service';
+import { CalendarSpreadsheetService, CALENDAR_HEADERS } from './scheduling/calendar-spreadsheet.service';
+import { Workbook } from 'exceljs';
 import {
   CommunityMemberEntity,
   CommunityRole,
@@ -79,6 +81,9 @@ describe('Tournament lifecycle HTTP integration', () => {
     generateSchedule: jest.fn(),
     saveManualMatch: jest.fn(async () => ({ id: 50 })),
     removeManualMatch: jest.fn(async () => ({ cancelledMatches: 1 })),
+    calendarImportReferences: jest.fn(async () => ({ name: 'Лига', references: { groups: [], teams: [], venues: [] } })),
+    previewCalendarImport: jest.fn(async (_id, _stage, dto) => ({ valid: true, sourceRows: dto.rows, createCount: 1 })),
+    confirmCalendarImport: jest.fn(async () => ({ createdMatches: 1 })),
   };
   const qualification = {
     preview: jest.fn(async () => ({ id: 90, status: 'preview' })),
@@ -115,6 +120,7 @@ describe('Tournament lifecycle HTTP integration', () => {
         TournamentAccessService,
         TournamentAccessGuard,
         FeatureFlagGuard,
+        CalendarSpreadsheetService,
         {
           provide: FeatureFlagsService,
           useValue: { isEnabled: () => true },
@@ -167,6 +173,27 @@ describe('Tournament lifecycle HTTP integration', () => {
 
   afterAll(async () => app.close());
   beforeEach(() => jest.clearAllMocks());
+
+  it('downloads a tournament template and parses an uploaded workbook without saving matches', async () => {
+    const url = '/tournaments/10/stages/20/schedule/import';
+    await request(app.getHttpServer()).get(`${url}/template`).set('x-test-user-id', '2').expect(200).expect('Content-Type', /spreadsheetml/);
+    const book = new Workbook(); const sheet = book.addWorksheet('Календарь');
+    sheet.addRow(CALENDAR_HEADERS); sheet.addRow(['A', 1, 'Водоканал', 'КРИКС', '01.11.2026', '15:00', 'Спартак']);
+    await request(app.getHttpServer()).post(`${url}/read`).set('x-test-user-id', '2').attach('file', Buffer.from(await book.xlsx.writeBuffer()), 'calendar.xlsx').expect(200);
+    expect(groupScheduling.previewCalendarImport).toHaveBeenCalledWith(10, 20, expect.objectContaining({ rows: [expect.objectContaining({ row: 2, roundNumber: 1 })] }));
+    expect(groupScheduling.confirmCalendarImport).not.toHaveBeenCalled();
+  });
+  it('protects every import endpoint and validates confirmation payloads', async () => {
+    const url = '/tournaments/10/stages/20/schedule/import';
+    await request(app.getHttpServer()).get(`${url}/template`).set('x-test-user-id', '3').expect(403);
+    for (const route of ['read', 'preview', 'confirm']) {
+      await request(app.getHttpServer()).post(`${url}/${route}`).expect(401);
+      await request(app.getHttpServer()).post(`${url}/${route}`).set('x-test-user-id', '3').expect(403);
+    }
+    await request(app.getHttpServer()).post(`${url}/confirm`).set('x-test-user-id', '2').send({ mode: 'replace', rows: [], mappings: [], expectedVersion: 'fake' }).expect(400);
+    await request(app.getHttpServer()).post(`${url}/read`).set('x-test-user-id', '2').attach('file', Buffer.from('not excel'), 'calendar.xlsx').expect(400);
+    expect(groupScheduling.confirmCalendarImport).not.toHaveBeenCalled();
+  });
 
   it('lets an organizer create, edit and remove a manual fixture', async () => {
     const body = {

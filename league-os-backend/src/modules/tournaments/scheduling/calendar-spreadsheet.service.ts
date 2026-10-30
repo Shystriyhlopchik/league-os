@@ -33,8 +33,9 @@ export class CalendarSpreadsheetService {
     if (!sheet || sheet.rowCount > 1001) throw new BadRequestException('В календаре допускается не более 1000 строк матчей');
     const headers: string[] = [];
     sheet.getRow(1).eachCell((cell, column) => { headers[column - 1] = cell.text.trim(); });
-    const columns = CALENDAR_HEADERS.map(h => headers.findIndex(v => normalizeCalendarName(v) === normalizeCalendarName(h)) + 1);
-    if (columns.some(c => c === 0) || new Set(headers.map(normalizeCalendarName)).size !== headers.length)
+    const columns = CALENDAR_HEADERS.map(h => headers.findIndex(v => normalizeCalendarName(v ?? '') === normalizeCalendarName(h)) + 1);
+    const namedHeaders = headers.filter(Boolean).map(normalizeCalendarName);
+    if (columns.some(c => c === 0) || new Set(namedHeaders).size !== namedHeaders.length)
       throw new BadRequestException(`Первая строка должна содержать уникальные заголовки: ${CALENDAR_HEADERS.join(', ')}`);
     const rows: ScheduleImportRowDto[] = [];
     sheet.eachRow((row, number) => {
