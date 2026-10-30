@@ -610,7 +610,13 @@ export class TournamentLifecycleService {
           .map((p) => p.tournamentTeam.teamId);
         const fixtures = stageMatches.filter((m) => m.groupId === group.id);
         const counts = new Map<string, number>();
+        const roundTeams = new Set<string>();
         for (const m of fixtures) {
+          for (const teamId of [m.homeTeamId, m.awayTeamId]) {
+            const key = `${m.roundNumber}:${teamId}`;
+            if (roundTeams.has(key)) complete = false;
+            roundTeams.add(key);
+          }
           if (
             !ids.includes(m.homeTeamId) ||
             !ids.includes(m.awayTeamId) ||
@@ -638,7 +644,7 @@ export class TournamentLifecycleService {
         add(
           'CALENDAR_INCOMPLETE',
           `$.stages.${stage.key}.calendar`,
-          `${stage.name}: сформируйте полный календарь для текущих групп и числа кругов`,
+          `${stage.name}: сформируйте полный календарь для текущих групп и числа кругов; команда не должна играть дважды в одном туре`,
         );
       if (stageMatches.some((m) => !m.matchDatetime || !m.venueId))
         add(
@@ -805,6 +811,10 @@ export class TournamentLifecycleService {
         status: m.status,
         home: m.homeTeam?.name ?? 'Участник уточняется',
         away: m.awayTeam?.name ?? 'Участник уточняется',
+        homeTeamId: m.homeTeamId,
+        awayTeamId: m.awayTeamId,
+        groupId: m.groupId,
+        roundNumber: m.roundNumber,
         matchDatetime: formatLocalDateTime(m.matchDatetime),
         venueId: m.venueId,
       })),

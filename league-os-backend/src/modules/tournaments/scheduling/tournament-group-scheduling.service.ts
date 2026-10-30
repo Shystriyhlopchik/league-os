@@ -23,6 +23,7 @@ import {
   type GenerateGroupStageScheduleDto,
 } from '../dto/generate-group-stage-schedule.dto';
 import type { PreviewGroupStageScheduleDto } from '../dto/preview-group-stage-schedule.dto';
+import type { ManualScheduleMatchDto } from '../dto/manual-schedule-match.dto';
 import { GroupAssignmentStrategy } from '../enums/group-assignment-strategy.enum';
 import { TournamentEntity } from '../entities/tournaments.entity';
 import { TournamentLifecycleStatus } from '../enums/tournament-lifecycle-status.enum';
@@ -302,6 +303,168 @@ export class TournamentGroupSchedulingService {
         );
       return { cancelledMatches: matches.length };
     });
+  }
+
+  async saveManualMatch(
+    tournamentId: number,
+    stageId: number,
+    dto: ManualScheduleMatchDto,
+    matchId?: number,
+  ) {
+    return this.dataSource.transaction(async (manager) => {
+      const repositories = this.repositories(manager);
+      const context = await this.loadContext(
+        tournamentId,
+        stageId,
+        repositories,
+        true,
+      );
+      await this.assertManualCalendarWritable(context, manager);
+      const configuration = context.stage.configuration ?? {};
+      const legs = ('legs' in configuration && configuration.legs) || 1;
+      this.buildPreview(context, legs);
+      const group = context.groups.find((g) => g.id === dto.groupId);
+      const teamIds = new Set(context.activeTeams.map((t) => t.id));
+      const members = context.participants
+        .filter(
+          (p) => p.groupId === dto.groupId && teamIds.has(p.tournamentTeamId),
+        )
+        .map((p) => p.tournamentTeam.teamId);
+      if (
+        !group ||
+        !members.includes(dto.homeTeamId) ||
+        !members.includes(dto.awayTeamId)
+      )
+        throw new BadRequestException(
+          'Выберите две принятые команды из одной группы этого этапа',
+        );
+      if (dto.homeTeamId === dto.awayTeamId)
+        throw new BadRequestException('Команда не может играть сама с собой');
+
+      const matches = await repositories.matches.find({
+        where: { tournamentId, stageId, status: Not(MatchStatus.CANCELLED) },
+      });
+      const existing =
+        matchId === undefined
+          ? undefined
+          : matches.find((m) => m.id === matchId);
+      if (matchId !== undefined && !existing)
+        throw new NotFoundException('Матч не найден в календаре этого этапа');
+      if (
+        existing &&
+        (existing.status !== MatchStatus.SCHEDULED ||
+          existing.roundType !== MatchRoundType.GROUP_ROUND)
+      )
+        throw new ConflictException(
+          'Изменять пары можно только у не начатых матчей группового этапа',
+        );
+      const others = matches.filter((m) => m.id !== matchId);
+      const pairMatches = others.filter(
+        (m) =>
+          m.groupId === dto.groupId &&
+          ((m.homeTeamId === dto.homeTeamId &&
+            m.awayTeamId === dto.awayTeamId) ||
+            (m.homeTeamId === dto.awayTeamId &&
+              m.awayTeamId === dto.homeTeamId)),
+      );
+      if (pairMatches.length >= legs)
+        throw new ConflictException(
+          `Эта пара уже добавлена ${legs} раз. Проверьте число кругов турнира`,
+        );
+      if (
+        others.some(
+          (m) =>
+            m.groupId === dto.groupId &&
+            m.roundNumber === dto.roundNumber &&
+            [m.homeTeamId, m.awayTeamId].some(
+              (id) => id === dto.homeTeamId || id === dto.awayTeamId,
+            ),
+        )
+      )
+        throw new ConflictException(
+          'Одна из команд уже играет в этом туре. Выберите другой тур или другую пару',
+        );
+      const match =
+        existing ??
+        repositories.matches.create({
+          tournamentId,
+          stageId,
+          status: MatchStatus.SCHEDULED,
+          roundType: MatchRoundType.GROUP_ROUND,
+          effectiveRuleVersionId: context.stage.tournament.activeRuleVersionId,
+        });
+      Object.assign(match, dto, {
+        round: `Group ${group.key}, round ${dto.roundNumber}`,
+      });
+      const [saved] = await repositories.matches.save([match]);
+      return saved;
+    });
+  }
+
+  async removeManualMatch(
+    tournamentId: number,
+    stageId: number,
+    matchId: number,
+  ) {
+    return this.dataSource.transaction(async (manager) => {
+      const repositories = this.repositories(manager);
+      const context = await this.loadContext(
+        tournamentId,
+        stageId,
+        repositories,
+        true,
+      );
+      await this.assertManualCalendarWritable(context, manager);
+      const matches = await repositories.matches.find({
+        where: { tournamentId, stageId, status: Not(MatchStatus.CANCELLED) },
+      });
+      const match = matches.find((m) => m.id === matchId);
+      if (!match)
+        throw new NotFoundException('Матч не найден в календаре этого этапа');
+      if (
+        match.status !== MatchStatus.SCHEDULED ||
+        match.roundType !== MatchRoundType.GROUP_ROUND
+      )
+        throw new ConflictException(
+          'Нельзя удалить начатый матч или матч другого этапа',
+        );
+      await repositories.matches.update(
+        { id: match.id },
+        { status: MatchStatus.CANCELLED },
+      );
+      return { cancelledMatches: 1 };
+    });
+  }
+
+  private async assertManualCalendarWritable(
+    context: ScheduleContext,
+    manager: EntityManager,
+  ) {
+    this.assertGroupStage(context.stage);
+    const tournament = context.stage.tournament;
+    if (
+      tournament.lifecycleStatus !== TournamentLifecycleStatus.DRAFT ||
+      context.stage.status !== TournamentStageStatus.PENDING
+    )
+      throw new ConflictException(
+        'Изменять пары календаря можно только до запуска турнира',
+      );
+    if (
+      tournament.registrationRequired &&
+      tournament.registrationStatus !== 'closed'
+    )
+      throw new ConflictException(
+        'Перед подготовкой календаря закройте приём заявок',
+      );
+    if (
+      tournament.registrationRequired &&
+      (await manager.exists(TournamentApplicationEntity, {
+        where: { tournamentId: tournament.id, status: 'submitted' },
+      }))
+    )
+      throw new ConflictException(
+        'Сначала рассмотрите все отправленные заявки',
+      );
   }
 
   private async loadContext(

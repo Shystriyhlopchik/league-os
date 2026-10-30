@@ -121,6 +121,11 @@ export interface ManagedCalendar {
     venues: { id: number; name: string }[];
     matches: {
         id: number;
+        stageId?: number;
+        groupId?: number;
+        roundNumber?: number;
+        homeTeamId?: number;
+        awayTeamId?: number;
         home: string;
         away: string;
         round?: string;
@@ -128,6 +133,13 @@ export interface ManagedCalendar {
         matchDatetime: string | null;
         venueId?: number;
     }[];
+}
+
+export interface ManualScheduleMatch {
+    groupId: number;
+    roundNumber: number;
+    homeTeamId: number;
+    awayTeamId: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -149,6 +161,22 @@ export class TournamentApplicationApi {
         return this.http.post(
             `${environment.apiUrl}/tournaments/${id}/stages/${stage}/schedule/reset`,
             { confirmation: 'RESET_GROUP_STAGE_SCHEDULE' },
+        );
+    }
+    saveManualMatch(
+        id: number,
+        stage: number,
+        body: ManualScheduleMatch,
+        matchId?: number,
+    ) {
+        const url = `${environment.apiUrl}/tournaments/${id}/stages/${stage}/schedule/matches`;
+        return matchId === undefined
+            ? this.http.post(url, body)
+            : this.http.patch(`${url}/${matchId}`, body);
+    }
+    removeManualMatch(id: number, stage: number, matchId: number) {
+        return this.http.delete(
+            `${environment.apiUrl}/tournaments/${id}/stages/${stage}/schedule/matches/${matchId}`,
         );
     }
     schedule(
