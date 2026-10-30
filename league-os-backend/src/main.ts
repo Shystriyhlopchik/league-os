@@ -7,6 +7,8 @@ import { join } from 'node:path';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.setGlobalPrefix('api');
+  // Preview/confirmation can contain up to 1000 calendar rows and name mappings.
+  app.useBodyParser('json', { limit: '4mb' });
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads/',
     setHeaders: (response) => {

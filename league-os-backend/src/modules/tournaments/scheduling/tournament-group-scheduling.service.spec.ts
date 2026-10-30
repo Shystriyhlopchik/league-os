@@ -15,6 +15,8 @@ import { GROUP_STAGE_SCHEDULE_RESET_CONFIRMATION } from '../dto/generate-group-s
 import { GroupAssignmentStrategyService } from './group-assignment-strategy.service';
 import { RoundRobinGenerator } from './round-robin-generator';
 import { TournamentGroupSchedulingService } from './tournament-group-scheduling.service';
+import { VenueEntity } from '../../venues/entities/venue.entity';
+import { PreviewScheduleImportDto } from '../dto/import-schedule.dto';
 
 describe('TournamentGroupSchedulingService', () => {
   const tournament = {
@@ -72,6 +74,7 @@ describe('TournamentGroupSchedulingService', () => {
     find: jest.fn(async () => teams),
   } as unknown as Repository<TournamentTeamEntity>;
   const storedMatches: MatchEntity[] = [];
+  const venueRepository = { find: jest.fn(async () => [{ id: 5, name: 'Спартак' }]) };
   const matchRepository = {
     find: jest.fn(async () =>
       storedMatches.filter((m) => m.status !== MatchStatus.CANCELLED),
@@ -91,11 +94,13 @@ describe('TournamentGroupSchedulingService', () => {
         const match = storedMatches.find((m) => m.id === where.id);
         if (match) Object.assign(match, values);
       }
+      if (typeof where.stageId === 'number') storedMatches.filter(m => m.stageId === where.stageId && m.status !== MatchStatus.CANCELLED).forEach(m => Object.assign(m, values));
     }),
   } as unknown as Repository<MatchEntity>;
   const manager = {
     exists: jest.fn(async () => false),
     getRepository: jest.fn((entity) => {
+      if (entity === VenueEntity) return venueRepository;
       if (entity === TournamentEntity) return tournamentRepository;
       if (entity === TournamentStageEntity) return stageRepository;
       if (entity === TournamentGroupEntity) return groupRepository;
@@ -106,6 +111,7 @@ describe('TournamentGroupSchedulingService', () => {
     }),
   };
   const dataSource = {
+    manager,
     transaction: jest.fn(async (callback) => callback(manager)),
   } as unknown as DataSource;
   const service = new TournamentGroupSchedulingService(
@@ -327,5 +333,49 @@ describe('TournamentGroupSchedulingService', () => {
     await expect(service.resetPreparedSchedule(10, 20)).rejects.toThrow(
       'только до запуска',
     );
+  });
+
+  describe('calendar spreadsheet confirmation', () => {
+    const dto = (): PreviewScheduleImportDto => ({ mode: 'append', mappings: [], rows: [{ row: 2, group: 'A', roundNumber: 1, home: 'Команда 101', away: 'Команда 102', date: '01.11.2026', time: '15:00', venue: 'Спартак' }] });
+    beforeEach(() => { tournament.lifecycleStatus = TournamentLifecycleStatus.DRAFT; });
+    it('previews without writes, then saves all confirmed rows in a transaction', async () => {
+      const request = dto();
+      const preview = await service.previewCalendarImport(10, 20, request);
+      expect(preview.valid).toBe(true);
+      expect(matchRepository.save).not.toHaveBeenCalled();
+      const result = await service.confirmCalendarImport(10, 20, { ...request, expectedVersion: preview.version });
+      expect(result).toEqual({ createdMatches: 1, skippedMatches: 0, cancelledMatches: 0 });
+      expect(storedMatches[0]).toMatchObject({ tournamentId: 10, stageId: 20, groupId: 1, homeTeamId: 101, venueId: 5, matchDatetime: new Date('2026-11-01T15:00:00') });
+      expect(venueRepository.find).toHaveBeenCalledWith(expect.objectContaining({ lock: { mode: 'pessimistic_write' } }));
+    });
+    it('rejects a stale preview and never partially writes invalid imports', async () => {
+      const request = dto();
+      await expect(service.confirmCalendarImport(10, 20, { ...request, expectedVersion: '0'.repeat(64) })).rejects.toThrow('изменились');
+      const invalid = { ...request, mode: 'replace' as const, rows: [{ ...request.rows[0], away: 'Unknown' }] };
+      const preview = await service.previewCalendarImport(10, 20, invalid);
+      await expect(service.confirmCalendarImport(10, 20, { ...invalid, expectedVersion: preview.version, confirmation: 'REPLACE_PREPARED_SCHEDULE' })).rejects.toThrow('Исправьте ошибки');
+      expect(matchRepository.save).not.toHaveBeenCalled();
+      expect(matchRepository.update).not.toHaveBeenCalled();
+    });
+    it('soft-cancels the old stage schedule only after explicit replacement confirmation', async () => {
+      await service.saveManualMatch(10, 20, manualMatch);
+      const request = { ...dto(), mode: 'replace' as const };
+      const preview = await service.previewCalendarImport(10, 20, request);
+      await expect(service.confirmCalendarImport(10, 20, { ...request, expectedVersion: preview.version })).rejects.toThrow('Подтвердите');
+      expect(matchRepository.update).not.toHaveBeenCalled();
+      await service.confirmCalendarImport(10, 20, { ...request, expectedVersion: preview.version, confirmation: 'REPLACE_PREPARED_SCHEDULE' });
+      expect(storedMatches).toHaveLength(2);
+      expect(storedMatches[0].status).toBe(MatchStatus.CANCELLED);
+      expect(storedMatches[1].status).toBe(MatchStatus.SCHEDULED);
+    });
+    it('does not duplicate an already imported calendar', async () => {
+      const request = dto();
+      const preview = await service.previewCalendarImport(10, 20, request);
+      await service.confirmCalendarImport(10, 20, { ...request, expectedVersion: preview.version });
+      const repeated = await service.previewCalendarImport(10, 20, request);
+      expect(repeated).toMatchObject({ valid: true, skipCount: 1, createCount: 0 });
+      await service.confirmCalendarImport(10, 20, { ...request, expectedVersion: repeated.version });
+      expect(storedMatches).toHaveLength(1);
+    });
   });
 });
