@@ -24,6 +24,10 @@ import {
 } from '../dto/generate-group-stage-schedule.dto';
 import type { PreviewGroupStageScheduleDto } from '../dto/preview-group-stage-schedule.dto';
 import type { ManualScheduleMatchDto } from '../dto/manual-schedule-match.dto';
+import { ConfirmScheduleImportDto, PreviewScheduleImportDto } from '../dto/import-schedule.dto';
+import { CalendarImportReferences } from './calendar-spreadsheet.service';
+import { importDateTime, planCalendarImport } from './calendar-import-planner';
+import { VenueEntity } from '../../venues/entities/venue.entity';
 import { GroupAssignmentStrategy } from '../enums/group-assignment-strategy.enum';
 import { TournamentEntity } from '../entities/tournaments.entity';
 import { TournamentLifecycleStatus } from '../enums/tournament-lifecycle-status.enum';
@@ -436,6 +440,70 @@ export class TournamentGroupSchedulingService {
     });
   }
 
+  async calendarImportReferences(tournamentId: number, stageId: number) {
+    const context = await this.loadContext(tournamentId, stageId, this.repositories());
+    await this.assertManualCalendarWritable(context, this.dataSource.manager);
+    return { name: context.stage.tournament.name, references: await this.importReferences(context, this.dataSource.manager) };
+  }
+
+  async previewCalendarImport(tournamentId: number, stageId: number, dto: PreviewScheduleImportDto) {
+    const context = await this.loadContext(tournamentId, stageId, this.repositories());
+    await this.assertManualCalendarWritable(context, this.dataSource.manager);
+    return (await this.calendarImportPlan(context, dto, this.dataSource.manager)).preview;
+  }
+
+  async confirmCalendarImport(tournamentId: number, stageId: number, dto: ConfirmScheduleImportDto) {
+    return this.dataSource.transaction(async manager => {
+      const repositories = this.repositories(manager);
+      const context = await this.loadContext(tournamentId, stageId, repositories, true);
+      await this.assertManualCalendarWritable(context, manager);
+      if (dto.mode === 'replace' && dto.confirmation !== 'REPLACE_PREPARED_SCHEDULE') throw new BadRequestException('Подтвердите замену подготовленного календаря');
+      // Same lock order as date/venue editing; serialize competing imports across tournaments.
+      const venues = manager.getRepository(VenueEntity);
+      const active = await venues.find({ where: { isActive: true }, order: { id: 'ASC' } });
+      if (active.length) await venues.find({ where: { id: In(active.map(v => v.id)) }, order: { id: 'ASC' }, lock: { mode: 'pessimistic_write' } });
+      const plan = await this.calendarImportPlan(context, dto, manager);
+      if (plan.preview.version !== dto.expectedVersion) throw new ConflictException('Данные файла, команд или календаря изменились. Выполните проверку повторно перед импортом');
+      if (!plan.preview.valid) throw new BadRequestException({ message: 'Исправьте ошибки предпросмотра перед импортом', preview: plan.preview });
+      if (dto.mode === 'replace') await repositories.matches.update({ tournamentId, stageId, status: Not(MatchStatus.CANCELLED) }, { status: MatchStatus.CANCELLED });
+      if (plan.planned.length) await repositories.matches.save(plan.planned.map(row => repositories.matches.create({
+        tournamentId, stageId, groupId: row.groupId, homeTeamId: row.homeTeamId, awayTeamId: row.awayTeamId,
+        roundNumber: row.roundNumber, round: `Group ${context.groups.find(g => g.id === row.groupId)!.key}, round ${row.roundNumber}`,
+        roundType: MatchRoundType.GROUP_ROUND, status: MatchStatus.SCHEDULED,
+        effectiveRuleVersionId: context.stage.tournament.activeRuleVersionId,
+        matchDatetime: row.matchDatetime ? new Date(row.matchDatetime) : undefined,
+        venueId: row.venueId ?? undefined,
+      })));
+      return { createdMatches: plan.planned.length, skippedMatches: plan.preview.skipCount, cancelledMatches: plan.preview.cancelCount };
+    });
+  }
+
+  private async importReferences(context: ScheduleContext, manager: EntityManager): Promise<CalendarImportReferences> {
+    const active = new Set(context.activeTeams.map(t => t.id));
+    return {
+      groups: context.groups.map(g => ({ id: g.id, key: g.key, name: g.name })),
+      teams: context.participants.filter(p => p.groupId && active.has(p.tournamentTeamId)).map(p => ({ id: p.tournamentTeam.teamId, name: context.activeTeams.find(t => t.id === p.tournamentTeamId)?.team?.name ?? p.tournamentTeam.team?.name ?? `Команда ${p.tournamentTeam.teamId}`, groupId: p.groupId! })).sort((a, b) => a.id - b.id),
+      venues: (await manager.getRepository(VenueEntity).find({ where: { isActive: true }, order: { id: 'ASC' } })).map(v => ({ id: v.id, name: v.name })),
+    };
+  }
+
+  private async calendarImportPlan(context: ScheduleContext, dto: PreviewScheduleImportDto, manager: EntityManager) {
+    const configuration = context.stage.configuration ?? {};
+    const legs = ('legs' in configuration && configuration.legs) || 1;
+    this.buildPreview(context, legs);
+    const dates = dto.rows.flatMap(r => {
+      try { const date = importDateTime(r.date, r.time); return date ? [new Date(date)] : []; } catch { return []; }
+    });
+    const existing = await manager.getRepository(MatchEntity).find({
+      where: [
+        { stageId: context.stage.id, status: Not(MatchStatus.CANCELLED) },
+        ...(dates.length ? [{ matchDatetime: In(dates), status: Not(MatchStatus.CANCELLED) }] : []),
+      ], order: { id: 'ASC' },
+    });
+    if (existing.some(m => m.stageId === context.stage.id && (m.status !== MatchStatus.SCHEDULED || m.roundType !== MatchRoundType.GROUP_ROUND))) throw new ConflictException('Импорт недоступен: календарь содержит начатые матчи или матчи другого формата');
+    return planCalendarImport(dto, await this.importReferences(context, manager), existing, context.stage.id, legs);
+  }
+
   private async assertManualCalendarWritable(
     context: ScheduleContext,
     manager: EntityManager,
@@ -498,6 +566,7 @@ export class TournamentGroupSchedulingService {
       }),
       repositories.teams.find({
         where: { tournamentId, status: TournamentTeamStatus.ACTIVE },
+        relations: { team: true },
         order: { seedNumber: 'ASC', id: 'ASC' },
       }),
     ]);

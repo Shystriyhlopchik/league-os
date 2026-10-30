@@ -1,0 +1,19 @@
+:host { display: block; margin: 20px 0; }
+.import { padding: 20px; border: 1px solid #43504d; border-radius: 12px; background: #19221f; }
+h3 { margin: 0 0 12px; font-size: 20px; } h4 { overflow-wrap: anywhere; }
+p { color: #b9c5c0; line-height: 1.5; } .hint, small { font-size: 12px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0; }
+button, select, .upload { box-sizing: border-box; min-height: 44px; padding: 10px 14px; border: 1px solid #52615a; border-radius: 8px; color: #f4f7f6; background: #25302d; font: inherit; }
+button { cursor: pointer; } button:disabled, select:disabled, input:disabled { opacity: .5; cursor: not-allowed; }
+button:focus-visible, select:focus-visible, input:focus-visible, .table-wrap:focus-visible { outline: 2px solid #d6ff3f; outline-offset: 3px; }
+.primary { background: #d6ff3f; color: #151919; border-color: #d6ff3f; font-weight: 700; }
+.upload { display: grid; gap: 8px; max-width: 100%; } input[type=file] { max-width: 100%; font-size: 13px; }
+.mode { display: grid; gap: 8px; margin: 16px 0; } select { width: 100%; min-width: 0; }
+details { padding: 14px 0; } summary { cursor: pointer; color: #d6ff3f; }
+fieldset { border: 1px solid #43504d; border-radius: 8px; margin: 12px 0; min-width: 0; }
+.mapping { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: center; margin: 10px 0; overflow-wrap: anywhere; }
+.error { color: #ffabb1; } .warning { color: #e7c77e; } .success { color: #d6ff3f; }
+.counts { font-weight: 700; } .table-wrap { overflow: auto; max-height: 480px; margin: 16px 0; }
+table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 13px; } th, td { text-align: left; padding: 12px; border-bottom: 1px solid #43504d; vertical-align: top; } th { position: sticky; top: 0; background: #25302d; } td { overflow-wrap: anywhere; } small { display: block; color: #e7c77e; margin-top: 6px; }
+.invalid { background: #3a2527; } .confirmation { display: flex; align-items: flex-start; gap: 10px; margin: 20px 0; line-height: 1.5; } input[type=checkbox] { margin-top: 4px; accent-color: #d6ff3f; }
+@media (max-width: 650px) { .import { padding: 14px; } .mapping { grid-template-columns: 1fr; gap: 6px; } .actions > * { width: 100%; } }

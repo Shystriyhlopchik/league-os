@@ -53,6 +53,7 @@ import {
     TournamentWizardStep,
     TournamentWizardStepperComponent,
 } from './tournament-wizard-stepper.component';
+import { CalendarImportComponent } from './calendar-import.component';
 
 const STEP_ERROR_HINTS: string[][] = [
     ['name', 'slug', 'season', 'startDate', 'endDate'],
@@ -76,6 +77,7 @@ const STEP_ERROR_HINTS: string[][] = [
         DragDropModule,
         TournamentWizardStepperComponent,
         TournamentWorkflowComponent,
+        CalendarImportComponent,
     ],
     providers: [TournamentBuilderStore],
     templateUrl: './tournament-builder-page.component.html',
@@ -339,6 +341,12 @@ export class TournamentBuilderPageComponent implements OnInit {
 
     selectVisibleStep(index: number): void {
         this.goToStep(this.visibleSteps()[index]?.index ?? 0);
+    }
+
+    async calendarImported(): Promise<void> {
+        this.manualEditorOpen.set(false);
+        this.removeMatchConfirmation.set(null);
+        await this.loadPreparationCalendar();
     }
 
     private async loadPreparationCalendar(): Promise<void> {
