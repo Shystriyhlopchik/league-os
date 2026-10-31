@@ -1,5 +1,19 @@
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, ArrayMinSize, Equals, IsArray, IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator';
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  Equals,
+  IsArray,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Matches,
+  Max,
+  MaxLength,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 
 export class ScheduleImportRowDto {
   @IsInt() @Min(2) @Max(1001) row: number;
@@ -20,11 +34,16 @@ export class ScheduleImportMappingDto {
 
 export class PreviewScheduleImportDto {
   @IsIn(['append', 'replace']) mode: 'append' | 'replace';
-  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(1000)
-  @ValidateNested({ each: true }) @Type(() => ScheduleImportRowDto)
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(1000)
+  @ValidateNested({ each: true })
+  @Type(() => ScheduleImportRowDto)
   rows: ScheduleImportRowDto[];
-  @IsArray() @ArrayMaxSize(3000)
-  @ValidateNested({ each: true }) @Type(() => ScheduleImportMappingDto)
+  @IsArray()
+  @ArrayMaxSize(3000)
+  @ValidateNested({ each: true })
+  @Type(() => ScheduleImportMappingDto)
   mappings: ScheduleImportMappingDto[];
 }
 

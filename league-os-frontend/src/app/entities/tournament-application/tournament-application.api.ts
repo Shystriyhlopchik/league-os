@@ -1,7 +1,10 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { CalendarImportPreview, CalendarImportRequest } from './calendar-import.types';
+import {
+    CalendarImportPreview,
+    CalendarImportRequest,
+} from './calendar-import.types';
 
 export interface RegistrationPolicy {
     version: 1;
@@ -181,18 +184,45 @@ export class TournamentApplicationApi {
         );
     }
     calendarTemplate(id: number, stage: number) {
-        return this.http.get(`${environment.apiUrl}/tournaments/${id}/stages/${stage}/schedule/import/template`, { responseType: 'blob' });
+        return this.http.get(
+            `${environment.apiUrl}/tournaments/${id}/stages/${stage}/schedule/import/template`,
+            { responseType: 'blob' },
+        );
     }
     readCalendarImport(id: number, stage: number, file: File) {
         const body = new FormData();
         body.append('file', file);
-        return this.http.post<CalendarImportPreview>(`${environment.apiUrl}/tournaments/${id}/stages/${stage}/schedule/import/read`, body);
+        return this.http.post<CalendarImportPreview>(
+            `${environment.apiUrl}/tournaments/${id}/stages/${stage}/schedule/import/read`,
+            body,
+        );
     }
-    previewCalendarImport(id: number, stage: number, body: CalendarImportRequest) {
-        return this.http.post<CalendarImportPreview>(`${environment.apiUrl}/tournaments/${id}/stages/${stage}/schedule/import/preview`, body);
+    previewCalendarImport(
+        id: number,
+        stage: number,
+        body: CalendarImportRequest,
+    ) {
+        return this.http.post<CalendarImportPreview>(
+            `${environment.apiUrl}/tournaments/${id}/stages/${stage}/schedule/import/preview`,
+            body,
+        );
     }
-    confirmCalendarImport(id: number, stage: number, body: CalendarImportRequest & { expectedVersion: string; confirmation?: string }) {
-        return this.http.post<{ createdMatches: number; skippedMatches: number; cancelledMatches: number }>(`${environment.apiUrl}/tournaments/${id}/stages/${stage}/schedule/import/confirm`, body);
+    confirmCalendarImport(
+        id: number,
+        stage: number,
+        body: CalendarImportRequest & {
+            expectedVersion: string;
+            confirmation?: string;
+        },
+    ) {
+        return this.http.post<{
+            createdMatches: number;
+            skippedMatches: number;
+            cancelledMatches: number;
+        }>(
+            `${environment.apiUrl}/tournaments/${id}/stages/${stage}/schedule/import/confirm`,
+            body,
+        );
     }
     schedule(
         id: number,

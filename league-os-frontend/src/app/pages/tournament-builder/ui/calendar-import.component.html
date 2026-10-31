@@ -1,33 +1,96 @@
 <section class="import" aria-label="Импорт календаря из Excel">
     <h3>Готовое расписание в Excel</h3>
-    <p>Скачайте шаблон со справочниками этого турнира, заполните матчи и загрузите файл. Дата и время — московские (UTC+3). До подтверждения календарь не изменится.</p>
+    <p>
+        Скачайте шаблон со справочниками этого турнира, заполните матчи и
+        загрузите файл. Дата и время — московские (UTC+3). До подтверждения
+        календарь не изменится.
+    </p>
     <div class="actions">
-        <button type="button" (click)="downloadTemplate()" [disabled]="disabled() || busy() || !stageId()">Скачать шаблон .xlsx</button>
-        <label class="upload">Загрузить календарь .xlsx<input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" (change)="readFile($event)" [disabled]="disabled() || busy() || !stageId()" /></label>
+        <button
+            type="button"
+            (click)="downloadTemplate()"
+            [disabled]="disabled() || busy() || !stageId()"
+        >
+            Скачать шаблон .xlsx
+        </button>
+        <label class="upload"
+            >Загрузить календарь .xlsx<input
+                type="file"
+                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                (change)="readFile($event)"
+                [disabled]="disabled() || busy() || !stageId()"
+        /></label>
     </div>
-    <p class="hint">До импорта сохраните группы, закройте приём заявок и рассмотрите все заявки. До 1000 матчей, файл не более 5 МБ.</p>
-    @if (busy()) { <p role="status">Обрабатываем календарь…</p> }
-    @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
-    @if (notice()) { <p class="success" role="status">{{ notice() }}</p> }
+    <p class="hint">
+        До импорта сохраните группы, закройте приём заявок и рассмотрите все
+        заявки. До 1000 матчей, файл не более 5 МБ.
+    </p>
+    @if (busy()) {
+        <p role="status">Обрабатываем календарь…</p>
+    }
+    @if (error()) {
+        <p class="error" role="alert">{{ error() }}</p>
+    }
+    @if (notice()) {
+        <p class="success" role="status">{{ notice() }}</p>
+    }
     @if (preview(); as data) {
         <h4>Предпросмотр: {{ fileName() }}</h4>
-        <label class="mode">Действие с календарём
-            <select [(ngModel)]="mode" (ngModelChange)="invalidate()" [disabled]="disabled() || busy()">
-                <option value="append">Дополнить — сохранить существующие матчи</option>
-                <option value="replace">Заменить — отменить прежние матчи этого этапа</option>
+        <label class="mode"
+            >Действие с календарём
+            <select
+                [(ngModel)]="mode"
+                (ngModelChange)="invalidate()"
+                [disabled]="disabled() || busy()"
+            >
+                <option value="append">
+                    Дополнить — сохранить существующие матчи
+                </option>
+                <option value="replace">
+                    Заменить — отменить прежние матчи этого этапа
+                </option>
             </select>
         </label>
         <details [open]="!data.valid">
             <summary>Сопоставление названий групп, команд и площадок</summary>
-            <p>Проверьте соответствия. Для неизвестных названий выберите существующую запись. Новые команды и площадки не создаются.</p>
+            <p>
+                Проверьте соответствия. Для неизвестных названий выберите
+                существующую запись. Новые команды и площадки не создаются.
+            </p>
             @for (section of mappingKinds; track section.kind) {
                 @if (sources(section.kind).length) {
-                    <fieldset><legend>{{ section.label }}</legend>
-                        @for (source of sources(section.kind); track source.source) {
-                            <label class="mapping"><span>{{ source.source }}</span>
-                                <select [ngModel]="mappedId(source.kind, source.source)" (ngModelChange)="changeMapping(source.kind, source.source, $event)" [disabled]="disabled() || busy()">
-                                    <option [ngValue]="0">Не сопоставлено</option>
-                                    @for (option of options(source.kind); track option.id) { <option [ngValue]="option.id">{{ option.name }}</option> }
+                    <fieldset>
+                        <legend>{{ section.label }}</legend>
+                        @for (
+                            source of sources(section.kind);
+                            track source.source
+                        ) {
+                            <label class="mapping"
+                                ><span>{{ source.source }}</span>
+                                <select
+                                    [ngModel]="
+                                        mappedId(source.kind, source.source)
+                                    "
+                                    (ngModelChange)="
+                                        changeMapping(
+                                            source.kind,
+                                            source.source,
+                                            $event
+                                        )
+                                    "
+                                    [disabled]="disabled() || busy()"
+                                >
+                                    <option [ngValue]="0">
+                                        Не сопоставлено
+                                    </option>
+                                    @for (
+                                        option of options(source.kind);
+                                        track option.id
+                                    ) {
+                                        <option [ngValue]="option.id">
+                                            {{ option.name }}
+                                        </option>
+                                    }
                                 </select>
                             </label>
                         }
@@ -35,23 +98,109 @@
                 }
             }
         </details>
-        <div class="actions"><button type="button" (click)="check()" [disabled]="disabled() || busy()">Проверить повторно</button></div>
-        @if (needsCheck()) { <p class="warning" role="status">Данные изменились. Повторите проверку перед подтверждением.</p> }
-        <p class="counts">Добавить: {{ data.createCount }} · Пропустить: {{ data.skipCount }} · Отменить прежних: {{ data.cancelCount }}</p>
-        @if (data.errors.length) { <p class="error" role="alert">Ошибок: {{ data.errors.length }}. Импорт заблокирован. Исправьте файл или сопоставления.</p> }
-        @for (error of data.errors; track $index) { <p class="error">{{ error.row ? 'Строка ' + error.row + ': ' : '' }}{{ error.message }}</p> }
-        @for (warning of data.warnings; track $index) { @if (!warning.row) { <p class="warning">{{ warning.message }}</p> } }
-        <div class="table-wrap" tabindex="0" role="region" aria-label="Матчи для импорта">
-            <table><thead><tr><th>Строка</th><th>Группа / тур</th><th>Матч</th><th>Дата и время (МСК)</th><th>Площадка</th><th>Проверка</th></tr></thead>
-                <tbody>@for (row of data.rows; track $index) { <tr [class.invalid]="row.action === 'error'">
-                    <td>{{ row.row }}</td><td>{{ row.group }} / {{ row.roundNumber }}</td><td>{{ row.home }} — {{ row.away }}</td><td>{{ row.date || 'Не назначена' }} {{ row.time }}</td><td>{{ row.venue || 'Не назначена' }}</td>
-                    <td>{{ row.action === 'add' ? 'Добавить' : row.action === 'skip' ? 'Уже есть' : 'Ошибка' }}@for (warning of row.warnings; track $index) { <small>{{ warning }}</small> }</td>
-                </tr> }</tbody>
+        <div class="actions">
+            <button
+                type="button"
+                (click)="check()"
+                [disabled]="disabled() || busy()"
+            >
+                Проверить повторно
+            </button>
+        </div>
+        @if (needsCheck()) {
+            <p class="warning" role="status">
+                Данные изменились. Повторите проверку перед подтверждением.
+            </p>
+        }
+        <p class="counts">
+            Добавить: {{ data.createCount }} · Пропустить:
+            {{ data.skipCount }} · Отменить прежних: {{ data.cancelCount }}
+        </p>
+        @if (data.errors.length) {
+            <p class="error" role="alert">
+                Ошибок: {{ data.errors.length }}. Импорт заблокирован. Исправьте
+                файл или сопоставления.
+            </p>
+        }
+        @for (error of data.errors; track $index) {
+            <p class="error">
+                {{ error.row ? "Строка " + error.row + ": " : ""
+                }}{{ error.message }}
+            </p>
+        }
+        @for (warning of data.warnings; track $index) {
+            @if (!warning.row) {
+                <p class="warning">{{ warning.message }}</p>
+            }
+        }
+        <div
+            class="table-wrap"
+            tabindex="0"
+            role="region"
+            aria-label="Матчи для импорта"
+        >
+            <table>
+                <thead>
+                    <tr>
+                        <th>Строка</th>
+                        <th>Группа / тур</th>
+                        <th>Матч</th>
+                        <th>Дата и время (МСК)</th>
+                        <th>Площадка</th>
+                        <th>Проверка</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (row of data.rows; track $index) {
+                        <tr [class.invalid]="row.action === 'error'">
+                            <td>{{ row.row }}</td>
+                            <td>{{ row.group }} / {{ row.roundNumber }}</td>
+                            <td>{{ row.home }} — {{ row.away }}</td>
+                            <td>
+                                {{ row.date || "Не назначена" }} {{ row.time }}
+                            </td>
+                            <td>{{ row.venue || "Не назначена" }}</td>
+                            <td>
+                                {{
+                                    row.action === "add"
+                                        ? "Добавить"
+                                        : row.action === "skip"
+                                          ? "Уже есть"
+                                          : "Ошибка"
+                                }}
+                                @for (warning of row.warnings; track $index) {
+                                    <small>{{ warning }}</small>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
             </table>
         </div>
-        @if (mode === 'replace') {
-            <label class="confirmation"><input type="checkbox" [(ngModel)]="replaceConfirmed" [disabled]="disabled() || busy() || needsCheck()" />Подтверждаю отмену {{ data.cancelCount }} прежних матчей этого этапа. Их даты и площадки не будут перенесены в новый календарь. История останется в системе.</label>
+        @if (mode === "replace") {
+            <label class="confirmation"
+                ><input
+                    type="checkbox"
+                    [(ngModel)]="replaceConfirmed"
+                    [disabled]="disabled() || busy() || needsCheck()"
+                />Подтверждаю отмену {{ data.cancelCount }} прежних матчей этого
+                этапа. Их даты и площадки не будут перенесены в новый календарь.
+                История останется в системе.</label
+            >
         }
-        <button type="button" class="primary" (click)="confirm()" [disabled]="disabled() || busy() || !data.valid || needsCheck() || (mode === 'replace' && !replaceConfirmed)">Подтвердить импорт</button>
+        <button
+            type="button"
+            class="primary"
+            (click)="confirm()"
+            [disabled]="
+                disabled() ||
+                busy() ||
+                !data.valid ||
+                needsCheck() ||
+                (mode === 'replace' && !replaceConfirmed)
+            "
+        >
+            Подтвердить импорт
+        </button>
     }
 </section>

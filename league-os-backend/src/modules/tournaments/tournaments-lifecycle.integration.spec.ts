@@ -1,7 +1,6 @@
 import {
   type CanActivate,
   type ExecutionContext,
-  INestApplication,
   UnauthorizedException,
   ValidationPipe,
 } from '@nestjs/common';
@@ -27,15 +26,19 @@ import { PlayerSuspensionsService } from '../player-suspensions/player-suspensio
 import { FeatureFlagGuard } from '../../common/feature-flags/feature-flag.guard';
 import { FeatureFlagsService } from '../../common/feature-flags/feature-flags.service';
 import { PlayoffLaunchService } from './playoff-launch.service';
-import { CalendarSpreadsheetService, CALENDAR_HEADERS } from './scheduling/calendar-spreadsheet.service';
+import {
+  CalendarSpreadsheetService,
+  CALENDAR_HEADERS,
+} from './scheduling/calendar-spreadsheet.service';
 import { Workbook } from 'exceljs';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import {
   CommunityMemberEntity,
   CommunityRole,
 } from '../communities/entities/community-member.entity';
 
 describe('Tournament lifecycle HTTP integration', () => {
-  let app: INestApplication;
+  let app: NestExpressApplication;
 
   const tournaments = {
     findOne: jest.fn(async () => ({
@@ -81,8 +84,15 @@ describe('Tournament lifecycle HTTP integration', () => {
     generateSchedule: jest.fn(),
     saveManualMatch: jest.fn(async () => ({ id: 50 })),
     removeManualMatch: jest.fn(async () => ({ cancelledMatches: 1 })),
-    calendarImportReferences: jest.fn(async () => ({ name: 'Лига', references: { groups: [], teams: [], venues: [] } })),
-    previewCalendarImport: jest.fn(async (_id, _stage, dto) => ({ valid: true, sourceRows: dto.rows, createCount: 1 })),
+    calendarImportReferences: jest.fn(async () => ({
+      name: 'Лига',
+      references: { groups: [], teams: [], venues: [] },
+    })),
+    previewCalendarImport: jest.fn(async (_id, _stage, dto) => ({
+      valid: true,
+      sourceRows: dto.rows,
+      createCount: 1,
+    })),
     confirmCalendarImport: jest.fn(async () => ({ createdMatches: 1 })),
   };
   const qualification = {
@@ -164,7 +174,8 @@ describe('Tournament lifecycle HTTP integration', () => {
       .useValue(authenticationGuard)
       .compile();
 
-    app = module.createNestApplication();
+    app = module.createNestApplication<NestExpressApplication>();
+    app.useBodyParser('json', { limit: '4mb' });
     app.useGlobalPipes(
       new ValidationPipe({ whitelist: true, transform: true }),
     );
@@ -176,22 +187,77 @@ describe('Tournament lifecycle HTTP integration', () => {
 
   it('downloads a tournament template and parses an uploaded workbook without saving matches', async () => {
     const url = '/tournaments/10/stages/20/schedule/import';
-    await request(app.getHttpServer()).get(`${url}/template`).set('x-test-user-id', '2').expect(200).expect('Content-Type', /spreadsheetml/);
-    const book = new Workbook(); const sheet = book.addWorksheet('Календарь');
-    sheet.addRow(CALENDAR_HEADERS); sheet.addRow(['A', 1, 'Водоканал', 'КРИКС', '01.11.2026', '15:00', 'Спартак']);
-    await request(app.getHttpServer()).post(`${url}/read`).set('x-test-user-id', '2').attach('file', Buffer.from(await book.xlsx.writeBuffer()), 'calendar.xlsx').expect(200);
-    expect(groupScheduling.previewCalendarImport).toHaveBeenCalledWith(10, 20, expect.objectContaining({ rows: [expect.objectContaining({ row: 2, roundNumber: 1 })] }));
+    await request(app.getHttpServer())
+      .get(`${url}/template`)
+      .set('x-test-user-id', '2')
+      .expect(200)
+      .expect('Content-Type', /spreadsheetml/);
+    const book = new Workbook();
+    const sheet = book.addWorksheet('Календарь');
+    sheet.addRow(CALENDAR_HEADERS);
+    sheet.addRow([
+      'A',
+      1,
+      'Водоканал',
+      'КРИКС',
+      '01.11.2026',
+      '15:00',
+      'Спартак',
+    ]);
+    await request(app.getHttpServer())
+      .post(`${url}/read`)
+      .set('x-test-user-id', '2')
+      .attach(
+        'file',
+        Buffer.from(await book.xlsx.writeBuffer()),
+        'calendar.xlsx',
+      )
+      .expect(200);
+    expect(groupScheduling.previewCalendarImport).toHaveBeenCalledWith(
+      10,
+      20,
+      expect.objectContaining({
+        rows: [expect.objectContaining({ row: 2, roundNumber: 1 })],
+      }),
+    );
     expect(groupScheduling.confirmCalendarImport).not.toHaveBeenCalled();
   });
   it('protects every import endpoint and validates confirmation payloads', async () => {
     const url = '/tournaments/10/stages/20/schedule/import';
-    await request(app.getHttpServer()).get(`${url}/template`).set('x-test-user-id', '3').expect(403);
+    await request(app.getHttpServer())
+      .get(`${url}/template`)
+      .set('x-test-user-id', '3')
+      .expect(403);
     for (const route of ['read', 'preview', 'confirm']) {
       await request(app.getHttpServer()).post(`${url}/${route}`).expect(401);
-      await request(app.getHttpServer()).post(`${url}/${route}`).set('x-test-user-id', '3').expect(403);
+      await request(app.getHttpServer())
+        .post(`${url}/${route}`)
+        .set('x-test-user-id', '3')
+        .expect(403);
     }
-    await request(app.getHttpServer()).post(`${url}/confirm`).set('x-test-user-id', '2').send({ mode: 'replace', rows: [], mappings: [], expectedVersion: 'fake' }).expect(400);
-    await request(app.getHttpServer()).post(`${url}/read`).set('x-test-user-id', '2').attach('file', Buffer.from('not excel'), 'calendar.xlsx').expect(400);
+    await request(app.getHttpServer())
+      .post(`${url}/confirm`)
+      .set('x-test-user-id', '2')
+      .send({
+        mode: 'replace',
+        rows: [],
+        mappings: [],
+        expectedVersion: 'fake',
+      })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post(`${url}/read`)
+      .set('x-test-user-id', '2')
+      .attach('file', Buffer.from('not excel'), 'calendar.xlsx')
+      .expect(400);
+    expect(groupScheduling.confirmCalendarImport).not.toHaveBeenCalled();
+  });
+
+  it('accepts a 1000-row preview above the default Express JSON limit', async () => {
+    const rows = Array.from({ length: 1000 }, (_, i) => ({ row: i + 2, group: 'A', roundNumber: i + 1, home: 'Водоканал'.repeat(6), away: 'КРИКС'.repeat(6), date: '01.11.2026', time: '15:00', venue: 'Спартак' }));
+    const body = { mode: 'append', mappings: [], rows };
+    expect(Buffer.byteLength(JSON.stringify(body))).toBeGreaterThan(100 * 1024);
+    await request(app.getHttpServer()).post('/tournaments/10/stages/20/schedule/import/preview').set('x-test-user-id', '2').send(body).expect(200);
     expect(groupScheduling.confirmCalendarImport).not.toHaveBeenCalled();
   });
 
