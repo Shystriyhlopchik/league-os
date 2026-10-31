@@ -1933,6 +1933,31 @@
                             Добавить матч вручную
                         </button>
                     }
+                    @if (groupStage()) {
+                        @if (store.dirty() && canEditPairings()) {
+                            <button
+                                type="button"
+                                class="button button--secondary"
+                                (click)="saveDraft()"
+                                [disabled]="operation() !== null"
+                            >
+                                Сохранить группы для импорта Excel
+                            </button>
+                        }
+                        <app-calendar-import
+                            [tournamentId]="draft().tournamentId ?? 0"
+                            [stageId]="groupStage()?.serverId ?? 0"
+                            [disabled]="
+                                !canEditPairings() ||
+                                operation() !== null ||
+                                store.dirty()
+                            "
+                            (busyChange)="
+                                operation.set($event ? 'calendar' : null)
+                            "
+                            (calendarImported)="calendarImported()"
+                        />
+                    }
                     @if (manualEditorOpen() && canEditPairings()) {
                         <form
                             class="section-block manual-calendar"

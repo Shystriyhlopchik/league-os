@@ -13,7 +13,19 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  StreamableFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  CalendarSpreadsheetService,
+  CALENDAR_FILE_LIMIT,
+} from './scheduling/calendar-spreadsheet.service';
+import {
+  ConfirmScheduleImportDto,
+  PreviewScheduleImportDto,
+} from './dto/import-schedule.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TournamentsService } from './tournaments.service';
 import { TournamentAccessAction } from './access/tournament-access-action.enum';
@@ -72,6 +84,7 @@ export class TournamentsController {
     private readonly knockoutBracketService: KnockoutBracketService,
     private readonly playerSuspensionsService: PlayerSuspensionsService,
     private readonly playoffLaunchService: PlayoffLaunchService,
+    private readonly calendarSpreadsheet: CalendarSpreadsheetService,
   ) {}
 
   @Get(':tournamentId/calendar-management')
@@ -550,6 +563,89 @@ export class TournamentsController {
     @Body() dto: GenerateGroupStageScheduleDto,
   ) {
     return this.groupSchedulingService.generateSchedule(
+      tournamentId,
+      stageId,
+      dto,
+    );
+  }
+
+  @Get(':tournamentId/stages/:stageId/schedule/import/template')
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  async calendarImportTemplate(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Param('stageId', ParseIntPipe) stageId: number,
+  ) {
+    const data = await this.groupSchedulingService.calendarImportReferences(
+      tournamentId,
+      stageId,
+    );
+    return new StreamableFile(
+      await this.calendarSpreadsheet.template(data.name, data.references),
+      {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        disposition: `attachment; filename="calendar-${tournamentId}.xlsx"`,
+      },
+    );
+  }
+
+  @Post(':tournamentId/stages/:stageId/schedule/import/read')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: CALENDAR_FILE_LIMIT, files: 1, fields: 0 },
+    }),
+  )
+  async readCalendarImport(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Param('stageId', ParseIntPipe) stageId: number,
+    @UploadedFile() file?: { buffer: Buffer; originalname: string },
+  ) {
+    // Check scope and lifecycle before parsing an uploaded workbook.
+    await this.groupSchedulingService.calendarImportReferences(
+      tournamentId,
+      stageId,
+    );
+    const rows = await this.calendarSpreadsheet.read(file);
+    return this.groupSchedulingService.previewCalendarImport(
+      tournamentId,
+      stageId,
+      { rows, mappings: [], mode: 'append' },
+    );
+  }
+
+  @Post(':tournamentId/stages/:stageId/schedule/import/preview')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  previewCalendarImport(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Param('stageId', ParseIntPipe) stageId: number,
+    @Body() dto: PreviewScheduleImportDto,
+  ) {
+    return this.groupSchedulingService.previewCalendarImport(
+      tournamentId,
+      stageId,
+      dto,
+    );
+  }
+
+  @Post(':tournamentId/stages/:stageId/schedule/import/confirm')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(FeatureFlagGuard, JwtAuthGuard, TournamentAccessGuard)
+  @RequireFeature(FeatureFlag.TournamentBuilder)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  confirmCalendarImport(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+    @Param('stageId', ParseIntPipe) stageId: number,
+    @Body() dto: ConfirmScheduleImportDto,
+  ) {
+    return this.groupSchedulingService.confirmCalendarImport(
       tournamentId,
       stageId,
       dto,

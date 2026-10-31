@@ -40,6 +40,7 @@ import { CommunitiesModule } from '../communities/communities.module';
 import { CommunityMemberEntity } from '../communities/entities/community-member.entity';
 import { SeasonEntity } from '../seasons/entities/season.entity';
 import { RegistrationsModule } from '../registrations/registrations.module';
+import { CalendarSpreadsheetService } from './scheduling/calendar-spreadsheet.service';
 
 @Module({
   imports: [
@@ -81,6 +82,7 @@ import { RegistrationsModule } from '../registrations/registrations.module';
     GroupAssignmentStrategyService,
     RoundRobinGenerator,
     TournamentGroupSchedulingService,
+    CalendarSpreadsheetService,
     QualificationEngine,
     QualificationService,
     KnockoutBracketEngine,
