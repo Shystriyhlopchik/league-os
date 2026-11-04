@@ -5,13 +5,14 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MatchEntity } from './entities/match.entity';
-import { DeepPartial, Repository } from 'typeorm';
+import { DeepPartial, In, IsNull, Not, Repository } from 'typeorm';
 import { BaseCrudService } from '../../common/base/base-crud.service';
 import { formatLocalDateTime } from './helper/formatLocalDateTime';
 import { MatchRosterPlayerEntity } from '../match-rosters/entities/match-roster-player.entity';
 import { MatchRosterEntity } from '../match-rosters/entities/match-roster.entity';
 import { MatchStatus } from './enums/match-status.enum';
 import { TournamentLifecycleStatus } from '../tournaments/enums/tournament-lifecycle-status.enum';
+import { TournamentStatus } from '../tournaments/enums/tournament-status.enum';
 
 const ERR_MESSAGE = 'Команды в матче не могут быть одинаковыми';
 
@@ -69,6 +70,57 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
       },
     });
 
+    return this.toSliderMatches(matches);
+  }
+
+  async findActiveCommunityMatches(communityId?: number) {
+    if (
+      communityId !== undefined &&
+      (!Number.isInteger(communityId) || communityId < 1)
+    ) {
+      throw new BadRequestException('Укажите корректный ID сообщества');
+    }
+    const matches = await this.matchesRepository.find({
+      where: {
+        status: Not(MatchStatus.CANCELLED),
+        homeTeamId: Not(IsNull()),
+        awayTeamId: Not(IsNull()),
+        matchDatetime: Not(IsNull()),
+        tournament: {
+          isActive: true,
+          lifecycleStatus: In([
+            TournamentLifecycleStatus.PUBLISHED,
+            TournamentLifecycleStatus.IN_PROGRESS,
+          ]),
+          status: Not(
+            In([TournamentStatus.FINISHED, TournamentStatus.CANCELLED]),
+          ),
+          season: {
+            isActive: true,
+            competition: {
+              isActive: true,
+              community: {
+                isActive: true,
+                ...(communityId === undefined
+                  ? { isDefault: true }
+                  : { id: communityId }),
+              },
+            },
+          },
+        },
+      },
+      relations: {
+        homeTeam: true,
+        awayTeam: true,
+        venue: true,
+        tournament: { season: { competition: true } },
+      },
+      order: { matchDatetime: 'ASC', id: 'ASC' },
+    });
+    return this.toSliderMatches(matches);
+  }
+
+  private toSliderMatches(matches: MatchEntity[]) {
     return matches
       .filter(
         (match) =>
@@ -264,6 +316,7 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
     }
 
     const rosters = await this.getProtocolRosters(match);
+    const identities = new Map([...rosters.home, ...rosters.away].map(p => [p.id, p]));
     const activeEvents = match.events.filter((event) => !event.isCancelled);
 
     return {
@@ -371,27 +424,27 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
         player: event.player
           ? {
               id: event.player.id,
-              firstName: event.player.firstName,
-              lastName: event.player.lastName,
-              middleName: event.player.middleName,
+              firstName: (identities.get(event.player.id) ?? event.player).firstName,
+              lastName: (identities.get(event.player.id) ?? event.player).lastName,
+              middleName: (identities.get(event.player.id) ?? event.player).middleName,
             }
           : null,
 
         assistPlayer: event.assistPlayer
           ? {
               id: event.assistPlayer.id,
-              firstName: event.assistPlayer.firstName,
-              lastName: event.assistPlayer.lastName,
-              middleName: event.assistPlayer.middleName,
+              firstName: (identities.get(event.assistPlayer.id) ?? event.assistPlayer).firstName,
+              lastName: (identities.get(event.assistPlayer.id) ?? event.assistPlayer).lastName,
+              middleName: (identities.get(event.assistPlayer.id) ?? event.assistPlayer).middleName,
             }
           : null,
 
         secondaryPlayer: event.secondaryPlayer
           ? {
               id: event.secondaryPlayer.id,
-              firstName: event.secondaryPlayer.firstName,
-              lastName: event.secondaryPlayer.lastName,
-              middleName: event.secondaryPlayer.middleName,
+              firstName: (identities.get(event.secondaryPlayer.id) ?? event.secondaryPlayer).firstName,
+              lastName: (identities.get(event.secondaryPlayer.id) ?? event.secondaryPlayer).lastName,
+              middleName: (identities.get(event.secondaryPlayer.id) ?? event.secondaryPlayer).middleName,
             }
           : null,
 
@@ -454,9 +507,9 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
       matchRosterPlayerId: rosterPlayer.id,
       teamPlayerId: rosterPlayer.teamPlayerId,
 
-      firstName: rosterPlayer.player.firstName,
-      lastName: rosterPlayer.player.lastName,
-      middleName: rosterPlayer.player.middleName,
+      firstName: (rosterPlayer.identitySnapshot ?? rosterPlayer.player).firstName,
+      lastName: (rosterPlayer.identitySnapshot ?? rosterPlayer.player).lastName,
+      middleName: (rosterPlayer.identitySnapshot ?? rosterPlayer.player).middleName,
       photoUrl: rosterPlayer.player.photoUrl,
 
       shirtNumber: rosterPlayer.shirtNumber,

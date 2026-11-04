@@ -13,6 +13,9 @@
         ></app-info-card>
 
         <div class="dashboard-page__actions">
+            @if (canReviewPlayerProfiles()) {
+                <a class="dashboard-page__action" routerLink="/dashboard/player-profiles"><span class="dashboard-page__action-content"><strong>Профили игроков · исправления</strong><small>Рассмотрение ФИО и даты рождения, фотографии и реестр игроков</small></span><span class="dashboard-page__action-arrow">›</span></a>
+            }
             <a class="dashboard-page__action" routerLink="/dashboard/my-teams">
                 <span class="dashboard-page__action-content"><strong>Мои команды · создание и состав</strong><small>Карточка, логотип, игроки и права управления</small></span><span class="dashboard-page__action-arrow">›</span>
             </a>

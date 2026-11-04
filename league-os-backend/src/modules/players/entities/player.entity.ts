@@ -13,6 +13,9 @@ import { UserEntity } from '../../users/entities/user.entity';
 
 @Entity('players')
 export class PlayerEntity extends BaseEntity {
+    @Column({ name: 'identity_version', default: 1 })
+    identityVersion: number;
+
     @Column()
     firstName: string;
 

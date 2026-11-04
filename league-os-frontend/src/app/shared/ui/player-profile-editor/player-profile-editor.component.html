@@ -1,0 +1,184 @@
+<section class="player-profile" aria-label="Профиль игрока">
+    <div class="heading">
+        <div>
+            <p class="eyebrow">Общая карточка игрока</p>
+            <h3>Профиль игрока</h3>
+        </div>
+        <button type="button" (click)="close()" [disabled]="busy()">
+            Закрыть
+        </button>
+    </div>
+    <p class="hint">
+        Фото меняется сразу. Исправления ФИО и даты рождения проверяет
+        организатор. Номер, состав команды и заявки на турниры здесь не
+        изменяются.
+    </p>
+    @if (error()) {
+        <p class="error" role="alert">{{ error() }}</p>
+    }
+    @if (notice()) {
+        <p class="notice" role="status">{{ notice() }}</p>
+    }
+    @if (busy()) {
+        <p class="hint" role="status">Обрабатываем запрос…</p>
+    }
+    @if (view(); as profile) {
+        <fieldset [disabled]="busy()">
+            <div class="photo-section">
+                @if (preview() || profile.player.photoUrl) {
+                    <img
+                        class="portrait"
+                        [src]="preview() || profile.player.photoUrl"
+                        [alt]="
+                            profile.player.lastName +
+                            ' ' +
+                            profile.player.firstName
+                        "
+                    />
+                } @else {
+                    <div
+                        class="portrait placeholder"
+                        aria-label="Фото отсутствует"
+                    >
+                        Нет фото
+                    </div>
+                }
+                <div>
+                    <label
+                        >Фотография<input
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp"
+                            (change)="selectPhoto($event)"
+                    /></label>
+                    <p class="hint">
+                        PNG, JPEG или WebP, до 5 МБ. Новое фото заменит текущее
+                        во всех командах игрока.
+                    </p>
+                    <button
+                        type="button"
+                        (click)="uploadPhoto()"
+                        [disabled]="!photo"
+                    >
+                        Сохранить фото
+                    </button>
+                </div>
+            </div>
+            @if (profile.pending) {
+                <p class="notice">
+                    Исправление на рассмотрении. Пока оно не рассмотрено, новый
+                    запрос отправить нельзя. Фото можно менять независимо.
+                </p>
+            }
+            <form (ngSubmit)="submit()" #identityForm="ngForm">
+                <fieldset [disabled]="profile.pending">
+                    <h4>Исправление личных данных</h4>
+                    <div class="grid">
+                        <label
+                            >Фамилия *<input
+                                name="lastName"
+                                [(ngModel)]="form.lastName"
+                                required
+                                maxlength="100"
+                        /></label>
+                        <label
+                            >Имя *<input
+                                name="firstName"
+                                [(ngModel)]="form.firstName"
+                                required
+                                maxlength="100"
+                        /></label>
+                        <label
+                            >Отчество<input
+                                name="middleName"
+                                [(ngModel)]="form.middleName"
+                                maxlength="100"
+                        /></label>
+                        <label
+                            >Дата рождения *<input
+                                name="birthDate"
+                                [(ngModel)]="form.birthDate"
+                                type="date"
+                                required
+                                [max]="today"
+                        /></label>
+                    </div>
+                    <label
+                        >Причина исправления *<textarea
+                            name="reason"
+                            [(ngModel)]="form.reason"
+                            required
+                            maxlength="2000"
+                            placeholder="Например: при создании карточки допущена опечатка в фамилии"
+                        ></textarea>
+                    </label>
+                    <p class="hint">
+                        Это исправление данных того же человека, не замена
+                        игрока. При изменении даты рождения организатор проверит
+                        допуск по регламенту.
+                    </p>
+                    <button
+                        class="primary"
+                        [disabled]="
+                            identityForm.invalid ||
+                            !form.reason.trim() ||
+                            !form.firstName.trim() ||
+                            !form.lastName.trim() ||
+                            !identityChanged()
+                        "
+                    >
+                        Отправить исправление организатору
+                    </button>
+                </fieldset>
+            </form>
+        </fieldset>
+        @if (profile.changes.length) {
+            <h4>История исправлений</h4>
+            @for (change of profile.changes; track change.id) {
+                <article class="history">
+                    <strong>{{ labels[change.status] }}</strong
+                    ><small>{{
+                        change.createdAt | date: "dd.MM.yyyy HH:mm"
+                    }}</small>
+                    <p>
+                        {{ change.after.lastName }}
+                        {{ change.after.firstName }}
+                        {{ change.after.middleName }} ·
+                        {{ change.after.birthDate | date: "dd.MM.yyyy" }}
+                    </p>
+                    <p class="hint">{{ change.reason }}</p>
+                    @if (change.comment) {
+                        <p class="comment">
+                            Комментарий организатора: {{ change.comment }}
+                        </p>
+                    }
+                    @if (
+                        change.status === "changes_requested" &&
+                        !profile.pending
+                    ) {
+                        <button
+                            type="button"
+                            (click)="revise(change)"
+                            [disabled]="busy()"
+                        >
+                            Доработать исправление
+                        </button>
+                    }
+                </article>
+            }
+        }
+        <details>
+            <summary>Журнал изменений</summary>
+            @for (entry of profile.audit; track entry.id) {
+                <p class="hint">
+                    {{ entry.createdAt | date: "dd.MM.yyyy HH:mm" }} ·
+                    {{ labels[entry.action] || entry.action }} · пользователь
+                    №{{ entry.actorUserId }}<br />{{ entry.reason }}
+                </p>
+            } @empty {
+                <p class="hint">Изменений пока нет.</p>
+            }
+        </details>
+    } @else if (!busy()) {
+        <button type="button" (click)="reload()">Повторить загрузку</button>
+    }
+</section>

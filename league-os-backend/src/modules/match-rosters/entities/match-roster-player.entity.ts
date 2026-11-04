@@ -5,10 +5,14 @@ import { PlayerEntity } from '../../players/entities/player.entity';
 import { PlayerPosition } from '../../players/enums/player-position.enum';
 import { MatchRosterEntity } from './match-roster.entity';
 import { TeamPlayerEntity } from '../../team-players/entities/team-players.entity';
+import { PlayerIdentity } from '../../players/entities/player-profile-change.entity';
 
 @Entity('match_roster_players')
 @Unique(['matchRosterId', 'playerId'])
 export class MatchRosterPlayerEntity extends BaseEntity {
+  @Column({ name: 'identity_snapshot', type: 'jsonb', nullable: true })
+  identitySnapshot?: PlayerIdentity | null;
+
   @Column({ name: 'match_roster_id' })
   matchRosterId: number;
 

@@ -1,0 +1,195 @@
+<main class="workspace">
+    <a class="back-link" routerLink="/dashboard">← В кабинет</a>
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Люди лиги</p>
+            <h1>Профили игроков</h1>
+            <p class="hint">
+                Проверка исправлений ФИО и даты рождения. Фотографии управляющие
+                командами меняют самостоятельно.
+            </p>
+        </div>
+    </header>
+    @if (error()) {
+        <p class="error" role="alert">{{ error() }}</p>
+    }
+    @if (notice()) {
+        <p class="notice" role="status">{{ notice() }}</p>
+    }
+    @if (busy()) {
+        <p class="hint" role="status">Загружаем данные…</p>
+    }
+    @if (communities().length) {
+        <label
+            >Сообщество<select
+                [value]="communityId()"
+                (change)="changeCommunity($any($event.target))"
+                [disabled]="busy() || editorBusy()"
+            >
+                @for (community of communities(); track community.id) {
+                    <option [value]="community.id">{{ community.name }}</option>
+                }
+            </select></label
+        >
+        <fieldset [disabled]="busy() || editorBusy()">
+            <section class="card">
+                <div class="section-heading">
+                    <h2>На рассмотрении · {{ requestTotal() }}</h2>
+                    <button (click)="refresh()">Обновить список</button>
+                </div>
+                @for (request of requests(); track request.id) {
+                    <article class="correction">
+                        <p class="hint">
+                            Запрос №{{ request.id }} ·
+                            {{ request.createdAt | date: "dd.MM.yyyy HH:mm" }} ·
+                            пользователь №{{ request.requestedByUserId }}
+                            @if (request.teamId) {
+                                · команда №{{ request.teamId }}
+                            }
+                        </p>
+                        <h3>{{ name(request.before) }}</h3>
+                        <div class="comparison">
+                            <div>
+                                <small>Сейчас</small>
+                                <p>
+                                    {{ name(request.before) }}<br />{{
+                                        request.before.birthDate
+                                            | date: "dd.MM.yyyy"
+                                    }}
+                                </p>
+                            </div>
+                            <div>
+                                <small>Предлагается</small>
+                                <p>
+                                    {{ name(request.after) }}<br />{{
+                                        request.after.birthDate
+                                            | date: "dd.MM.yyyy"
+                                    }}
+                                </p>
+                            </div>
+                        </div>
+                        <p class="reason">{{ request.reason }}</p>
+                        <label
+                            >Комментарий управляющему командой<textarea
+                                [(ngModel)]="comments[request.id]"
+                                maxlength="2000"
+                                placeholder="Обязателен при возврате"
+                            ></textarea>
+                        </label>
+                        @if (
+                            request.before.birthDate !== request.after.birthDate
+                        ) {
+                            <label
+                                >Результат проверки допуска по
+                                регламенту<textarea
+                                    [(ngModel)]="eligibility[request.id]"
+                                    maxlength="2000"
+                                    placeholder="Для допущенного в турнир игрока обязательно: проверьте возрастные ограничения"
+                                ></textarea>
+                            </label>
+                        }
+                        <details>
+                            <summary>
+                                Пояснение при совпадении с другим игроком
+                            </summary>
+                            <label
+                                >Почему это разные люди<textarea
+                                    [(ngModel)]="duplicates[request.id]"
+                                    maxlength="2000"
+                                    placeholder="Заполните только после проверки сообщения о возможном дубле"
+                                ></textarea>
+                            </label>
+                        </details>
+                        <div class="actions">
+                            <button
+                                class="primary"
+                                (click)="decide(request, 'approve')"
+                            >
+                                Подтвердить исправление</button
+                            ><button (click)="decide(request, 'return')">
+                                Вернуть с комментарием</button
+                            ><button (click)="openPlayer(request.playerId)">
+                                Открыть профиль
+                            </button>
+                        </div>
+                    </article>
+                } @empty {
+                    <p class="hint">Нет запросов на исправление.</p>
+                }
+                <div class="actions">
+                    <button
+                        (click)="nextRequests(-1)"
+                        [disabled]="requestPage <= 1"
+                    >
+                        Назад</button
+                    ><span>Страница {{ requestPage }}</span
+                    ><button
+                        (click)="nextRequests(1)"
+                        [disabled]="requestPage * 20 >= requestTotal()"
+                    >
+                        Далее
+                    </button>
+                </div>
+            </section>
+            <section class="card">
+                <h2>Реестр игроков</h2>
+                <p class="hint">
+                    Включая игроков, которые уже исключены из команд.
+                    Исправления общей личности проходят через запрос и
+                    подтверждение, в том числе для организатора.
+                </p>
+                <form class="row" (ngSubmit)="searchPlayers()">
+                    <label class="grow"
+                        >Поиск по ФИО<input
+                            name="search"
+                            [(ngModel)]="search"
+                            maxlength="100" /></label
+                    ><button>Найти</button>
+                </form>
+                @for (player of players(); track player.id) {
+                    <div class="list-row">
+                        <div class="grow">
+                            <strong>{{ name(player) }}</strong
+                            ><span class="hint"
+                                >{{ player.birthDate | date: "dd.MM.yyyy" }} ·
+                                ID {{ player.id }}</span
+                            >
+                        </div>
+                        <button (click)="openPlayer(player.id)">
+                            Профиль игрока
+                        </button>
+                    </div>
+                } @empty {
+                    <p class="hint">Игроки не найдены.</p>
+                }
+                <div class="actions">
+                    <button
+                        (click)="nextPlayers(-1)"
+                        [disabled]="playerPage <= 1"
+                    >
+                        Назад</button
+                    ><span>Страница {{ playerPage }}</span
+                    ><button
+                        (click)="nextPlayers(1)"
+                        [disabled]="playerPage * 20 >= playerTotal()"
+                    >
+                        Далее
+                    </button>
+                </div>
+            </section>
+        </fieldset>
+        @if (selectedPlayerId(); as id) {
+            <app-player-profile-editor
+                [communityId]="communityId()"
+                [playerId]="id"
+                (closed)="selectedPlayerId.set(null)"
+                (busyChanged)="editorBusy.set($event)"
+            />
+        }
+    } @else if (!busy()) {
+        <p class="hint">
+            Раздел доступен администраторам и владельцам сообществ.
+        </p>
+        <button (click)="refresh()">Повторить загрузку</button>
+    }
+</main>

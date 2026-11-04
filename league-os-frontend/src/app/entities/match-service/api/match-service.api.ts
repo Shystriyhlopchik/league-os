@@ -69,6 +69,15 @@ export class MatchServiceApi {
         );
     }
 
+    getMatchRegistrationByOfficial(
+        matchId: number,
+        teamId: number,
+    ): Observable<MatchRegistration> {
+        return this.http.get<MatchRegistration>(
+            `${this.apiUrl}/match-service/match-results/${matchId}/teams/${teamId}/roster`,
+        );
+    }
+
     saveMatchRegistrationByOfficial(
         matchId: number,
         teamId: number,

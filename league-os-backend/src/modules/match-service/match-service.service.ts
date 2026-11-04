@@ -885,6 +885,23 @@ export class MatchServiceService {
     teamId: number,
     currentUserId: number,
   ) {
+    return this.buildMatchRegistration(matchId, teamId, currentUserId, false);
+  }
+
+  async getMatchRegistrationByOfficial(
+    matchId: number,
+    teamId: number,
+    currentUserId: number,
+  ) {
+    return this.buildMatchRegistration(matchId, teamId, currentUserId, true);
+  }
+
+  private async buildMatchRegistration(
+    matchId: number,
+    teamId: number,
+    currentUserId: number,
+    includeCurrentPlayers: boolean,
+  ) {
     const match = await this.findRegistrationMatch(matchId, teamId);
     await this.ensureCanManageRegistrationTeam(teamId, currentUserId, match);
 
@@ -900,6 +917,22 @@ export class MatchServiceService {
     const selectedTeamPlayerIds = new Set(
       selectedPlayers.map((player) => player.teamPlayerId),
     );
+    let candidates = players;
+    if (roster?.isApproved) {
+      const savedPlayers = await this.findSubmittedTeamRoster(match, roster);
+      // Keep the saved selection visible, but let an official add newly
+      // approved tournament players. Current metadata must win for active links.
+      candidates = includeCurrentPlayers
+        ? [
+            ...new Map(
+              [...savedPlayers, ...players].map((player) => [
+                player.teamPlayerId,
+                player,
+              ]),
+            ).values(),
+          ]
+        : savedPlayers;
+    }
     const team = teamId === match.homeTeamId ? match.homeTeam : match.awayTeam;
 
     return {
@@ -911,10 +944,7 @@ export class MatchServiceService {
       },
       isSubmitted: roster?.isSubmitted ?? false,
       isApproved: roster?.isApproved ?? false,
-      players: (roster?.isApproved
-        ? await this.findSubmittedTeamRoster(match, roster)
-        : players
-      ).map((player) => ({
+      players: candidates.map((player) => ({
         ...player,
         isSelected: selectedTeamPlayerIds.has(player.teamPlayerId),
       })),
@@ -1052,7 +1082,9 @@ export class MatchServiceService {
       }
     });
 
-    return this.getMatchRegistration(matchId, teamId, currentUserId);
+    return allowApprovedRosterChanges
+      ? this.getMatchRegistrationByOfficial(matchId, teamId, currentUserId)
+      : this.getMatchRegistration(matchId, teamId, currentUserId);
   }
 
   async saveMatchRegistrationByOfficial(
@@ -1553,9 +1585,9 @@ export class MatchServiceService {
       return {
         id: rosterPlayer.playerId,
         teamPlayerId: rosterPlayer.teamPlayerId!,
-        firstName: rosterPlayer.player.firstName,
-        lastName: rosterPlayer.player.lastName,
-        middleName: rosterPlayer.player.middleName,
+        firstName: (rosterPlayer.identitySnapshot ?? rosterPlayer.player).firstName,
+        lastName: (rosterPlayer.identitySnapshot ?? rosterPlayer.player).lastName,
+        middleName: (rosterPlayer.identitySnapshot ?? rosterPlayer.player).middleName ?? undefined,
         photoUrl: rosterPlayer.player.photoUrl,
         shirtNumber: rosterPlayer.shirtNumber,
         position: rosterPlayer.position ?? rosterPlayer.player.position,
@@ -2044,9 +2076,9 @@ export class MatchServiceService {
         id: rosterPlayer.playerId,
         matchRosterPlayerId: rosterPlayer.id,
         teamPlayerId: rosterPlayer.teamPlayerId,
-        firstName: rosterPlayer.player.firstName,
-        lastName: rosterPlayer.player.lastName,
-        middleName: rosterPlayer.player.middleName,
+        firstName: (rosterPlayer.identitySnapshot ?? rosterPlayer.player).firstName,
+        lastName: (rosterPlayer.identitySnapshot ?? rosterPlayer.player).lastName,
+        middleName: (rosterPlayer.identitySnapshot ?? rosterPlayer.player).middleName ?? undefined,
         shirtNumber: rosterPlayer.shirtNumber,
         isCaptain: rosterPlayer.isCaptain,
       })),
@@ -2055,9 +2087,9 @@ export class MatchServiceService {
         id: rosterPlayer.playerId,
         matchRosterPlayerId: rosterPlayer.id,
         teamPlayerId: rosterPlayer.teamPlayerId,
-        firstName: rosterPlayer.player.firstName,
-        lastName: rosterPlayer.player.lastName,
-        middleName: rosterPlayer.player.middleName,
+        firstName: (rosterPlayer.identitySnapshot ?? rosterPlayer.player).firstName,
+        lastName: (rosterPlayer.identitySnapshot ?? rosterPlayer.player).lastName,
+        middleName: (rosterPlayer.identitySnapshot ?? rosterPlayer.player).middleName ?? undefined,
         shirtNumber: rosterPlayer.shirtNumber,
         isCaptain: rosterPlayer.isCaptain,
       })),
@@ -2143,6 +2175,8 @@ export class MatchServiceService {
   }
 
   private async getMatchEvents(matchId: number) {
+    const rosterPlayers = await this.matchRosterPlayerRepository.find({ where: { matchRoster: { matchId } } });
+    const identities = new Map(rosterPlayers.filter(p => p.identitySnapshot).map(p => [p.playerId, p.identitySnapshot!]));
     const events = await this.matchEventRepository.find({
       where: {
         matchId,
@@ -2189,24 +2223,24 @@ export class MatchServiceService {
       player: event.player
         ? {
             id: event.player.id,
-            firstName: event.player.firstName,
-            lastName: event.player.lastName,
+            firstName: (identities.get(event.player.id) ?? event.player).firstName,
+            lastName: (identities.get(event.player.id) ?? event.player).lastName,
           }
         : undefined,
 
       assistPlayer: event.assistPlayer
         ? {
             id: event.assistPlayer.id,
-            firstName: event.assistPlayer.firstName,
-            lastName: event.assistPlayer.lastName,
+            firstName: (identities.get(event.assistPlayer.id) ?? event.assistPlayer).firstName,
+            lastName: (identities.get(event.assistPlayer.id) ?? event.assistPlayer).lastName,
           }
         : undefined,
 
       secondaryPlayer: event.secondaryPlayer
         ? {
             id: event.secondaryPlayer.id,
-            firstName: event.secondaryPlayer.firstName,
-            lastName: event.secondaryPlayer.lastName,
+            firstName: (identities.get(event.secondaryPlayer.id) ?? event.secondaryPlayer).firstName,
+            lastName: (identities.get(event.secondaryPlayer.id) ?? event.secondaryPlayer).lastName,
           }
         : undefined,
     }));
