@@ -15,6 +15,11 @@
             <p class="team-players-detail__description">
                 ID команды: {{ teamId }}
             </p>
+            <p class="team-players-detail__description">
+                ФИО, дата рождения и фотография теперь изменяются через
+                <a [routerLink]="['/dashboard/my-teams']" [queryParams]="{ teamId: teamId }">«Мои команды» → «Состав команды» → «Профиль игрока»</a>.
+                Исправления личных данных согласовывает организатор.
+            </p>
         </div>
 
         @if (!isFormOpened()) {

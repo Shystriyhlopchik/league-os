@@ -123,22 +123,20 @@
     </button>
 </div>
 
-@if (activeTournament(); as tournament) {
-    <section class="home-matches" aria-labelledby="home-matches-title">
-        <header class="editorial-heading">
-            <div>
-                <p>{{ tournament.name }}</p>
-                <h2 id="home-matches-title">
-                    Игра решает<span aria-hidden="true">.</span>
-                </h2>
-            </div>
-            <a routerLink="/matches"
-                >Все матчи <span aria-hidden="true" appArrowUpRight></span
-            ></a>
-        </header>
-        <app-matches-slider [seasonId]="tournament.season.id" />
-    </section>
-}
+<section class="home-matches" aria-labelledby="home-matches-title">
+    <header class="editorial-heading">
+        <div>
+            <p>Матчи действующих турниров сообщества</p>
+            <h2 id="home-matches-title">
+                Игра решает<span aria-hidden="true">.</span>
+            </h2>
+        </div>
+        <a routerLink="/matches"
+            >Все матчи <span aria-hidden="true" appArrowUpRight></span
+        ></a>
+    </header>
+    <app-matches-slider />
+</section>
 
 <div class="home__body">
     <div class="home__section">

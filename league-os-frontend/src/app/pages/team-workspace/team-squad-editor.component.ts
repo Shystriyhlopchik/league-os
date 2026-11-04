@@ -6,6 +6,7 @@ import {
     OnChanges,
     output,
     signal,
+    ViewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
@@ -14,14 +15,18 @@ import {
     SquadPlayer,
     TournamentApplicationApi,
 } from '../../entities/tournament-application/tournament-application.api';
+import { PlayerProfileEditorComponent } from '../../shared/ui/player-profile-editor/player-profile-editor.component';
 
 @Component({
     selector: 'app-team-squad-editor',
-    imports: [FormsModule],
+    imports: [FormsModule, PlayerProfileEditorComponent],
     templateUrl: './team-squad-editor.component.html',
     styleUrl: './team-workspace-page.component.scss',
 })
 export class TeamSquadEditorComponent implements OnChanges {
+    @ViewChild(PlayerProfileEditorComponent) profileEditor?: PlayerProfileEditorComponent;
+    readonly profilePlayer = signal<SquadPlayer | null>(null);
+    readonly profileBusy = signal(false);
     readonly communityId = input.required<number>();
     readonly teamId = input.required<number>();
     readonly rosterChanged = output<SquadPlayer[]>();
@@ -59,6 +64,7 @@ export class TeamSquadEditorComponent implements OnChanges {
         };
     }
     ngOnChanges() {
+        this.profilePlayer.set(null);
         this.roster.set([]);
         this.loaded.set(false);
         this.candidates.set([]);
@@ -88,6 +94,7 @@ export class TeamSquadEditorComponent implements OnChanges {
     hasUnsavedChanges() {
         const edit = this.editingPlayer();
         return (
+            !!this.profileEditor?.hasUnsavedChanges() ||
             !!(
                 edit &&
                 (Number(this.editNumber) !== edit.shirtNumber ||
@@ -104,6 +111,7 @@ export class TeamSquadEditorComponent implements OnChanges {
     }
     startAdd() {
         if (this.busy() || !this.loaded() || this.roster().length >= 12) return;
+        if (!this.closeProfile()) return;
         if (!this.cancelEdit()) return;
         this.resetAdd();
         this.shirtNumber =
@@ -187,6 +195,7 @@ export class TeamSquadEditorComponent implements OnChanges {
     }
     startEdit(link: SquadPlayer) {
         if (this.busy() || !this.cancelEdit()) return;
+        if (!this.closeProfile()) return;
         if (this.showAdd()) {
             if (
                 this.hasUnsavedChanges() &&
@@ -240,6 +249,24 @@ export class TeamSquadEditorComponent implements OnChanges {
                 'Игрок создан и добавлен в текущий состав. Для участия в турнире выберите его в заявочном листе.',
             );
         });
+    }
+    openProfile(link: SquadPlayer) {
+        if (this.busy() || this.profileBusy() || !this.cancelEdit() || !this.closeProfile()) return;
+        if (this.showAdd()) {
+            if (this.hasUnsavedChanges() && !window.confirm('Закрыть добавление игрока без сохранения?')) return;
+            this.resetAdd();
+        }
+        this.profilePlayer.set(link);
+    }
+    closeProfile() {
+        if (this.profileBusy()) return false;
+        if (this.profileEditor?.hasUnsavedChanges() && !window.confirm('Закрыть профиль без сохранения введённых изменений?')) return false;
+        this.profilePlayer.set(null);
+        return true;
+    }
+    onProfileBusy(value: boolean) {
+        this.profileBusy.set(value);
+        this.busyChanged.emit(value || this.busy());
     }
     private async run(action: () => Promise<void>) {
         if (this.busy() || this.destroyed) return;

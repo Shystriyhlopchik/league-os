@@ -19,13 +19,20 @@ export class MatchRegistrationDetailStore {
     readonly message = signal<string | null>(null);
     readonly selectedCount = computed(() => this.selectedIds().size);
 
-    load(matchId: number, teamId: number, correctionMode = false): void {
+    load(
+        matchId: number,
+        teamId: number,
+        correctionMode = false,
+        officialMode = false,
+    ): void {
         this.isLoading.set(true);
         this.error.set(null);
 
         const request = correctionMode
             ? this.api.getFinishedMatchRegistration(matchId, teamId)
-            : this.api.getMatchRegistration(matchId, teamId);
+            : officialMode
+              ? this.api.getMatchRegistrationByOfficial(matchId, teamId)
+              : this.api.getMatchRegistration(matchId, teamId);
 
         request
             .pipe(
@@ -45,7 +52,9 @@ export class MatchRegistrationDetailStore {
     toggle(teamPlayerId: number, checked: boolean): void {
         const selectedIds = new Set(this.selectedIds());
 
-        checked ? selectedIds.add(teamPlayerId) : selectedIds.delete(teamPlayerId);
+        checked
+            ? selectedIds.add(teamPlayerId)
+            : selectedIds.delete(teamPlayerId);
         this.selectedIds.set(selectedIds);
         this.isDirty.set(true);
         this.message.set(null);
@@ -63,20 +72,16 @@ export class MatchRegistrationDetailStore {
         this.message.set(null);
 
         const request = correctionMode
-            ? this.api.saveFinishedMatchRegistration(
-                  matchId,
-                  teamId,
-                  [...this.selectedIds()],
-              )
-            : officialMode
-              ? this.api.saveMatchRegistrationByOfficial(
-                    matchId,
-                    teamId,
-                    [...this.selectedIds()],
-                )
-            : this.api.saveMatchRegistration(matchId, teamId, [
+            ? this.api.saveFinishedMatchRegistration(matchId, teamId, [
                   ...this.selectedIds(),
-              ]);
+              ])
+            : officialMode
+              ? this.api.saveMatchRegistrationByOfficial(matchId, teamId, [
+                    ...this.selectedIds(),
+                ])
+              : this.api.saveMatchRegistration(matchId, teamId, [
+                    ...this.selectedIds(),
+                ]);
 
         request
             .pipe(
@@ -87,7 +92,7 @@ export class MatchRegistrationDetailStore {
                             ? 'Протокол участников сохранён'
                             : officialMode
                               ? 'Состав команды сохранён и утверждён'
-                            : 'Заявка сохранена',
+                              : 'Заявка сохранена',
                     );
                     onSuccess?.();
                 }),

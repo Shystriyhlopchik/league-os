@@ -164,6 +164,21 @@ export class MatchServiceController {
     );
   }
 
+  @Get('match-results/:matchId/teams/:teamId/roster')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.Referee, RoleCode.Admin, RoleCode.SuperAdmin)
+  getMatchRegistrationByOfficial(
+    @Param('matchId', ParseIntPipe) matchId: number,
+    @Param('teamId', ParseIntPipe) teamId: number,
+    @Req() req: any,
+  ) {
+    return this.matchService.getMatchRegistrationByOfficial(
+      matchId,
+      teamId,
+      req.user.id,
+    );
+  }
+
   @Put('match-results/:matchId/teams/:teamId/roster')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleCode.Referee, RoleCode.Admin, RoleCode.SuperAdmin)

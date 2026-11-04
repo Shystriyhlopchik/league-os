@@ -1,4 +1,9 @@
-@if (matches(); as matches) {
+@if (isLoading()) {
+    <div class="matches-slider__empty">Загрузка матчей...</div>
+} @else if (error()) {
+    <div class="matches-slider__empty" role="alert">{{ error() }}</div>
+} @else {
+    @let matches = this.matches();
     @if (matches.length) {
         <swiper-container #swiperEl class="match-swiper" init="false">
             @for (match of matches; track match.id) {
@@ -11,8 +16,8 @@
             }
         </swiper-container>
     } @else {
-        <div class="matches-slider__empty">Календарь ещё не готов.</div>
+        <div class="matches-slider__empty">
+            Пока нет матчей действующих турниров.
+        </div>
     }
-} @else {
-    <div class="matches-slider__empty">Загрузка матчей...</div>
 }

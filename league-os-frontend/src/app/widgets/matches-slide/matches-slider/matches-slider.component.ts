@@ -23,7 +23,7 @@ import { Router } from '@angular/router';
 export class MatchesSliderComponent {
     private readonly store = inject(MatchesSliderStore);
 
-    readonly seasonId = input.required<number | string>();
+    readonly communityId = input<number | string>();
     private readonly router = inject(Router);
 
     readonly matches = this.store.matches;
@@ -36,12 +36,15 @@ export class MatchesSliderComponent {
             (match) => match.status === 'scheduled',
         );
 
-        return index === -1 ? this.matches().length - 1 : index - 1;
+        return Math.max(
+            0,
+            index === -1 ? this.matches().length - 1 : index - 1,
+        );
     });
 
     constructor() {
         effect(() => {
-            this.store.loadBySeason(this.seasonId());
+            this.store.loadActiveCommunity(this.communityId());
         });
     }
 

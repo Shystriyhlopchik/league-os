@@ -183,7 +183,8 @@ export class AuthService {
     }
 
     teamPlayer.player.userId = user.id;
-    await this.playersRepository.save(teamPlayer.player);
+    // Linking an account must not overwrite a concurrently corrected player profile.
+    await this.playersRepository.update(teamPlayer.player.id, { userId: user.id });
 
     const playerRole = await this.rolesService.findByCode(RoleCode.Player);
 

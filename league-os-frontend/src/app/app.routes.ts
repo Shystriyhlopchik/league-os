@@ -12,8 +12,14 @@ import { communityNewsGuard } from './guards/community-news.guard';
 import { videosLeaveGuard } from './guards/videos-leave.guard';
 import { teamWorkspaceLeaveGuard } from './pages/team-workspace/team-workspace-leave.guard';
 import { tournamentApplicationsLeaveGuard } from './pages/tournament-applications/tournament-applications-leave.guard';
+import { playerProfileReviewLeaveGuard } from './guards/player-profile-review-leave.guard';
 
 export const routes: Routes = [
+    {
+        path: 'dashboard/player-profiles', canActivate: [authGuard],
+        canDeactivate: [playerProfileReviewLeaveGuard],
+        loadComponent: () => import('./pages/player-profile-review/player-profile-review-page.component').then(m => m.PlayerProfileReviewPageComponent),
+    },
     {
         path: 'dashboard/videos', canActivate: [authGuard, communityVideoGuard],
         canDeactivate: [videosLeaveGuard],

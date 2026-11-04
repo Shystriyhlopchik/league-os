@@ -1,24 +1,32 @@
-import {Controller, Get, Param, ParseIntPipe} from '@nestjs/common';
-import {MatchesService} from "./matches.service";
+import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
+import { MatchesService } from './matches.service';
 
 @Controller('matches')
 export class MatchesController {
-    constructor(private readonly matchesService: MatchesService) {}
+  constructor(private readonly matchesService: MatchesService) {}
 
-    @Get('tournament/:tournamentId')
-    getTournamentMatches(
-        @Param('tournamentId', ParseIntPipe) tournamentId: number,
-    ) {
-        return this.matchesService.findByTournamentForSlider(tournamentId);
-    }
+  @Get('active-community')
+  findActiveCommunityMatches(
+    @Query('communityId', new ParseIntPipe({ optional: true }))
+    communityId?: number,
+  ) {
+    return this.matchesService.findActiveCommunityMatches(communityId);
+  }
 
-    @Get('season/:seasonId')
-    findBySeason(@Param('seasonId', ParseIntPipe) seasonId: number) {
-        return this.matchesService.findBySeason(seasonId);
-    }
+  @Get('tournament/:tournamentId')
+  getTournamentMatches(
+    @Param('tournamentId', ParseIntPipe) tournamentId: number,
+  ) {
+    return this.matchesService.findByTournamentForSlider(tournamentId);
+  }
 
-    @Get(':id/protocol')
-    getProtocol(@Param('id', ParseIntPipe) id: number) {
-        return this.matchesService.findProtocol(id);
-    }
+  @Get('season/:seasonId')
+  findBySeason(@Param('seasonId', ParseIntPipe) seasonId: number) {
+    return this.matchesService.findBySeason(seasonId);
+  }
+
+  @Get(':id/protocol')
+  getProtocol(@Param('id', ParseIntPipe) id: number) {
+    return this.matchesService.findProtocol(id);
+  }
 }

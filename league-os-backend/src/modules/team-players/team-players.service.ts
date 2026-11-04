@@ -15,7 +15,6 @@ import { CreateTeamPlayerDto } from './dto/create-team-player.dto';
 import { UpdateTeamPlayerDto } from './dto/update-team-player.dto';
 import { TeamPlayerEntity } from './entities/team-players.entity';
 import { UsersService } from '../users/users.service';
-import { RoleCode } from '../users/enums/role-code.enum';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -187,12 +186,7 @@ export class TeamPlayersService {
       const player = teamPlayer.player;
 
       const currentUser = await this.usersService.findById(currentUserId);
-      const canEditIdentity =
-        currentUser?.roles.some((r) =>
-          [RoleCode.Admin, RoleCode.SuperAdmin].includes(r.code),
-        ) ?? false;
       if (
-        !canEditIdentity &&
         ((dto.firstName !== undefined &&
           dto.firstName.trim() !== player.firstName) ||
           (dto.lastName !== undefined &&
@@ -202,46 +196,14 @@ export class TeamPlayersService {
           (dto.birthDate !== undefined && dto.birthDate !== player.birthDate))
       )
         throw new ForbiddenException(
-          'ФИО и дату рождения общей карточки исправляет администратор',
+          'Для исправления ФИО и даты рождения откройте «Профиль игрока» в разделе «Мои команды» и отправьте исправление организатору',
         );
 
-      if (dto.firstName !== undefined) player.firstName = dto.firstName.trim();
-      if (dto.lastName !== undefined) player.lastName = dto.lastName.trim();
-      if (dto.middleName !== undefined) {
-        player.middleName = dto.middleName?.trim() || undefined;
-      }
-      if (dto.birthDate !== undefined) player.birthDate = dto.birthDate;
-      if (
-        canEditIdentity &&
-        (dto.firstName !== undefined ||
-          dto.lastName !== undefined ||
-          dto.birthDate !== undefined)
-      ) {
-        await manager.query('SELECT pg_advisory_xact_lock(72918401)');
-        const duplicate = await manager
-          .getRepository(PlayerEntity)
-          .createQueryBuilder('p')
-          .where('p.id != :id', { id: player.id })
-          .andWhere('lower(trim(p."firstName")) = lower(:firstName)', {
-            firstName: player.firstName,
-          })
-          .andWhere('lower(trim(p."lastName")) = lower(:lastName)', {
-            lastName: player.lastName,
-          })
-          .andWhere('(p."birthDate" = :birthDate OR p."birthDate" IS NULL)', {
-            birthDate: player.birthDate ?? null,
-          })
-          .getExists();
-        if (duplicate)
-          throw new ConflictException(
-            'Существует другая карточка с таким именем и датой рождения. Не объединяйте игроков изменением ФИО',
-          );
-      }
       if (dto.preferredFoot !== undefined)
         player.preferredFoot = dto.preferredFoot;
       if (dto.position !== undefined) player.position = dto.position;
       if (photo)
-        player.photoUrl = await this.savePlayerPhoto(player.slug, photo.buffer);
+        throw new ForbiddenException('Для замены фотографии откройте «Профиль игрока» в разделе «Мои команды»');
 
       if (dto.shirtNumber !== undefined)
         teamPlayer.shirtNumber = dto.shirtNumber;
@@ -254,7 +216,13 @@ export class TeamPlayersService {
         );
       if (dto.isCaptain !== undefined) teamPlayer.isCaptain = dto.isCaptain;
 
-      await manager.save(player);
+      // Update only team-independent sporting fields explicitly. Never save a stale
+      // whole player entity over a concurrent, moderated identity/photo correction.
+      await manager.update(PlayerEntity, player.id, {
+        ...(dto.preferredFoot !== undefined ? { preferredFoot: dto.preferredFoot } : {}),
+        ...(dto.position !== undefined ? { position: dto.position } : {}),
+        updatedAt: new Date(),
+      });
       await manager.save(teamPlayer);
 
       return manager.findOneOrFail(TeamPlayerEntity, {

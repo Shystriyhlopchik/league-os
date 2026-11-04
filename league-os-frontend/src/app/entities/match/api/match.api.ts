@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
 import { Match } from '../model/match.types';
-import {MatchProtocol} from '../model/match-protocol.types';
+import { MatchProtocol } from '../model/match-protocol.types';
 
 @Injectable({
     providedIn: 'root',
@@ -12,6 +12,17 @@ import {MatchProtocol} from '../model/match-protocol.types';
 export class MatchApi {
     private readonly http = inject(HttpClient);
     private readonly apiUrl = environment.apiUrl;
+
+    getActiveCommunityMatches(
+        communityId?: number | string,
+    ): Observable<Match[]> {
+        return this.http.get<Match[]>(
+            `${this.apiUrl}/matches/active-community`,
+            communityId === undefined
+                ? {}
+                : { params: { communityId: String(communityId) } },
+        );
+    }
 
     getByTournament(tournamentId: number | string): Observable<Match[]> {
         return this.http.get<Match[]>(

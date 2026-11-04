@@ -19,6 +19,7 @@ export class DashboardPageComponent {
     private readonly featureFlagsApi = inject(FeatureFlagsApi);
 
     readonly user = this.sessionStore.user;
+    readonly canReviewPlayerProfiles = this.sessionStore.canManageCommunityTournaments;
 
     readonly actions: DashboardAction[] = [
         {

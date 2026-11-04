@@ -1,0 +1,39 @@
+.correction {
+    border-top: 1px solid #425449;
+    padding: 24px 0;
+}
+.comparison {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+.comparison > div {
+    background: #16201a;
+    border-radius: 8px;
+    padding: 16px;
+    overflow-wrap: anywhere;
+}
+.comparison small {
+    color: #d6ff3f;
+}
+.comparison p {
+    margin: 10px 0 0;
+}
+.reason {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+.actions {
+    margin: 16px 0;
+}
+details {
+    margin: 16px 0;
+}
+summary {
+    cursor: pointer;
+}
+@media (max-width: 600px) {
+    .comparison {
+        grid-template-columns: 1fr;
+    }
+}
