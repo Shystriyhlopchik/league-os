@@ -9,6 +9,7 @@ import { CommunitiesModule } from '../communities/communities.module';
 import { AuthModule } from '../auth/auth.module';
 import { TeamWorkspaceController } from './team-workspace.controller';
 import { TeamWorkspaceService } from './team-workspace.service';
+import { TeamPublicService } from './team-public.service';
 import {
   TeamManagerEntity,
   TeamAccessRequestEntity,
@@ -29,7 +30,7 @@ import {
     AuthModule,
   ],
   controllers: [TeamsController, TeamWorkspaceController],
-  providers: [TeamsService, TeamWorkspaceService],
+  providers: [TeamsService, TeamWorkspaceService, TeamPublicService],
   exports: [TeamsService],
 })
 export class TeamsModule {}

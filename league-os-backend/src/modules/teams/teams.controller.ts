@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Req,
+  Query,
   UploadedFile,
   UseInterceptors,
   UseGuards,
@@ -20,6 +21,11 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { BadRequestException } from '@nestjs/common';
 import { memoryStorage } from 'multer';
+import { TeamPublicService } from './team-public.service';
+import {
+  TeamPublicQuery,
+  TeamStatisticsQuery,
+} from './dto/team-public-query.dto';
 
 const PLAYER_PHOTO_MAX_SIZE = 5 * 1024 * 1024;
 
@@ -28,6 +34,7 @@ export class TeamsController {
   constructor(
     private readonly teamsService: TeamsService,
     private readonly teamPlayersService: TeamPlayersService,
+    private readonly publicTeams: TeamPublicService,
   ) {}
 
   @Get()
@@ -38,6 +45,31 @@ export class TeamsController {
   @Get(':teamId')
   findOne(@Param('teamId', ParseIntPipe) teamId: number) {
     return this.teamsService.findPublicById(teamId);
+  }
+
+  @Get(':teamId/overview')
+  overview(
+    @Param('teamId', ParseIntPipe) teamId: number,
+    @Query() query: TeamPublicQuery,
+  ) {
+    return this.publicTeams.overview(teamId, query);
+  }
+
+  @Get(':teamId/statistics')
+  statistics(
+    @Param('teamId', ParseIntPipe) teamId: number,
+    @Query() query: TeamStatisticsQuery,
+  ) {
+    return this.publicTeams.statistics(teamId, query);
+  }
+
+  @Get(':teamId/players/:playerId/profile')
+  playerProfile(
+    @Param('teamId', ParseIntPipe) teamId: number,
+    @Param('playerId', ParseIntPipe) playerId: number,
+    @Query() query: TeamPublicQuery,
+  ) {
+    return this.publicTeams.player(teamId, playerId, query);
   }
 
   @Get(':teamId/players')
@@ -52,7 +84,11 @@ export class TeamsController {
       storage: memoryStorage(),
       limits: { fileSize: PLAYER_PHOTO_MAX_SIZE },
       fileFilter: (_request, file, callback) => {
-        if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.mimetype)) {
+        if (
+          !['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(
+            file.mimetype,
+          )
+        ) {
           return callback(
             new BadRequestException(
               'Фото игрока должно быть в формате PNG, JPEG или WebP',
@@ -71,7 +107,12 @@ export class TeamsController {
     @Req() req: any,
     @UploadedFile() photo?: { buffer: Buffer },
   ) {
-    return this.teamPlayersService.createForTeam(teamId, dto, req.user.id, photo);
+    return this.teamPlayersService.createForTeam(
+      teamId,
+      dto,
+      req.user.id,
+      photo,
+    );
   }
 
   @Patch(':teamId/players/:teamPlayerId')
@@ -81,7 +122,11 @@ export class TeamsController {
       storage: memoryStorage(),
       limits: { fileSize: PLAYER_PHOTO_MAX_SIZE },
       fileFilter: (_request, file, callback) => {
-        if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.mimetype)) {
+        if (
+          !['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(
+            file.mimetype,
+          )
+        ) {
           return callback(
             new BadRequestException(
               'Фото игрока должно быть в формате PNG, JPEG или WebP',
