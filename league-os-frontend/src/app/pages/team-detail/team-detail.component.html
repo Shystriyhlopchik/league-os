@@ -1,430 +1,614 @@
-<section class="team-page">
-    <a class="team-page__back" routerLink="/team">
-        <span aria-hidden="true">←</span>
-        Все команды
-    </a>
-
-    @if (isLoading()) {
-        <p class="team-page__state" role="status">Загрузка команды...</p>
+<section class="club-page" aria-label="Профиль команды">
+    <a class="back-link" routerLink="/team">← Все команды</a>
+    @if (loading()) {
+        <p class="empty" role="status">Загружаем команду…</p>
     } @else if (error()) {
-        <div class="team-page__state team-page__state--error" role="alert">
+        <div class="empty" role="alert">
             <p>{{ error() }}</p>
-            <button type="button" (click)="loadTeam()">Повторить</button>
+            <button (click)="retry()">Повторить</button>
         </div>
     } @else {
-        @if (team(); as currentTeam) {
-            <header class="team-hero">
-                <div class="team-hero__logo-wrap">
-                    <img
-                        class="team-hero__logo"
-                        [src]="
-                            imageUrl(currentTeam.logoUrl) ||
-                            '/images/teams/default-team-logo.png'
-                        "
-                        [alt]="'Логотип команды ' + currentTeam.name"
-                        (error)="useFallbackLogo($event)"
-                    />
+        @if (data(); as d) {
+            <header class="club-hero">
+                <img
+                    class="club-logo"
+                    [src]="image(d.team.logoUrl)"
+                    [alt]="d.team.name"
+                    (error)="logoFailed($event)"
+                />
+                <div class="club-identity">
+                    <p class="eyebrow">Наши команды / Свой район. Своя игра.</p>
+                    <h1>{{ d.team.name }}<span>.</span></h1>
+                    <p class="club-location">
+                        {{ d.team.city || "Город не указан"
+                        }}{{ d.team.village ? " · " + d.team.village : "" }}
+                    </p>
+                    <div class="club-facts">
+                        @if (d.team.foundedYear) {
+                            <span>Основана в {{ d.team.foundedYear }}</span>
+                        }
+                        <span>Игроков в составе: {{ d.roster.length }}</span>
+                        <label
+                            >Сообщество
+                            <select
+                                [value]="d.communityId"
+                                (change)="
+                                    setCommunity($any($event.target).value)
+                                "
+                            >
+                                @for (
+                                    community of d.communities;
+                                    track community.id
+                                ) {
+                                    <option [value]="community.id">
+                                        {{ community.name }}
+                                    </option>
+                                }
+                            </select>
+                        </label>
+                    </div>
                 </div>
-
-                <div class="team-hero__content">
-                    <p class="team-hero__eyebrow">Футбольная команда</p>
-                    <h1 class="team-hero__title">{{ currentTeam.name }}</h1>
-                    @if (currentTeam.description) {
-                        <p class="team-hero__description">
-                            {{ currentTeam.description }}
-                        </p>
-                    }
+                <div class="hero-mark" aria-hidden="true">
+                    {{ d.team.shortName || "ФК" }}
                 </div>
-
-                <dl class="team-facts">
-                    <div class="team-facts__item">
-                        <dt>Год основания</dt>
-                        <dd>{{ currentTeam.foundedYear || "Не указан" }}</dd>
-                    </div>
-                    <div class="team-facts__item">
-                        <dt>Локация</dt>
-                        <dd>{{ location() }}</dd>
-                    </div>
-                    <div class="team-facts__item">
-                        <dt>Игроков в составе</dt>
-                        <dd>{{ activePlayers().length }}</dd>
-                    </div>
-                </dl>
             </header>
 
-            <section
-                class="team-insights"
-                aria-labelledby="team-insights-title"
-            >
-                <div class="team-insights__heading">
-                    <div>
-                        <p class="team-insights__eyebrow">Форма команды</p>
-                        <h2 id="team-insights-title">
-                            {{ tournamentName() || "Текущий турнир" }}
-                        </h2>
-                    </div>
+            <nav class="club-tabs" aria-label="Разделы команды">
+                @for (item of tabs; track item.id) {
                     <a
-                        class="team-insights__table-link"
-                        routerLink="/statistics"
+                        [routerLink]="[]"
+                        [queryParams]="{ tab: item.id }"
+                        queryParamsHandling="merge"
+                        [class.active]="tab() === item.id"
+                        [attr.aria-current]="tab() === item.id ? 'page' : null"
+                        >{{ item.label }}</a
                     >
-                        Вся таблица
-                        <span aria-hidden="true">→</span>
-                    </a>
-                </div>
+                }
+            </nav>
 
-                <div class="team-insights__overview">
-                    <article class="standing-card">
-                        <p class="insight-card__label">Положение</p>
-                        @if (standingContext(); as context) {
-                            <div class="standing-card__position">
-                                <strong>{{ context.row.position }}</strong>
-                                <span>место</span>
-                            </div>
-                            <p class="standing-card__stage">
-                                {{ context.groupName || context.stageName }}
-                            </p>
-                            <dl class="standing-card__stats">
-                                <div>
-                                    <dt>И</dt>
-                                    <dd>{{ context.row.played }}</dd>
-                                </div>
-                                <div>
-                                    <dt>В</dt>
-                                    <dd>{{ context.row.wins }}</dd>
-                                </div>
-                                <div>
-                                    <dt>Н</dt>
-                                    <dd>{{ context.row.draws }}</dd>
-                                </div>
-                                <div>
-                                    <dt>П</dt>
-                                    <dd>{{ context.row.losses }}</dd>
-                                </div>
-                                <div>
-                                    <dt>Мячи</dt>
-                                    <dd>
-                                        {{ context.row.goalsFor }}:{{
-                                            context.row.goalsAgainst
-                                        }}
-                                    </dd>
-                                </div>
-                                <div class="standing-card__points">
-                                    <dt>Очки</dt>
-                                    <dd>{{ context.row.points }}</dd>
-                                </div>
-                            </dl>
-                        } @else {
-                            <p class="insight-card__empty">
-                                Положение команды пока не определено.
-                            </p>
-                        }
-                    </article>
-
-                    <article class="next-match-card">
-                        <p class="insight-card__label">Ближайший матч</p>
-                        @if (nextMatch(); as match) {
-                            <div class="next-match-card__status">
-                                @if (match.status === "live") {
-                                    <span class="next-match-card__live"
-                                        >В эфире</span
-                                    >
-                                }
-                                <time [attr.datetime]="match.matchDateTime">
-                                    {{
-                                        match.matchDateTime
-                                            | date: "d MMMM, HH:mm"
-                                    }}
-                                </time>
-                            </div>
-                            <div class="next-match-card__opponent">
-                                <img
-                                    [src]="
-                                        imageUrl(opponent(match).logoUrl) ||
-                                        '/images/teams/default-team-logo.png'
-                                    "
-                                    [alt]="
-                                        'Логотип команды ' +
-                                        opponent(match).name
-                                    "
-                                    (error)="useFallbackLogo($event)"
-                                />
-                                <div>
-                                    <span>Соперник</span>
-                                    <strong>{{ opponent(match).name }}</strong>
-                                </div>
-                            </div>
-                            <div class="next-match-card__meta">
-                                <span>{{ match.round }}</span>
-                                <span>{{
-                                    match.venue?.name || "Место уточняется"
-                                }}</span>
-                            </div>
-                            <a
-                                class="next-match-card__action"
-                                [routerLink]="[
-                                    '/matches',
-                                    match.id,
-                                    'protocol',
-                                ]"
+            @if (tab() === "matches") {
+                <section aria-labelledby="matches-title">
+                    <div class="section-heading">
+                        <div>
+                            <p class="eyebrow">От свистка до свистка</p>
+                            <h2 id="matches-title">
+                                Матчи команды<span>.</span>
+                            </h2>
+                        </div>
+                        <label
+                            >Турнир<select
+                                [value]="matchTournament()"
+                                (change)="
+                                    setMatchTournament(
+                                        $any($event.target).value
+                                    )
+                                "
                             >
-                                О матче
-                            </a>
-                        } @else {
-                            <p class="insight-card__empty">
-                                Следующий матч пока не назначен.
-                            </p>
-                        }
-                    </article>
-                </div>
-
-                <section class="team-form" aria-labelledby="team-form-title">
-                    <div class="team-form__copy">
-                        <p class="insight-card__label" id="team-form-title">
-                            Последние пять игр
-                        </p>
-                        <span>Слева направо — от ранней к последней</span>
-                    </div>
-                    @if (formMatches().length) {
-                        <div
-                            class="team-form__series"
-                            aria-label="Форма команды"
+                                <option value="0">
+                                    Все турниры сообщества
+                                </option>
+                                @for (t of tournaments(); track t.id) {
+                                    <option [value]="t.id">
+                                        {{ t.name }} · {{ t.seasonName }}
+                                    </option>
+                                }
+                            </select></label
                         >
-                            @for (match of formMatches(); track match.id) {
-                                <a
-                                    class="team-form__result"
-                                    [class.team-form__result--win]="
-                                        matchResult(match) === 'win'
-                                    "
-                                    [class.team-form__result--draw]="
-                                        matchResult(match) === 'draw'
-                                    "
-                                    [class.team-form__result--loss]="
-                                        matchResult(match) === 'loss'
-                                    "
-                                    [routerLink]="[
-                                        '/matches',
-                                        match.id,
-                                        'protocol',
-                                    ]"
-                                    [attr.aria-label]="
-                                        matchResultLabel(match) +
-                                        ': ' +
-                                        currentTeam.name +
-                                        ' ' +
-                                        teamScore(match) +
-                                        ':' +
-                                        opponentScore(match) +
-                                        ' ' +
-                                        opponent(match).name
-                                    "
-                                    [attr.title]="
-                                        currentTeam.name +
-                                        ' ' +
-                                        teamScore(match) +
-                                        ':' +
-                                        opponentScore(match) +
-                                        ' ' +
-                                        opponent(match).name
+                    </div>
+                    <div class="period-switch" aria-label="Период матчей">
+                        <button
+                            [class.active]="matchPeriod() === 'upcoming'"
+                            [attr.aria-pressed]="matchPeriod() === 'upcoming'"
+                            (click)="setPeriod('upcoming')"
+                        >
+                            Предстоящие
+                        </button>
+                        <button
+                            [class.active]="matchPeriod() === 'past'"
+                            [attr.aria-pressed]="matchPeriod() === 'past'"
+                            (click)="setPeriod('past')"
+                        >
+                            Прошедшие
+                        </button>
+                        <span>Матчей: {{ matches().length }}</span>
+                    </div>
+                    <div class="fixtures">
+                        @for (m of visibleMatches(); track m.id) {
+                            <a
+                                class="fixture"
+                                [routerLink]="['/matches', m.id, 'protocol']"
+                            >
+                                <div class="fixture-meta">
+                                    <span
+                                        >{{ m.tournamentName
+                                        }}{{
+                                            m.round ? " · " + m.round : ""
+                                        }}</span
+                                    >
+                                    <strong>{{
+                                        m.matchDatetime
+                                            ? (m.matchDatetime
+                                              | date: "d MMMM yyyy, HH:mm")
+                                            : "Дата уточняется"
+                                    }}</strong>
+                                    <small>{{
+                                        m.venue || "Площадка уточняется"
+                                    }}</small>
+                                </div>
+                                <div class="fixture-game">
+                                    <span class="fixture-team"
+                                        ><img
+                                            [src]="image(m.homeTeam?.logoUrl)"
+                                            alt=""
+                                            (error)="logoFailed($event)"
+                                        /><strong>{{
+                                            m.homeTeam?.name ||
+                                                "Участник не определён"
+                                        }}</strong></span
+                                    >
+                                    <strong
+                                        class="fixture-score"
+                                        [class.fixture-score--live]="
+                                            m.status === 'live'
+                                        "
+                                    >
+                                        {{
+                                            m.status === "scheduled"
+                                                ? "VS"
+                                                : m.status === "cancelled"
+                                                  ? "—"
+                                                  : m.homeScore +
+                                                    ":" +
+                                                    m.awayScore
+                                        }}
+                                        @if (m.status === "live") {
+                                            <small>В игре</small>
+                                        }
+                                    </strong>
+                                    <span
+                                        class="fixture-team fixture-team--away"
+                                        ><img
+                                            [src]="image(m.awayTeam?.logoUrl)"
+                                            alt=""
+                                            (error)="logoFailed($event)"
+                                        /><strong>{{
+                                            m.awayTeam?.name ||
+                                                "Участник не определён"
+                                        }}</strong></span
+                                    >
+                                </div>
+                                <span
+                                    class="fixture-result"
+                                    [class.victory]="
+                                        m.status === 'finished' &&
+                                        result(m) === 'В'
                                     "
                                 >
-                                    {{ matchResultShort(match) }}
+                                    {{
+                                        m.status === "finished"
+                                            ? result(m)
+                                            : m.status === "cancelled"
+                                              ? "Отменён"
+                                              : "→"
+                                    }}
+                                </span>
+                            </a>
+                        } @empty {
+                            <p class="empty">
+                                {{
+                                    matchPeriod() === "upcoming"
+                                        ? "Предстоящих матчей пока нет. Расписание появится после публикации календаря."
+                                        : "Сыгранных матчей за выбранный турнир пока нет."
+                                }}
+                            </p>
+                        }
+                    </div>
+                    @if (matches().length > matchLimit()) {
+                        <button
+                            class="more"
+                            (click)="matchLimit.set(matchLimit() + 12)"
+                        >
+                            Показать ещё матчи
+                        </button>
+                    }
+                    <p class="hint">
+                        Время матчей — московское. В / Н / П — победа / ничья /
+                        поражение.
+                    </p>
+                </section>
+            }
+            @if (tab() === "roster") {
+                <section aria-labelledby="roster-title">
+                    <div class="section-heading">
+                        <div>
+                            <p class="eyebrow">Люди, которые делают игру</p>
+                            <h2 id="roster-title">
+                                Действующий состав<span>.</span>
+                            </h2>
+                        </div>
+                        <p class="hint">
+                            Нажмите на игрока, чтобы открыть статистику
+                        </p>
+                    </div>
+                    @for (group of rosterGroups(); track group.label) {
+                        <h3 class="position-heading">{{ group.label }}</h3>
+                        <div class="roster-grid">
+                            @for (p of group.players; track p.playerId) {
+                                <a
+                                    class="roster-card"
+                                    [routerLink]="playerLink(p)"
+                                    [queryParams]="{
+                                        communityId: d.communityId,
+                                    }"
+                                >
+                                    <div class="roster-photo">
+                                        <img
+                                            [src]="image(p.photoUrl, true)"
+                                            [alt]="p.name"
+                                            loading="lazy"
+                                            (error)="photoFailed($event)"
+                                        />
+                                    </div>
+                                    <div class="roster-info">
+                                        <strong class="shirt-number">{{
+                                            p.shirtNumber ?? "—"
+                                        }}</strong>
+                                        <h3>{{ p.name }}</h3>
+                                        <p>{{ position(p.position) }}</p>
+                                        @if (p.isCaptain) {
+                                            <span class="captain">Капитан</span>
+                                        }
+                                    </div>
+                                    <span class="card-arrow" aria-hidden="true"
+                                        >→</span
+                                    >
                                 </a>
                             }
                         </div>
-                    } @else {
-                        <p class="team-form__empty">
-                            Сыгранных матчей пока нет.
+                    } @empty {
+                        <p class="empty">
+                            Действующий состав команды пока не опубликован.
                         </p>
                     }
-                </section>
-
-                <div class="team-insights__details">
-                    <section
-                        class="recent-matches"
-                        aria-labelledby="recent-matches-title"
-                    >
-                        <div class="insights-subheading">
-                            <div>
-                                <p class="insight-card__label">Результаты</p>
-                                <h3 id="recent-matches-title">
-                                    Последние матчи
-                                </h3>
-                            </div>
-                        </div>
-
-                        @if (recentMatches().length) {
-                            <div class="recent-matches__list">
-                                @for (
-                                    match of recentMatches();
-                                    track match.id
-                                ) {
-                                    <a
-                                        class="recent-match"
-                                        [routerLink]="[
-                                            '/matches',
-                                            match.id,
-                                            'protocol',
-                                        ]"
-                                    >
-                                        <span
-                                            class="recent-match__result"
-                                            [class.recent-match__result--win]="
-                                                matchResult(match) === 'win'
-                                            "
-                                            [class.recent-match__result--draw]="
-                                                matchResult(match) === 'draw'
-                                            "
-                                            [class.recent-match__result--loss]="
-                                                matchResult(match) === 'loss'
-                                            "
-                                        >
-                                            {{ matchResultShort(match) }}
-                                        </span>
-                                        <img
-                                            [src]="
-                                                imageUrl(
-                                                    opponent(match).logoUrl
-                                                ) ||
-                                                '/images/teams/default-team-logo.png'
-                                            "
-                                            [alt]="''"
-                                            (error)="useFallbackLogo($event)"
-                                        />
-                                        <span class="recent-match__opponent">
-                                            <strong>{{
-                                                opponent(match).name
-                                            }}</strong>
-                                            <time
-                                                [attr.datetime]="
-                                                    match.matchDateTime
-                                                "
-                                            >
-                                                {{
-                                                    match.matchDateTime
-                                                        | date: "d MMMM"
-                                                }}
-                                            </time>
-                                        </span>
-                                        <strong class="recent-match__score">
-                                            {{ teamScore(match) }}:{{
-                                                opponentScore(match)
-                                            }}
-                                        </strong>
-                                        <span
-                                            class="recent-match__arrow"
-                                            aria-hidden="true"
-                                            >→</span
-                                        >
-                                    </a>
-                                }
-                            </div>
-                        } @else {
-                            <p class="insight-card__empty">
-                                Результатов пока нет.
-                            </p>
-                        }
-                    </section>
-
-                    <section
-                        class="team-leaders"
-                        aria-labelledby="team-leaders-title"
-                    >
-                        <div class="insights-subheading">
-                            <div>
-                                <p class="insight-card__label">
-                                    Ключевые игроки
-                                </p>
-                                <h3 id="team-leaders-title">Лидеры команды</h3>
-                            </div>
-                        </div>
-
-                        @if (teamLeaders().length) {
-                            <div class="team-leaders__list">
-                                @for (
-                                    leader of teamLeaders();
-                                    track leader.key
-                                ) {
-                                    <article class="team-leader">
-                                        <img
-                                            [src]="
-                                                imageUrl(
-                                                    leader.player.photoUrl
-                                                ) ||
-                                                '/images/organization-team/not-photo.png'
-                                            "
-                                            [alt]="leader.player.name"
-                                            (error)="
-                                                useFallbackPlayerPhoto($event)
-                                            "
-                                        />
-                                        <div>
-                                            <span>{{ leader.label }}</span>
-                                            <strong>{{
-                                                leader.player.name
-                                            }}</strong>
-                                            <small>{{ leader.value }}</small>
-                                        </div>
-                                    </article>
-                                }
-                            </div>
-                        } @else {
-                            <p class="insight-card__empty">
-                                Лидеры появятся после первых матчей.
-                            </p>
-                        }
-                    </section>
-                </div>
-            </section>
-
-            <section class="roster" aria-labelledby="roster-title">
-                <div class="roster__heading">
-                    <p class="roster__eyebrow">Основной состав</p>
-                    <h2 id="roster-title">Команда</h2>
-                </div>
-
-                @if (activePlayers().length) {
-                    <ul class="roster__grid">
-                        @for (
-                            teamPlayer of activePlayers();
-                            track teamPlayer.id
-                        ) {
-                            <li class="player-card">
-                                <div class="player-card__photo-wrap">
-                                    <img
-                                        class="player-card__photo"
-                                        [src]="
-                                            imageUrl(
-                                                teamPlayer.player.photoUrl
-                                            ) ||
-                                            '/images/organization-team/not-photo.png'
-                                        "
-                                        [alt]="playerName(teamPlayer)"
-                                        (error)="useFallbackPlayerPhoto($event)"
-                                    />
-                                    @if (teamPlayer.shirtNumber) {
-                                        <span class="player-card__number">
-                                            {{ teamPlayer.shirtNumber }}
-                                        </span>
-                                    }
-                                </div>
-                                <div class="player-card__content">
-                                    <h3>{{ playerName(teamPlayer) }}</h3>
-                                    <p>{{ playerPosition(teamPlayer) }}</p>
-                                    @if (teamPlayer.isCaptain) {
-                                        <span class="player-card__captain">
-                                            Капитан
-                                        </span>
-                                    }
-                                </div>
-                            </li>
-                        }
-                    </ul>
-                } @else {
-                    <p class="roster__empty">
-                        Состав команды пока не опубликован.
+                    <p class="hint">
+                        Текущий состав в выбранном сообществе. Заявки на
+                        отдельные турниры могут отличаться.
                     </p>
-                }
-            </section>
+                </section>
+            }
+            @if (tab() === "statistics") {
+                <section aria-labelledby="stats-title">
+                    <div class="section-heading">
+                        <div>
+                            <p class="eyebrow">Всё решают цифры</p>
+                            <h2 id="stats-title">
+                                Статистика команды<span>.</span>
+                            </h2>
+                        </div>
+                    </div>
+                    <div class="filters">
+                        <label
+                            >Сезон<select
+                                [value]="filters().seasonId || ''"
+                                (change)="
+                                    setFilter(
+                                        'seasonId',
+                                        $any($event.target).value
+                                    )
+                                "
+                            >
+                                <option value="">Все сезоны</option>
+                                @for (s of seasons(); track s.id) {
+                                    <option [value]="s.id">{{ s.name }}</option>
+                                }
+                            </select></label
+                        >
+                        <label
+                            >Год матчей<select
+                                [value]="filters().year || ''"
+                                (change)="
+                                    setFilter('year', $any($event.target).value)
+                                "
+                            >
+                                <option value="">Все годы</option>
+                                @for (year of years(); track year) {
+                                    <option [value]="year">{{ year }}</option>
+                                }
+                            </select></label
+                        >
+                        <label
+                            >Турнир<select
+                                [value]="filters().tournamentId || ''"
+                                (change)="
+                                    setFilter(
+                                        'tournamentId',
+                                        $any($event.target).value
+                                    )
+                                "
+                            >
+                                <option value="">Все турниры</option>
+                                @for (t of statsTournaments(); track t.id) {
+                                    <option [value]="t.id">
+                                        {{ t.name }} · {{ t.seasonName }}
+                                    </option>
+                                }
+                            </select></label
+                        >
+                        <button (click)="resetFilters()">Сбросить</button>
+                    </div>
+                    @if (statsLoading()) {
+                        <p class="empty" role="status">Считаем статистику…</p>
+                    } @else if (statsError()) {
+                        <div class="empty" role="alert">
+                            <p>{{ statsError() }}</p>
+                            <button (click)="loadStats()">Повторить</button>
+                        </div>
+                    } @else {
+                        @if (stats(); as s) {
+                            <div class="stat-strip">
+                                <div>
+                                    <strong>{{ s.totals.matches }}</strong
+                                    ><span>Матчи</span>
+                                </div>
+                                <div>
+                                    <strong>{{ s.totals.wins }}</strong
+                                    ><span>Победы</span>
+                                </div>
+                                <div>
+                                    <strong>{{ s.totals.draws }}</strong
+                                    ><span>Ничьи</span>
+                                </div>
+                                <div>
+                                    <strong>{{ s.totals.losses }}</strong
+                                    ><span>Поражения</span>
+                                </div>
+                                <div>
+                                    <strong>{{ s.totals.goalsFor }}</strong
+                                    ><span>Забито</span>
+                                </div>
+                                <div>
+                                    <strong>{{ s.totals.goalsAgainst }}</strong
+                                    ><span>Пропущено</span>
+                                </div>
+                            </div>
+                            <p class="hint">
+                                Только завершённые матчи выбранного периода.
+                                Статистика бывших игроков сохраняется. В жёлтые
+                                карточки включены вторые жёлтые.
+                            </p>
+                            <div class="leaders-grid">
+                                @for (leader of leaders(); track leader.key) {
+                                    <section class="leader-panel">
+                                        <p class="eyebrow">
+                                            Топ 5 / {{ leader.label }}
+                                        </p>
+                                        @for (
+                                            p of leader.players;
+                                            track p.playerId;
+                                            let rank = $index
+                                        ) {
+                                            <a
+                                                class="leader-row"
+                                                [routerLink]="playerLink(p)"
+                                                [queryParams]="{
+                                                    communityId: d.communityId,
+                                                }"
+                                                ><span class="rank">{{
+                                                    rank + 1
+                                                }}</span
+                                                ><img
+                                                    [src]="
+                                                        image(p.photoUrl, true)
+                                                    "
+                                                    alt=""
+                                                    loading="lazy"
+                                                    (error)="
+                                                        photoFailed($event)
+                                                    "
+                                                /><span>{{ p.name }}</span
+                                                ><strong>{{
+                                                    p[leader.key]
+                                                }}</strong></a
+                                            >
+                                        } @empty {
+                                            <p class="hint">
+                                                За выбранный период данных нет.
+                                            </p>
+                                        }
+                                    </section>
+                                }
+                            </div>
+                            <h3 class="position-heading">
+                                Все игроки за выбранный период
+                            </h3>
+                            <div
+                                class="table-scroll"
+                                tabindex="0"
+                                role="region"
+                                aria-label="Статистика игроков команды"
+                            >
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Игрок</th>
+                                            <th>Матчи</th>
+                                            <th>Голы</th>
+                                            <th>Передачи</th>
+                                            <th>ЖК</th>
+                                            <th>КК</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @for (
+                                            p of s.players;
+                                            track p.playerId
+                                        ) {
+                                            <tr>
+                                                <td>
+                                                    <a
+                                                        [routerLink]="
+                                                            playerLink(p)
+                                                        "
+                                                        [queryParams]="{
+                                                            communityId:
+                                                                d.communityId,
+                                                        }"
+                                                        >{{ p.name }}</a
+                                                    >
+                                                </td>
+                                                <td>{{ p.matches }}</td>
+                                                <td>{{ p.goals }}</td>
+                                                <td>{{ p.assists }}</td>
+                                                <td>{{ p.yellowCards }}</td>
+                                                <td>{{ p.redCards }}</td>
+                                            </tr>
+                                        } @empty {
+                                            <tr>
+                                                <td colspan="6">
+                                                    Нет статистики за выбранный
+                                                    период.
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    }
+                </section>
+            }
+            @if (tab() === "media") {
+                <section aria-labelledby="media-title">
+                    <div class="section-heading">
+                        <div>
+                            <p class="eyebrow">Пересматривай. Переживай.</p>
+                            <h2 id="media-title">
+                                Команда в кадре<span>.</span>
+                            </h2>
+                        </div>
+                    </div>
+                    <p class="hint">
+                        Опубликованные записи и обзоры сыгранных матчей команды.
+                        Просмотр — прямо на сайте.
+                    </p>
+                    <div class="media-grid">
+                        @for (video of d.videos; track video.id) {
+                            <button class="video-card" (click)="play(video)">
+                                <div class="video-cover">
+                                    <img
+                                        [src]="
+                                            video.coverUrl ||
+                                            '/brand/photos/match-action.jpg'
+                                        "
+                                        alt=""
+                                        loading="lazy"
+                                    /><span class="play-icon" aria-hidden="true"
+                                        >▶</span
+                                    >
+                                </div>
+                                <strong>{{ video.title }}</strong
+                                ><span class="hint">{{
+                                    video.publishedAt | date: "d MMMM yyyy"
+                                }}</span>
+                            </button>
+                        } @empty {
+                            <p class="empty">
+                                Записей пока нет. Здесь появятся видео, которые
+                                организатор опубликует и свяжет с матчами
+                                команды.
+                            </p>
+                        }
+                    </div>
+                </section>
+            }
+            @if (tab() === "about") {
+                <section aria-labelledby="about-title">
+                    <div class="section-heading">
+                        <div>
+                            <p class="eyebrow">Имя. Район. История.</p>
+                            <h2 id="about-title">О клубе<span>.</span></h2>
+                        </div>
+                    </div>
+                    <div class="club-about">
+                        <p class="club-description">
+                            {{
+                                d.team.description ||
+                                    "Команда ещё не добавила описание своей истории."
+                            }}
+                        </p>
+                        <dl>
+                            <div>
+                                <dt>Город / район</dt>
+                                <dd>
+                                    {{ d.team.city || "Не указан" }}
+                                    {{ d.team.village }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Год основания</dt>
+                                <dd>{{ d.team.foundedYear || "Не указан" }}</dd>
+                            </div>
+                            <div>
+                                <dt>Сезонов в сообществе</dt>
+                                <dd>{{ seasons().length }}</dd>
+                            </div>
+                        </dl>
+                    </div>
+                    <h3 class="position-heading">Достижения</h3>
+                    <div class="honours">
+                        @for (t of honours(); track t.id) {
+                            <a [routerLink]="['/tournaments', t.id]"
+                                ><strong>{{
+                                    t.place === 1
+                                        ? "01"
+                                        : t.place === 2
+                                          ? "02"
+                                          : "03"
+                                }}</strong
+                                ><span
+                                    >{{
+                                        t.place === 1
+                                            ? "Чемпионы"
+                                            : t.place === 2
+                                              ? "Серебряные призёры"
+                                              : "Бронзовые призёры"
+                                    }}<small
+                                        >{{ t.name }} ·
+                                        {{ t.seasonName }}</small
+                                    ></span
+                                ></a
+                            >
+                        } @empty {
+                            <p class="empty">
+                                Призовые места пока не зафиксированы.
+                            </p>
+                        }
+                    </div>
+                    <h3 class="position-heading">Сезоны и турниры</h3>
+                    <div class="history-list">
+                        @for (t of tournaments(); track t.id) {
+                            <a [routerLink]="['/tournaments', t.id]"
+                                ><span class="history-year">{{
+                                    t.year || "—"
+                                }}</span
+                                ><span
+                                    ><strong>{{ t.name }}</strong
+                                    ><small>{{ t.seasonName }}</small></span
+                                ><span
+                                    [class.accent]="
+                                        t.completed && t.place === 1
+                                    "
+                                    >{{ t.result }}</span
+                                ></a
+                            >
+                        } @empty {
+                            <p class="empty">
+                                История участия в турнирах пока пуста.
+                            </p>
+                        }
+                    </div>
+                </section>
+            }
         }
     }
 </section>

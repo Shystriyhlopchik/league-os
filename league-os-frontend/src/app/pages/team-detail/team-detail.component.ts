@@ -5,420 +5,353 @@ import {
     inject,
     OnInit,
     signal,
+    ViewContainerRef,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, RouterLink } from '@angular/router';
-import { EMPTY, forkJoin, of, Subscription } from 'rxjs';
-import { catchError, finalize, map, switchMap } from 'rxjs/operators';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Dialog, DialogModule, DialogRef } from '@angular/cdk/dialog';
+import { combineLatest, EMPTY, Subject } from 'rxjs';
+import {
+    catchError,
+    distinctUntilChanged,
+    finalize,
+    map,
+    startWith,
+    switchMap,
+    tap,
+} from 'rxjs/operators';
+import {
+    ClubMatch,
+    ClubPlayerStats,
+    ClubStatistics,
+    ClubStatisticsFilters,
+    clubImage,
+    playerPosition,
+    TeamOverview,
+    TeamPublicApi,
+} from '../../entities/team/api/team-public.api';
+import { PublicVideo } from '../../entities/video/video.api';
+import { VideoPlayerComponent } from '../../entities/video/video-player.component';
 
-import { MatchApi } from '../../entities/match/api/match.api';
-import { Match, MatchTeam } from '../../entities/match/model/match.types';
-import { PlayerCardsApi } from '../../entities/player-card/api/player-cards.api';
-import { PlayerCard } from '../../entities/player-card/model/player-card.types';
-import { StandingsApi } from '../../entities/standings/api/standings.api';
-import { PublicTournamentView } from '../../entities/standings/model/public-tournament-view.model';
-import { StandingRow } from '../../entities/standings/model/standings-row.model';
-import { TeamPlayersApi } from '../../entities/team-player/api/team-players.api';
-import { TeamPlayer } from '../../entities/team-player/model/team-player.types';
-import { TeamsApi } from '../../entities/team/api/teams.api';
-import { Team } from '../../entities/team/model/team.types';
-import { TournamentsApi } from '../../entities/tournaments/api/tournaments.api';
-
-type TeamMatchResult = 'win' | 'draw' | 'loss';
-
-interface TeamStandingContext {
-    row: StandingRow;
-    stageName: string;
-    groupName?: string;
-}
-
-interface TeamLeader {
-    key: 'goals' | 'assists' | 'rating';
-    label: string;
-    value: string;
-    player: PlayerCard;
-}
+type Tab = 'matches' | 'roster' | 'statistics' | 'media' | 'about';
 
 @Component({
     selector: 'app-team-detail',
-    imports: [DatePipe, RouterLink],
+    imports: [DatePipe, RouterLink, DialogModule],
     templateUrl: './team-detail.component.html',
-    styleUrls: [
-        './team-detail.component.scss',
-        './team-detail-insights.component.scss',
-    ],
+    styleUrls: ['./team-detail.component.scss', './team-detail-sections.scss'],
 })
 export class TeamDetailComponent implements OnInit {
     private readonly route = inject(ActivatedRoute);
-    private readonly teamsApi = inject(TeamsApi);
-    private readonly teamPlayersApi = inject(TeamPlayersApi);
-    private readonly tournamentsApi = inject(TournamentsApi);
-    private readonly matchApi = inject(MatchApi);
-    private readonly standingsApi = inject(StandingsApi);
-    private readonly playerCardsApi = inject(PlayerCardsApi);
+    private readonly router = inject(Router);
+    private readonly api = inject(TeamPublicApi);
     private readonly destroyRef = inject(DestroyRef);
-    private loadSubscription?: Subscription;
-
-    readonly team = signal<Team | null>(null);
-    readonly players = signal<TeamPlayer[]>([]);
-    readonly tournamentName = signal<string | null>(null);
-    readonly tournamentMatches = signal<Match[]>([]);
-    readonly tournamentView = signal<PublicTournamentView | null>(null);
-    readonly tournamentPlayerCards = signal<PlayerCard[]>([]);
-    readonly isLoading = signal(false);
-    readonly error = signal<string | null>(null);
-
-    readonly location = computed(() => {
-        const team = this.team();
-        if (!team) {
-            return 'Не указана';
-        }
-
-        return (
-            [team.city, team.village].filter(Boolean).join(', ') || 'Не указана'
-        );
+    private readonly dialog = inject(Dialog);
+    private readonly viewContainerRef = inject(ViewContainerRef);
+    private playerDialog?: DialogRef<unknown, VideoPlayerComponent>;
+    private readonly reload = new Subject<void>();
+    private readonly statsRequests = new Subject<{
+        teamId: number;
+        communityId: number;
+        filters: ClubStatisticsFilters;
+    }>();
+    readonly data = signal<TeamOverview | null>(null);
+    readonly loading = signal(true);
+    readonly error = signal('');
+    readonly tab = signal<Tab>('matches');
+    readonly tabs: { id: Tab; label: string }[] = [
+        { id: 'matches', label: 'Матчи' },
+        { id: 'roster', label: 'Состав' },
+        { id: 'statistics', label: 'Статистика' },
+        { id: 'media', label: 'Медиа' },
+        { id: 'about', label: 'О клубе' },
+    ];
+    readonly matchPeriod = signal<'upcoming' | 'past'>('upcoming');
+    readonly matchTournament = signal(0);
+    readonly matchLimit = signal(12);
+    readonly stats = signal<ClubStatistics | null>(null);
+    readonly statsLoading = signal(false);
+    readonly statsError = signal('');
+    readonly filters = signal<ClubStatisticsFilters>({});
+    readonly image = clubImage;
+    readonly position = playerPosition;
+    readonly tournaments = computed(() => this.data()?.tournaments || []);
+    readonly seasons = computed(() => [
+        ...new Map(
+            this.tournaments().map((t) => [
+                t.seasonId,
+                { id: t.seasonId, name: t.seasonName },
+            ]),
+        ).values(),
+    ]);
+    readonly years = computed(() =>
+        [
+            ...new Set(
+                (this.data()?.matches || [])
+                    .filter((m) => !!m.matchDatetime)
+                    .map((m) => Number(m.matchDatetime!.slice(0, 4))),
+            ),
+        ].sort((a, b) => b - a),
+    );
+    readonly statsTournaments = computed(() =>
+        this.tournaments().filter(
+            (t) =>
+                !this.filters().seasonId ||
+                t.seasonId === this.filters().seasonId,
+        ),
+    );
+    readonly matches = computed(() =>
+        (this.data()?.matches || [])
+            .filter(
+                (m) =>
+                    (!this.matchTournament() ||
+                        m.tournamentId === this.matchTournament()) &&
+                    (this.matchPeriod() === 'past'
+                        ? m.status === 'finished' || m.status === 'cancelled'
+                        : m.status === 'scheduled' || m.status === 'live'),
+            )
+            .sort((a, b) => {
+                // Undated fixtures always go last, in either direction.
+                if (!a.matchDatetime) return b.matchDatetime ? 1 : b.id - a.id;
+                if (!b.matchDatetime) return -1;
+                return this.matchPeriod() === 'past'
+                    ? this.timestamp(b) - this.timestamp(a) || b.id - a.id
+                    : this.timestamp(a) - this.timestamp(b) || a.id - b.id;
+            }),
+    );
+    readonly visibleMatches = computed(() =>
+        this.matches().slice(0, this.matchLimit()),
+    );
+    readonly rosterGroups = computed(() => {
+        const roster = this.data()?.roster || [];
+        const positions = [
+            'goalkeeper',
+            'defender',
+            'midfielder',
+            'winger',
+            'forward',
+            null,
+        ];
+        const labels: Record<string, string> = {
+            goalkeeper: 'Вратари',
+            defender: 'Защитники',
+            midfielder: 'Полузащитники',
+            winger: 'Крайние игроки',
+            forward: 'Нападающие',
+        };
+        return positions
+            .map((p) => ({
+                label: p === null ? 'Другие игроки' : labels[p],
+                players: roster
+                    .filter((r) =>
+                        p === null
+                            ? !positions.slice(0, -1).includes(r.position)
+                            : r.position === p,
+                    )
+                    .sort(
+                        (a, b) =>
+                            (a.shirtNumber ?? 999) - (b.shirtNumber ?? 999) ||
+                            a.name.localeCompare(b.name, 'ru'),
+                    ),
+            }))
+            .filter((g) => g.players.length);
     });
-
-    readonly activePlayers = computed(() =>
-        this.players().filter(
-            (teamPlayer) => teamPlayer.isActive && teamPlayer.player.isActive,
+    readonly leaders = computed(() =>
+        (['goals', 'assists', 'yellowCards'] as const).map((key) => ({
+            key,
+            label: {
+                goals: 'Голы',
+                assists: 'Голевые передачи',
+                yellowCards: 'Жёлтые карточки',
+            }[key],
+            players: [...(this.stats()?.players || [])]
+                .filter((p) => p[key] > 0)
+                .sort(
+                    (a, b) =>
+                        b[key] - a[key] ||
+                        b.matches - a.matches ||
+                        a.playerId - b.playerId,
+                )
+                .slice(0, 5),
+        })),
+    );
+    readonly honours = computed(() =>
+        this.tournaments().filter(
+            (t) => t.completed && t.place && t.place <= 3,
         ),
     );
 
-    readonly standingContext = computed<TeamStandingContext | null>(() => {
-        const teamId = this.team()?.id;
-        const view = this.tournamentView();
-        if (!teamId || !view) return null;
-
-        const activeStage = view.stages.find(
-            (stage) =>
-                stage.id === view.activeStageId || stage.status === 'active',
-        );
-        const remainingStages = view.stages
-            .filter((stage) => stage !== activeStage)
-            .sort((left, right) => right.order - left.order);
-        const stages = activeStage
-            ? [activeStage, ...remainingStages]
-            : remainingStages;
-
-        for (const stage of stages) {
-            for (const group of stage.groups) {
-                const row = group.standings.find(
-                    (standing) => standing.team.id === teamId,
-                );
-                if (row) {
-                    return {
-                        row,
-                        stageName: stage.name,
-                        groupName: group.name,
-                    };
-                }
-            }
-
-            const row = stage.standings.find(
-                (standing) => standing.team.id === teamId,
-            );
-            if (row) return { row, stageName: stage.name };
-        }
-
-        return null;
-    });
-
-    readonly teamMatches = computed(() => {
-        const teamId = this.team()?.id;
-        if (!teamId) return [];
-
-        return this.tournamentMatches().filter(
-            (match) =>
-                match.homeTeam.id === teamId || match.awayTeam.id === teamId,
-        );
-    });
-
-    readonly recentMatches = computed(() =>
-        this.teamMatches()
-            .filter(
-                (match) =>
-                    match.status === 'finished' &&
-                    match.score.home !== null &&
-                    match.score.away !== null,
-            )
-            .sort(
-                (left, right) =>
-                    this.matchTimestamp(right) - this.matchTimestamp(left),
-            )
-            .slice(0, 5),
-    );
-
-    readonly formMatches = computed(() => [...this.recentMatches()].reverse());
-
-    readonly nextMatch = computed(() => {
-        const now = Date.now();
-        const liveMatch = this.teamMatches().find(
-            (match) => match.status === 'live',
-        );
-        if (liveMatch) return liveMatch;
-
-        return (
-            this.teamMatches()
-                .filter(
-                    (match) =>
-                        match.status === 'scheduled' &&
-                        this.matchTimestamp(match) >= now,
-                )
-                .sort(
-                    (left, right) =>
-                        this.matchTimestamp(left) - this.matchTimestamp(right),
-                )[0] ?? null
-        );
-    });
-
-    readonly teamLeaders = computed<TeamLeader[]>(() => {
-        const teamId = this.team()?.id;
-        if (!teamId) return [];
-
-        const players = this.tournamentPlayerCards().filter(
-            (player) => player.team.id === teamId,
-        );
-        if (!players.length) return [];
-
-        const byGoals = [...players].sort(
-            (left, right) =>
-                right.stats.goals - left.stats.goals ||
-                right.ratings.ovr - left.ratings.ovr,
-        )[0];
-        const byAssists = [...players].sort(
-            (left, right) =>
-                right.stats.assists - left.stats.assists ||
-                right.ratings.ovr - left.ratings.ovr,
-        )[0];
-        const byRating = [...players].sort(
-            (left, right) => right.ratings.ovr - left.ratings.ovr,
-        )[0];
-
-        return [
-            {
-                key: 'goals',
-                label: 'Бомбардир',
-                value: `Голы: ${byGoals.stats.goals}`,
-                player: byGoals,
-            },
-            {
-                key: 'assists',
-                label: 'Ассистент',
-                value: `Передачи: ${byAssists.stats.assists}`,
-                player: byAssists,
-            },
-            {
-                key: 'rating',
-                label: 'Лучший рейтинг',
-                value: `OVR: ${byRating.ratings.ovr}`,
-                player: byRating,
-            },
-        ];
-    });
-
-    ngOnInit(): void {
-        this.loadTeam();
+    constructor() {
+        this.destroyRef.onDestroy(() => this.playerDialog?.close());
     }
-
-    loadTeam(): void {
-        const teamId = Number(this.route.snapshot.paramMap.get('teamId'));
-
-        if (!Number.isInteger(teamId) || teamId <= 0) {
-            this.team.set(null);
-            this.players.set([]);
-            this.error.set('Команда не найдена');
-            return;
-        }
-
-        this.loadSubscription?.unsubscribe();
-        this.isLoading.set(true);
-        this.error.set(null);
-        this.resetTournamentData();
-
-        this.loadSubscription = forkJoin({
-            team: this.teamsApi.getTeam(teamId),
-            players: this.teamPlayersApi.getByTeam(teamId),
-            tournament: this.tournamentsApi
-                .getActiveTournament()
-                .pipe(catchError(() => of(null))),
-        })
+    ngOnInit() {
+        this.statsRequests
             .pipe(
-                switchMap(({ team, players, tournament }) => {
-                    if (!tournament) {
-                        return of({
-                            team,
-                            players,
-                            tournamentName: null,
-                            matches: [] as Match[],
-                            view: null as PublicTournamentView | null,
-                            playerCards: [] as PlayerCard[],
-                        });
-                    }
-
-                    const standingsRequest = this.standingsApi
-                        .getPublicTournamentView(tournament.id)
+                switchMap((request) => {
+                    this.stats.set(null);
+                    this.statsLoading.set(true);
+                    this.statsError.set('');
+                    return this.api
+                        .statistics(
+                            request.teamId,
+                            request.communityId,
+                            request.filters,
+                        )
                         .pipe(
-                            catchError(() =>
-                                this.standingsApi.getLegacyPublicTournamentView(
-                                    tournament.id,
-                                ),
-                            ),
-                            catchError(() => of(null)),
+                            tap((s) => this.stats.set(s)),
+                            catchError(() => {
+                                this.statsError.set(
+                                    'Не удалось загрузить статистику. Попробуйте ещё раз.',
+                                );
+                                return EMPTY;
+                            }),
+                            finalize(() => this.statsLoading.set(false)),
                         );
-
-                    return forkJoin({
-                        matches: this.matchApi
-                            .getByTournament(tournament.id)
-                            .pipe(catchError(() => of([] as Match[]))),
-                        view: standingsRequest,
-                        playerCards: this.playerCardsApi
-                            .getTournamentCards(tournament.id)
-                            .pipe(
-                                map((response) => response.players),
-                                catchError(() => of([] as PlayerCard[])),
-                            ),
-                    }).pipe(
-                        map(({ matches, view, playerCards }) => ({
-                            team,
-                            players,
-                            tournamentName: tournament.name,
-                            matches,
-                            view,
-                            playerCards,
-                        })),
-                    );
                 }),
-                catchError(() => {
-                    this.team.set(null);
-                    this.players.set([]);
-                    this.error.set('Не удалось загрузить информацию о команде');
-                    return EMPTY;
-                }),
-                finalize(() => this.isLoading.set(false)),
                 takeUntilDestroyed(this.destroyRef),
             )
-            .subscribe(
-                ({
-                    team,
-                    players,
-                    tournamentName,
-                    matches,
-                    view,
-                    playerCards,
-                }) => {
-                    this.team.set(team);
-                    this.players.set(players);
-                    this.tournamentName.set(tournamentName);
-                    this.tournamentMatches.set(matches);
-                    this.tournamentView.set(view);
-                    this.tournamentPlayerCards.set(playerCards);
-                },
-            );
+            .subscribe();
+        combineLatest([this.route.paramMap, this.route.queryParamMap])
+            .pipe(
+                tap(([, query]) =>
+                    this.tab.set(
+                        this.tabs.find((t) => t.id === query.get('tab'))?.id ||
+                            'matches',
+                    ),
+                ),
+                map(([params, query]) => ({
+                    teamId: Number(params.get('teamId')),
+                    communityId: Number(query.get('communityId')) || undefined,
+                })),
+                distinctUntilChanged(
+                    (a, b) =>
+                        a.teamId === b.teamId &&
+                        a.communityId === b.communityId,
+                ),
+                switchMap((context) =>
+                    this.reload.pipe(
+                        startWith(undefined),
+                        switchMap(() => {
+                            this.loading.set(true);
+                            this.error.set('');
+                            this.playerDialog?.close();
+                            return this.api
+                                .overview(context.teamId, context.communityId)
+                                .pipe(
+                                    tap((d) => this.apply(d)),
+                                    catchError(() => {
+                                        this.error.set(
+                                            'Не удалось загрузить команду в выбранном сообществе.',
+                                        );
+                                        return EMPTY;
+                                    }),
+                                    finalize(() => this.loading.set(false)),
+                                );
+                        }),
+                    ),
+                ),
+                takeUntilDestroyed(this.destroyRef),
+            )
+            .subscribe();
     }
-
-    matchResult(match: Match): TeamMatchResult {
-        const teamId = this.team()?.id;
-        const homeScore = match.score.home ?? 0;
-        const awayScore = match.score.away ?? 0;
-
-        if (homeScore === awayScore) return 'draw';
-        const teamWon =
-            (match.homeTeam.id === teamId && homeScore > awayScore) ||
-            (match.awayTeam.id === teamId && awayScore > homeScore);
-        return teamWon ? 'win' : 'loss';
+    private apply(data: TeamOverview) {
+        this.data.set(data);
+        this.error.set('');
+        this.filters.set({});
+        this.matchTournament.set(0);
+        this.matchLimit.set(12);
+        this.matchPeriod.set(
+            data.matches.some(
+                (m) => m.status === 'scheduled' || m.status === 'live',
+            )
+                ? 'upcoming'
+                : 'past',
+        );
+        this.loadStats();
     }
-
-    matchResultShort(match: Match): string {
-        const labels: Record<TeamMatchResult, string> = {
-            win: 'В',
-            draw: 'Н',
-            loss: 'П',
-        };
-        return labels[this.matchResult(match)];
+    retry() {
+        this.reload.next();
     }
-
-    matchResultLabel(match: Match): string {
-        const labels: Record<TeamMatchResult, string> = {
-            win: 'Победа',
-            draw: 'Ничья',
-            loss: 'Поражение',
-        };
-        return labels[this.matchResult(match)];
+    setTab(tab: Tab) {
+        void this.router.navigate([], {
+            relativeTo: this.route,
+            queryParams: { tab },
+            queryParamsHandling: 'merge',
+        });
     }
-
-    opponent(match: Match): MatchTeam {
-        return match.homeTeam.id === this.team()?.id
-            ? match.awayTeam
-            : match.homeTeam;
+    setCommunity(value: string) {
+        if (Number(value) === this.data()?.communityId) return;
+        void this.router.navigate([], {
+            relativeTo: this.route,
+            queryParams: { communityId: Number(value) },
+            queryParamsHandling: 'merge',
+        });
     }
-
-    teamScore(match: Match): number | null {
-        return match.homeTeam.id === this.team()?.id
-            ? match.score.home
-            : match.score.away;
+    setPeriod(period: 'upcoming' | 'past') {
+        this.matchPeriod.set(period);
+        this.matchLimit.set(12);
     }
-
-    opponentScore(match: Match): number | null {
-        return match.homeTeam.id === this.team()?.id
-            ? match.score.away
-            : match.score.home;
+    setMatchTournament(value: string) {
+        this.matchTournament.set(Number(value));
+        this.matchLimit.set(12);
     }
-
-    playerName(teamPlayer: TeamPlayer): string {
-        const { firstName, lastName, middleName } = teamPlayer.player;
-        return [lastName, firstName, middleName].filter(Boolean).join(' ');
+    setFilter(key: keyof ClubStatisticsFilters, value: string) {
+        const filters = { ...this.filters() };
+        if (value) filters[key] = Number(value);
+        else delete filters[key];
+        if (key === 'seasonId') delete filters.tournamentId;
+        this.filters.set(filters);
+        this.loadStats();
     }
-
-    playerPosition(teamPlayer: TeamPlayer): string {
-        const position = teamPlayer.position ?? teamPlayer.player.position;
-        const labels: Record<string, string> = {
-            goalkeeper: 'Вратарь',
-            defender: 'Защитник',
-            midfielder: 'Полузащитник',
-            winger: 'Крайний игрок',
-            forward: 'Нападающий',
-        };
-
-        return position ? (labels[position] ?? position) : 'Игрок';
+    resetFilters() {
+        this.filters.set({});
+        this.loadStats();
     }
-
-    imageUrl(url?: string | null): string | null {
-        if (!url) {
-            return null;
-        }
-
-        if (/^(https?:)?\/\//i.test(url) || url.startsWith('/')) {
-            return url;
-        }
-
-        return `/${url}`;
+    loadStats() {
+        const d = this.data();
+        if (d)
+            this.statsRequests.next({
+                teamId: d.team.id,
+                communityId: d.communityId,
+                filters: this.filters(),
+            });
     }
-
-    useFallbackLogo(event: Event): void {
-        this.useFallbackImage(event, '/images/teams/default-team-logo.png');
+    playerLink(player: Pick<ClubPlayerStats, 'playerId'>) {
+        return ['/team', this.data()!.team.id, 'players', player.playerId];
     }
-
-    useFallbackPlayerPhoto(event: Event): void {
-        this.useFallbackImage(event, '/images/organization-team/not-photo.png');
+    result(match: ClubMatch) {
+        const id = this.data()?.team.id;
+        if (match.winnerTeamId) return match.winnerTeamId === id ? 'В' : 'П';
+        if (match.homeScore === match.awayScore) return 'Н';
+        return (match.homeTeam?.id === id) ===
+            (match.homeScore || 0) > (match.awayScore || 0)
+            ? 'В'
+            : 'П';
     }
-
-    private useFallbackImage(event: Event, fallback: string): void {
-        const image = event.target as HTMLImageElement;
-        image.onerror = null;
-        image.src = fallback;
+    private timestamp(m: ClubMatch) {
+        return m.matchDatetime ? new Date(m.matchDatetime).getTime() : 0;
     }
-
-    private matchTimestamp(match: Match): number {
-        const timestamp = new Date(match.matchDateTime).getTime();
-        return Number.isNaN(timestamp) ? 0 : timestamp;
+    photoFailed(event: Event) {
+        const img = event.target as HTMLImageElement;
+        img.onerror = null;
+        img.src = clubImage(null, true);
     }
-
-    private resetTournamentData(): void {
-        this.tournamentName.set(null);
-        this.tournamentMatches.set([]);
-        this.tournamentView.set(null);
-        this.tournamentPlayerCards.set([]);
+    logoFailed(event: Event) {
+        const img = event.target as HTMLImageElement;
+        img.onerror = null;
+        img.src = clubImage(null);
+    }
+    play(video: PublicVideo) {
+        this.playerDialog?.close();
+        this.playerDialog = this.dialog.open(VideoPlayerComponent, {
+            data: video,
+            viewContainerRef: this.viewContainerRef,
+            width: '1000px',
+            maxWidth: 'calc(100vw - 24px)',
+            ariaLabelledBy: 'video-player-title',
+            restoreFocus: true,
+            autoFocus: 'first-tabbable',
+        });
     }
 }
