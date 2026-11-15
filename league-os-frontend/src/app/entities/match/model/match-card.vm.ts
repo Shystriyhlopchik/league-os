@@ -1,6 +1,7 @@
 import { MatchStatus } from './match.types';
 
 export interface MatchCardVm {
+    postponed?: boolean;
     id: number;
     round: string;
     status: MatchStatus;

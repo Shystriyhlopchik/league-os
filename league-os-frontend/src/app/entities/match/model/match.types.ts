@@ -22,6 +22,8 @@ export interface MatchVenue {
 }
 
 export interface Match {
+    postponed?: boolean;
+    postponementReason?: string | null;
     id: number;
     tournamentId: number;
     round: string;

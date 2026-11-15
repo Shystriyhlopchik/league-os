@@ -50,6 +50,7 @@ export interface MatchServiceSessionDto {
   };
 
   session: {
+    revision: number;
     id: number;
     matchId: number;
     status: MatchServiceStatus;

@@ -116,6 +116,7 @@ export interface TransferRequest {
     toTeam: { name: string };
 }
 export interface ManagedCalendar {
+    tournament?: { lifecycleStatus: string; name: string };
     stages: {
         id: number;
         type: string;
@@ -136,6 +137,11 @@ export interface ManagedCalendar {
         status: string;
         matchDatetime: string | null;
         venueId?: number;
+        postponed?: boolean;
+        postponementReason?: string | null;
+        scheduleRevision?: number;
+        durationMinutes?: number;
+        scheduleHistory?: { at: string; actorId: number; reason: string; before: Record<string, unknown>; after: Record<string, unknown> }[];
     }[];
 }
 
@@ -150,6 +156,9 @@ export interface ManualScheduleMatch {
 export class TournamentApplicationApi {
     private readonly http = inject(HttpClient);
     private readonly base = `${environment.apiUrl}/registrations`;
+    managedCalendars() {
+        return this.http.get<{ id: number; name: string }[]>(`${environment.apiUrl}/tournaments/calendar-management`);
+    }
     calendar(id: number) {
         return this.http.get<ManagedCalendar>(
             `${environment.apiUrl}/tournaments/${id}/calendar-management`,
@@ -229,10 +238,11 @@ export class TournamentApplicationApi {
         matchId: number,
         matchDatetime: string,
         venueId: number,
+        changes: { expectedRevision?: number; reason?: string; durationMinutes?: number; postponed?: boolean } = {},
     ) {
         return this.http.patch(
             `${environment.apiUrl}/tournaments/${id}/calendar-management/${matchId}`,
-            { matchDatetime, venueId },
+            { matchDatetime, venueId, ...changes },
         );
     }
     workspace() {

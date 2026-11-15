@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 
 import { MatchEventType } from '../match-events/enums/match-event-type.enum';
 import { MatchEntity } from '../matches/entities/match.entity';
@@ -14,6 +14,10 @@ export class PlayerTournamentStatsService {
     private readonly statRepository: Repository<PlayerTournamentStatEntity>,
     private readonly playerSuspensionsService: PlayerSuspensionsService,
   ) {}
+
+  withManager(manager: EntityManager): PlayerTournamentStatsService {
+    return new PlayerTournamentStatsService(manager.getRepository(PlayerTournamentStatEntity), this.playerSuspensionsService.withManager(manager));
+  }
 
   async applyCardEvent(params: {
     match: MatchEntity;

@@ -403,7 +403,15 @@ export class TournamentApplicationsService {
         matchDatetime: true,
       },
     });
-    return applicationEditWindow(matches);
+    const window = applicationEditWindow(matches);
+    if (t.applicationsLockedAt) return { ...window, locked: true, locksAt: t.applicationsLockedAt.toISOString() };
+    if (window.locked) {
+      const lockedAt = window.locksAt ? new Date(window.locksAt) : new Date();
+      await manager.createQueryBuilder().update(TournamentEntity)
+        .set({ applicationsLockedAt: lockedAt })
+        .where('id = :id AND applications_locked_at IS NULL', { id: t.id }).execute();
+    }
+    return window;
   }
 
   editBlockedReason(

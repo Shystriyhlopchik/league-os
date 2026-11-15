@@ -41,6 +41,21 @@ import type { KnockoutParticipantSourceV1 } from '../../tournament-rules/types/t
   '"round_number" IS NULL OR "round_number" > 0',
 )
 export class MatchEntity extends BaseEntity {
+  @Column({ name: 'postponed_at', type: 'timestamptz', nullable: true })
+  postponedAt: Date | null;
+
+  @Column({ name: 'postponement_reason', type: 'text', nullable: true })
+  postponementReason: string | null;
+
+  @Column({ name: 'schedule_revision', default: 0 })
+  scheduleRevision: number;
+
+  @Column({ name: 'duration_minutes', default: 60 })
+  durationMinutes: number;
+
+  @Column({ name: 'schedule_history', type: 'jsonb', default: () => "'[]'::jsonb" })
+  scheduleHistory: { at: string; actorId: number; reason: string; before: Record<string, unknown>; after: Record<string, unknown> }[];
+
   @Column({ name: 'tournament_id' })
   tournamentId: number;
 

@@ -89,6 +89,7 @@ export type MatchEventType =
     | 'red_ball';
 
 export interface MatchServiceSession {
+    revision?: number;
     id: number;
     matchId: number;
     status: MatchServiceStatus;
@@ -114,6 +115,7 @@ export interface MatchProtocolRosterPlayer {
 }
 
 export interface MatchProtocolEvent {
+    goalValue?: number;
     id: number;
     clientEventId?: string;
     eventType: MatchEventType;
@@ -127,6 +129,22 @@ export interface MatchProtocolEvent {
     minute?: number;
     description?: string;
     isCancelled: boolean;
+}
+
+export type MatchCommandAction = 'start' | 'pause' | 'resume' | 'finish-half' | 'start-second-half' | 'finish' | 'start-recording' | 'cancel-recording' | 'event' | 'cancel-event' | 'red-ball' | 'sign' | 'recover';
+export interface MatchCommand {
+    id: string;
+    action: MatchCommandAction;
+    expectedRevision: number;
+    occurredAt: string;
+    elapsedSeconds: number;
+    event?: CreateMatchServiceEventDto;
+    eventType?: MatchEventType;
+    eventId?: number;
+    eventClientId?: string;
+    teamId?: number;
+    result?: FinalizePlayedMatch;
+    reason?: string;
 }
 
 export interface MatchProtocolData {

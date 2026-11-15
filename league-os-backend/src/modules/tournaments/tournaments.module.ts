@@ -90,6 +90,6 @@ import { CalendarSpreadsheetService } from './scheduling/calendar-spreadsheet.se
     PlayoffLaunchService,
     RolesGuard,
   ],
-  exports: [TournamentLifecycleService, KnockoutBracketService],
+  exports: [TournamentLifecycleService, KnockoutBracketService, TournamentAccessService],
 })
 export class TournamentsModule {}

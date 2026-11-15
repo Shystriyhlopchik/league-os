@@ -1,9 +1,16 @@
-import { IsInt, IsString, Matches, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min, ValidateIf } from 'class-validator';
 
 export class UpdateCalendarMatchDto {
-  // The database stores local wall-clock timestamps, as does the existing calendar.
+  @IsOptional() @IsBoolean() postponed?: boolean;
+
+  @ValidateIf((v) => v.postponed !== true)
   @IsString()
   @Matches(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/)
-  matchDatetime: string;
-  @IsInt() @Min(1) venueId: number;
+  matchDatetime?: string;
+  @ValidateIf((v) => v.postponed !== true)
+  @IsInt() @Min(1) venueId?: number;
+  @IsOptional() @IsString() @MaxLength(1000) reason?: string;
+  @IsOptional() @IsInt() @Min(0) expectedRevision?: number;
+  // Occupied slot includes changeover, not just playing time.
+  @IsOptional() @IsInt() @Min(1) @Max(480) durationMinutes?: number;
 }

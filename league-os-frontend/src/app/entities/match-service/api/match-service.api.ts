@@ -16,6 +16,7 @@ import {
     StartEventRecordingResponse,
 } from '../model/match-service.types';
 import { HttpClient } from '@angular/common/http';
+import { MatchCommand } from '../model/match-service.types';
 import { environment } from '../../../../environments/environment';
 
 @Injectable({
@@ -24,6 +25,14 @@ import { environment } from '../../../../environments/environment';
 export class MatchServiceApi {
     private readonly http = inject(HttpClient);
     private readonly apiUrl = environment.apiUrl;
+
+    command(matchId: number, command: MatchCommand): Observable<{ data: MatchProtocolData }> {
+        return this.http.post<{ data: MatchProtocolData }>(`${this.apiUrl}/match-service/matches/${matchId}/commands`, command);
+    }
+
+    getUnfinishedMatches(): Observable<MatchServiceMatch[]> {
+        return this.http.get<MatchServiceMatch[]>(`${this.apiUrl}/match-service/unfinished-matches`);
+    }
 
     getAvailableMatches(): Observable<MatchServiceMatch[]> {
         return this.http.get<MatchServiceMatch[]>(

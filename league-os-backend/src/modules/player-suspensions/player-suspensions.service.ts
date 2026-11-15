@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { EntityManager, In, Repository } from 'typeorm';
 
 import { MatchEventEntity } from '../match-events/entities/match-event.entity';
 import { MatchEventType } from '../match-events/enums/match-event-type.enum';
@@ -77,6 +77,14 @@ export class PlayerSuspensionsService {
     private readonly ruleVersionRepository: Repository<TournamentRuleVersionEntity>,
     private readonly engine: DisciplineEngine,
   ) {}
+
+  withManager(manager: EntityManager): PlayerSuspensionsService {
+    return new PlayerSuspensionsService(
+      manager.getRepository(PlayerSuspensionEntity), manager.getRepository(MatchEntity),
+      manager.getRepository(MatchEventEntity), manager.getRepository(TournamentStageEntity),
+      manager.getRepository(TournamentEntity), manager.getRepository(TournamentRuleVersionEntity), this.engine,
+    );
+  }
 
   async listActiveForTournament(tournamentId: number) {
     const rows = await this.suspensionRepository.find({

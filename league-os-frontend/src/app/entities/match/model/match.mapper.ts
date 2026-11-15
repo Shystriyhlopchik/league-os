@@ -6,6 +6,7 @@ const DEFAULT_TOURNAMENT_LOGO = 'brand/logos/mark_white.svg';
 
 export function mapMatchToCardVm(match: Match): MatchCardVm {
     return {
+        postponed: match.postponed,
         id: match.id,
         round: match.round,
         status: match.status,

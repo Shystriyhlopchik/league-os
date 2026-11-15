@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from './entities/user.entity';
-import { ILike, Repository } from 'typeorm';
+import { FindOptionsWhere, Raw, Repository } from 'typeorm';
 import { RoleEntity } from '../roles/entities/role.entity';
 
 @Injectable()
@@ -12,34 +12,32 @@ export class UsersService {
   ) {}
 
   async findByEmailOrUsername(login: string) {
-    return this.usersRepository.findOne({
-      where: [{ email: login }, { username: login }],
-      relations: {
-        roles: true,
-      },
-    });
+    return this.findUnambiguous([
+      { email: this.canonical(login) }, { username: this.canonical(login) },
+    ]);
   }
 
   async findByEmail(email: string) {
-    return this.usersRepository.findOne({
-      where: {
-        email: ILike(email.trim()),
-      },
-      relations: {
-        roles: true,
-      },
-    });
+    return this.findUnambiguous([{ email: this.canonical(email) }]);
   }
 
   async findByUsername(username: string) {
-    return this.usersRepository.findOne({
-      where: {
-        username,
-      },
-      relations: {
-        roles: true,
-      },
+    return this.findUnambiguous([{ username: this.canonical(username) }]);
+  }
+
+  private canonical(value: string) {
+    // Equality, not ILIKE: '%' and '_' in a login must remain literal.
+    return Raw((column) => `LOWER(BTRIM(${column})) = :login`, {
+      login: value.trim().toLowerCase(),
     });
+  }
+
+  private async findUnambiguous(where: FindOptionsWhere<UserEntity>[]) {
+    const users = await this.usersRepository.find({ where, relations: { roles: true }, take: 2 });
+    if (users.length > 1) throw new ConflictException(
+      'Найдено несколько учётных записей с таким логином или email. Обратитесь к администратору',
+    );
+    return users[0] ?? null;
   }
 
   findById(id: number) {

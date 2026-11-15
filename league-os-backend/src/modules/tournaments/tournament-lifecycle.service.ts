@@ -45,6 +45,7 @@ import { TournamentApplicationEntity } from '../registrations/entities/registrat
 import { VenueEntity } from '../venues/entities/venue.entity';
 import { formatLocalDateTime } from '../matches/helper/formatLocalDateTime';
 import { UpdateCalendarMatchDto } from './dto/update-calendar-match.dto';
+import { applicationEditWindow } from '../registrations/application-edit-window';
 
 const POST_PUBLISH_METADATA_FIELDS = new Set([
   'name',
@@ -771,8 +772,8 @@ export class TournamentLifecycleService {
     return this.getTournament(tournamentId);
   }
 
-  async markInProgress(tournamentId: number): Promise<void> {
-    await this.tournamentRepository.update(
+  async markInProgress(tournamentId: number, manager?: EntityManager): Promise<void> {
+    await (manager?.getRepository(TournamentEntity) ?? this.tournamentRepository).update(
       {
         id: tournamentId,
         lifecycleStatus: TournamentLifecycleStatus.PUBLISHED,
@@ -817,19 +818,39 @@ export class TournamentLifecycleService {
         roundNumber: m.roundNumber,
         matchDatetime: formatLocalDateTime(m.matchDatetime),
         venueId: m.venueId,
+        postponed: !!m.postponedAt,
+        postponementReason: m.postponementReason,
+        scheduleRevision: m.scheduleRevision,
+        durationMinutes: m.durationMinutes,
+        scheduleHistory: m.scheduleHistory,
       })),
     };
+  }
+
+  async managedCalendars(actor: { id: number; roles?: string[] }) {
+    const query = this.tournamentRepository.createQueryBuilder('t')
+      .innerJoin('t.season', 'season').innerJoin('season.competition', 'competition')
+      .innerJoin('competition.community', 'community')
+      .where('t.isActive = true AND community.isActive = true');
+    if (!actor.roles?.includes('super_admin')) {
+      query.andWhere(`EXISTS (SELECT 1 FROM community_members cm WHERE cm.community_id=community.id
+        AND cm.user_id=:userId AND cm."isActive"=true AND (cm.role IN ('owner','admin') OR EXISTS (
+          SELECT 1 FROM tournament_members tm WHERE tm.tournament_id=t.id AND tm.user_id=:userId AND tm.role IN ('admin','organizer')
+        )))`, { userId: actor.id });
+    }
+    return (await query.orderBy('t.id', 'DESC').getMany()).map(t => ({ id: t.id, name: t.name }));
   }
 
   async updateCalendarMatch(
     tournamentId: number,
     matchId: number,
     dto: UpdateCalendarMatchDto,
+    actorId = 0,
   ) {
-    const date = new Date(dto.matchDatetime);
+    const date = dto.postponed ? null : new Date(dto.matchDatetime!);
     if (
-      !Number.isFinite(date.getTime()) ||
-      formatLocalDateTime(date)?.slice(0, 16) !== dto.matchDatetime.slice(0, 16)
+      !dto.postponed && (!date || !Number.isFinite(date.getTime()) ||
+      formatLocalDateTime(date)?.slice(0, 16) !== dto.matchDatetime?.slice(0, 16))
     )
       throw new BadRequestException('Некорректная дата матча');
     return this.dataSource.transaction(async (manager) => {
@@ -839,11 +860,12 @@ export class TournamentLifecycleService {
       });
       if (
         !tournament ||
-        ![
+        tournament.status === TournamentStatus.FINISHED || tournament.status === TournamentStatus.CANCELLED ||
+        (tournament.lifecycleStatus && ![
           TournamentLifecycleStatus.DRAFT,
           TournamentLifecycleStatus.PUBLISHED,
           TournamentLifecycleStatus.IN_PROGRESS,
-        ].includes(tournament.lifecycleStatus!)
+        ].includes(tournament.lifecycleStatus))
       )
         throw new ConflictException(
           'Календарь завершённого турнира недоступен для изменения',
@@ -864,31 +886,42 @@ export class TournamentLifecycleService {
         throw new ConflictException(
           'Можно назначать только ещё не начатый матч',
         );
-      if (
+      if (dto.expectedRevision !== undefined && dto.expectedRevision !== (match.scheduleRevision ?? 0))
+        throw new ConflictException('Расписание уже изменено другим организатором. Обновите календарь');
+      const liveCalendar = tournament.lifecycleStatus !== TournamentLifecycleStatus.DRAFT;
+      if (liveCalendar && (dto.expectedRevision === undefined || !dto.reason?.trim()))
+        throw new BadRequestException('Для изменения опубликованного календаря укажите причину и версию расписания');
+      if (dto.postponed && !dto.reason?.trim())
+        throw new BadRequestException('Укажите причину переноса');
+      const allMatches = await manager.find(MatchEntity, { where: { tournamentId } });
+      if (tournament.registrationRequired && !tournament.applicationsLockedAt) {
+        const window = applicationEditWindow(allMatches);
+        if (window.locked) {
+          tournament.applicationsLockedAt = window.locksAt ? new Date(window.locksAt) : new Date();
+          await manager.save(tournament);
+        }
+      }
+      const before = { matchDatetime: formatLocalDateTime(match.matchDatetime), venueId: match.venueId ?? null, durationMinutes: match.durationMinutes ?? 60, postponed: !!match.postponedAt };
+      const duration = dto.durationMinutes ?? match.durationMinutes ?? 60;
+      if (!dto.postponed &&
         !(await manager.exists(VenueEntity, {
           where: { id: dto.venueId, isActive: true },
         }))
       )
         throw new NotFoundException('Площадка не найдена');
-      // Venue lock serializes competing bookings even from different tournaments.
-      await manager.findOne(VenueEntity, {
-        where: { id: dto.venueId },
-        lock: { mode: 'pessimistic_write' },
-      });
-      const collision = await manager.exists(MatchEntity, {
-        where: {
-          id: Not(matchId),
-          venueId: dto.venueId,
-          matchDatetime: date,
-          status: Not(MatchStatus.CANCELLED),
-        },
-      });
-      if (collision)
-        throw new ConflictException(
-          'На этой площадке в это время уже назначен матч',
-        );
-      match.matchDatetime = date;
-      if (match.bracketSnapshotId) {
+      if (date) {
+        // One transaction lock covers bookings across tournaments and venues,
+        // including the same team playing at two different grounds.
+        await manager.query('SELECT pg_advisory_xact_lock(78201, 1)');
+        const collision = await manager.getRepository(MatchEntity).createQueryBuilder('m')
+          .where('m.id <> :id AND m.status <> :cancelled AND m.postponed_at IS NULL', { id: matchId, cancelled: MatchStatus.CANCELLED })
+          .andWhere('(m.venue_id = :venue OR m.home_team_id IN (:...teams) OR m.away_team_id IN (:...teams))', { venue: dto.venueId, teams: [match.homeTeamId, match.awayTeamId].filter(Boolean).concat([-1]) })
+          .andWhere("m.match_datetime < CAST(:end AS timestamp) AND m.match_datetime + m.duration_minutes * interval '1 minute' > CAST(:start AS timestamp)", {
+            start: formatLocalDateTime(date), end: formatLocalDateTime(new Date(date.getTime() + duration * 60000)),
+          }).getOne();
+        if (collision) throw new ConflictException(`Пересечение времени с матчем №${collision.id}: площадка или команда занята`);
+      }
+      if (date && match.bracketSnapshotId) {
         const bracket = await manager.find(MatchEntity, {
           where: { bracketSnapshotId: match.bracketSnapshotId },
         });
@@ -932,12 +965,23 @@ export class TournamentLifecycleService {
           }
         }
       }
-      match.venueId = dto.venueId;
+      // Explicit SQL NULL is necessary: TypeORM ignores undefined on save.
+      Object.assign(match, { matchDatetime: date, venueId: dto.postponed ? null : dto.venueId,
+        postponedAt: dto.postponed ? new Date() : null,
+        postponementReason: dto.postponed ? dto.reason!.trim() : null,
+        durationMinutes: duration, scheduleRevision: (match.scheduleRevision ?? 0) + 1 });
+      match.scheduleHistory = [...(match.scheduleHistory ?? []), { at: new Date().toISOString(), actorId,
+        reason: dto.reason?.trim() || 'Первоначальное назначение', before,
+        after: { matchDatetime: formatLocalDateTime(date ?? undefined), venueId: match.venueId ?? null, durationMinutes: duration, postponed: !!dto.postponed } }];
       await manager.save(match);
+      // Preserve players, but invalidate previous match-day eligibility approval.
+      await manager.query('UPDATE match_rosters SET is_approved = false, approved_at = NULL, approved_by_user_id = NULL WHERE match_id = $1', [matchId]);
       return {
         id: match.id,
-        matchDatetime: formatLocalDateTime(date),
+        matchDatetime: formatLocalDateTime(date ?? undefined),
         venueId: match.venueId,
+        scheduleRevision: match.scheduleRevision,
+        postponed: !!match.postponedAt,
       };
     });
   }

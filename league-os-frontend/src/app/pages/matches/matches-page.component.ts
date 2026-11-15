@@ -113,7 +113,7 @@ export class MatchesPageComponent implements OnInit {
         const groups = new Map<string, MatchCardVm[]>();
 
         for (const match of this.filteredMatches()) {
-            const key = this.toDateKey(match.matchDateTime);
+            const key = match.postponed ? 'postponed' : this.toDateKey(match.matchDateTime);
             const matches = groups.get(key) ?? [];
             matches.push(match);
             groups.set(key, matches);
@@ -121,7 +121,7 @@ export class MatchesPageComponent implements OnInit {
 
         return Array.from(groups, ([key, matches]) => ({
             key,
-            date: `${key}T00:00:00`,
+            date: key === 'postponed' ? '' : `${key}T00:00:00`,
             matches,
         }));
     });
@@ -155,8 +155,8 @@ export class MatchesPageComponent implements OnInit {
                         .map(mapMatchToCardVm)
                         .sort(
                             (left, right) =>
-                                new Date(left.matchDateTime).getTime() -
-                                    new Date(right.matchDateTime).getTime() ||
+                                (left.postponed ? Infinity : new Date(left.matchDateTime).getTime()) -
+                                    (right.postponed ? Infinity : new Date(right.matchDateTime).getTime()) ||
                                 left.id - right.id,
                         );
                     this.matches.set(mappedMatches);

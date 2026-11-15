@@ -41,6 +41,9 @@ export class SessionStore {
 
     updateUser(user: User): void {
         this.user.set(user);
+        try {
+            localStorage.setItem('offline_match_identity', JSON.stringify({ token: this.tokenStorage.getAccessToken(), user }));
+        } catch { /* The protocol journal reports persistent storage failures separately. */ }
     }
 
     init(): void {
@@ -63,9 +66,18 @@ export class SessionStore {
             )
             .subscribe({
                 next: (user) => {
-                    this.user.set(user);
+                    this.updateUser(user);
                 },
-                error: () => {
+                error: (error) => {
+                    if ([0, 502, 503, 504].includes(error?.status)) {
+                        try {
+                            const cached = JSON.parse(localStorage.getItem('offline_match_identity') ?? 'null');
+                            if (cached?.token === token && cached.user?.id) {
+                                this.user.set(cached.user);
+                                return; // Only a local identity; the API still checks JWT and current permissions.
+                            }
+                        } catch { /* Missing/corrupt cache must never invent a user. */ }
+                    }
                     this.logout();
                 },
             });
@@ -73,12 +85,13 @@ export class SessionStore {
 
     setAuth(response: AuthResponse): void {
         this.tokenStorage.setAccessToken(response.accessToken);
-        this.user.set(response.user);
+        this.updateUser(response.user);
         this.isInitialized.set(true);
     }
 
     logout(): void {
         this.tokenStorage.clear();
+        localStorage.removeItem('offline_match_identity');
         this.user.set(null);
         this.isInitialized.set(true);
     }

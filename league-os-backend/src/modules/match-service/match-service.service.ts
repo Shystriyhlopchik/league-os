@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -74,6 +75,8 @@ import { formatLocalDateTime } from '../matches/helper/formatLocalDateTime';
 import { TournamentApplicationsService } from '../registrations/tournament-applications.service';
 import { CommunitySquadsService } from '../registrations/community-squads.service';
 import { TournamentRosterPlayerEntity } from '../registrations/entities/registration.entity';
+import { createHash } from 'node:crypto';
+import { MatchCommandDto } from './dto/match-command.dto';
 
 type SyncEventResult =
   | {
@@ -97,6 +100,100 @@ const LEGACY_MATCH_RULES: MatchRulesV1 = {
 
 @Injectable()
 export class MatchServiceService {
+  private transactionManager?: EntityManager;
+  private commandTime?: Date;
+  private now(): Date { return this.commandTime ? new Date(this.commandTime) : new Date(); }
+
+  // All command writes, score changes, discipline and bracket advancement share
+  // one transaction. Never mutate injected singleton repositories per request.
+  private inTransaction(manager: EntityManager) {
+    const scoped = new MatchServiceService(
+      manager.getRepository(MatchEntity), manager.getRepository(TeamPlayerEntity),
+      manager.getRepository(PlayerTournamentStatEntity), manager.getRepository(MatchRosterEntity),
+      manager.getRepository(MatchRosterPlayerEntity), manager.getRepository(MatchServiceSessionEntity),
+      manager.getRepository(MatchEventEntity), manager.getRepository(MatchRedBallActivationEntity),
+      this.playerTournamentStatsService.withManager(manager), this.playerSuspensionsService.withManager(manager),
+      this.usersService, this.tournamentLifecycleService, this.knockoutBracketService,
+      this.matchResultResolver, this.dataSource, this.tournamentApplications, this.communitySquads,
+    );
+    scoped.transactionManager = manager;
+    return scoped;
+  }
+
+  async command(matchId: number, dto: MatchCommandDto, actorId: number) {
+    const occurredAt = new Date(dto.occurredAt);
+    if (!Number.isFinite(occurredAt.getTime()) || occurredAt.getTime() > Date.now() + 60000)
+      throw new BadRequestException('Проверьте дату и время устройства');
+    const hash = createHash('sha256').update(JSON.stringify(dto)).digest('hex');
+    return this.dataSource.transaction(async (manager) => {
+      // Also serializes duplicate requests and commands from other devices.
+      const match = await manager.findOne(MatchEntity, { where: { id: matchId }, lock: { mode: 'pessimistic_write' } });
+      if (!match) throw new NotFoundException('Матч не найден');
+      const [receipt] = await manager.query('SELECT * FROM match_service_commands WHERE id=$1', [dto.id]);
+      if (receipt) {
+        if (receipt.match_id !== matchId || receipt.actor_id !== actorId || receipt.request_hash !== hash)
+          throw new ConflictException('Идентификатор команды уже использован');
+        return receipt.response;
+      }
+      const scoped = this.inTransaction(manager);
+      scoped.commandTime = occurredAt;
+      const session = await scoped.getOrCreateSession(match);
+      if ((session.revision ?? 0) !== dto.expectedRevision)
+        throw new ConflictException('Протокол изменён с другого устройства. Локальные действия сохранены; требуется сверка');
+      if (match.postponedAt || match.status === MatchStatus.CANCELLED)
+        throw new ConflictException('Перенесённый или отменённый матч нельзя обслуживать');
+      if (session.status === MatchServiceStatus.PROTOCOL_SIGNED)
+        throw new ConflictException('Протокол уже подписан');
+      if (session.status === MatchServiceStatus.FINISHED && dto.action !== 'sign')
+        throw new ConflictException('Матч завершён. Исправления вносятся через редактирование протокола');
+      if (!['recover', 'start', 'start-second-half'].includes(dto.action) && dto.elapsedSeconds < session.elapsedSeconds)
+        throw new ConflictException('Локальное время матча меньше сохранённого. Проверьте часы и восстановите протокол');
+      session.elapsedSeconds = dto.elapsedSeconds;
+      if (session.startedAt) session.startedAt = occurredAt;
+      await manager.save(session);
+      let eventDraft: unknown;
+      switch (dto.action) {
+        case 'start': await scoped.startMatch(matchId); break;
+        case 'pause': await scoped.pauseMatch(matchId); break;
+        case 'resume': await scoped.resumeMatch(matchId); break;
+        case 'finish-half': await scoped.finishHalf(matchId, dto.result); break;
+        case 'start-second-half': await scoped.startSecondHalf(matchId); break;
+        case 'finish': await scoped.finishMatch(matchId, dto.result); break;
+        case 'start-recording':
+          if (!dto.eventType) throw new BadRequestException('Укажите тип события');
+          eventDraft = (await scoped.startEventRecording(matchId, { eventType: dto.eventType })).eventDraft; break;
+        case 'cancel-recording': await scoped.cancelEventRecording(matchId); break;
+        case 'event':
+          if (!dto.event) throw new BadRequestException('Укажите событие');
+          await scoped.createEvent(matchId, { ...dto.event, clientEventId: dto.id }); break;
+        case 'cancel-event': {
+          const eventId = dto.eventClientId
+            ? (await manager.findOne(MatchEventEntity, { where: { matchId, clientEventId: dto.eventClientId } }))?.id
+            : dto.eventId;
+          if (!eventId) throw new BadRequestException('Укажите событие');
+          await scoped.cancelEvent(matchId, eventId); break;
+        }
+        case 'red-ball':
+          if (!dto.teamId) throw new BadRequestException('Укажите команду');
+          await scoped.activateRedBall(matchId, { teamId: dto.teamId }); break;
+        case 'sign': await scoped.signProtocol(matchId); break;
+        case 'recover':
+          if (match.status !== MatchStatus.LIVE || !dto.reason?.trim())
+            throw new BadRequestException('Восстановление доступно для начатого матча с обязательной причиной');
+          session.currentHalf = 2; session.status = MatchServiceStatus.PAUSED;
+          session.previousStatus = MatchServiceStatus.SECOND_HALF; session.startedAt = null;
+          await manager.save(session);
+          await scoped.createSystemEvent({ match, session, eventType: MatchEventType.MATCH_PAUSED,
+            description: `Восстановление организатором #${actorId}: ${dto.reason.trim()}` });
+          break;
+      }
+      await manager.increment(MatchServiceSessionEntity, { matchId }, 'revision', 1);
+      const response = { data: await scoped.getSession(matchId), eventDraft };
+      await manager.query('INSERT INTO match_service_commands(id,match_id,actor_id,request_hash,response) VALUES($1,$2,$3,$4,$5)',
+        [dto.id, matchId, actorId, hash, JSON.stringify(response)]);
+      return response;
+    });
+  }
   private readonly correctableEventTypes = new Set<MatchEventType>([
     MatchEventType.GOAL,
     MatchEventType.OWN_GOAL,
@@ -222,6 +319,17 @@ export class MatchServiceService {
     });
 
     return Array.from(matchesById.values()).map((match) => this.toDto(match));
+  }
+
+  async findUnfinishedMatches(): Promise<MatchServiceMatchDto[]> {
+    const matches = await this.matchRepository.createQueryBuilder('m')
+      .innerJoin(MatchServiceSessionEntity, 'session', 'session.match_id = m.id')
+      .leftJoinAndSelect('m.homeTeam', 'home').leftJoinAndSelect('m.awayTeam', 'away')
+      .leftJoinAndSelect('m.venue', 'venue')
+      .where('session.status NOT IN (:...statuses)', { statuses: [MatchServiceStatus.NOT_STARTED, MatchServiceStatus.PROTOCOL_SIGNED] })
+      .andWhere('m.status IN (:...matchStatuses)', { matchStatuses: [MatchStatus.LIVE, MatchStatus.FINISHED] })
+      .orderBy('m.match_datetime', 'ASC').getMany();
+    return matches.map((match) => this.toDto(match));
   }
 
   async findOverdueMatches(): Promise<MatchServiceMatchDto[]> {
@@ -1633,7 +1741,7 @@ export class MatchServiceService {
         awaySavedRoster?.isSubmitted
           ? this.findSubmittedTeamRoster(match, awaySavedRoster)
           : this.findTeamRoster(match, match.awayTeamId),
-        this.getEffectiveMatchRules(match, this.dataSource.manager),
+        this.getEffectiveMatchRules(match, this.transactionManager ?? this.dataSource.manager),
         knockoutLeg(match.bracketPosition).legs === 2
           ? this.knockoutBracketService.getTieContext(match)
           : Promise.resolve(undefined),
@@ -1976,20 +2084,10 @@ export class MatchServiceService {
     });
 
     if (!session) {
-      session = this.matchServiceSessionRepository.create({
-        matchId: match.id,
-        status: MatchServiceStatus.NOT_STARTED,
-        previousStatus: null,
-        currentHalf: 1,
-        elapsedSeconds: 0,
-        startedAt: null,
-        pausedAt: null,
-        finishedAt: null,
-        homeScore: match.homeScore ?? 0,
-        awayScore: match.awayScore ?? 0,
-      });
-
-      session = await this.matchServiceSessionRepository.save(session);
+      await this.matchServiceSessionRepository.createQueryBuilder().insert().values({
+        matchId: match.id, homeScore: match.homeScore ?? 0, awayScore: match.awayScore ?? 0,
+      }).orIgnore().execute();
+      session = await this.matchServiceSessionRepository.findOneByOrFail({ matchId: match.id });
     }
 
     return session;
@@ -2116,7 +2214,8 @@ export class MatchServiceService {
 
     const session = await this.getOrCreateSession(match);
 
-    await this.syncExpiredRedBalls(match, session);
+    // Reads must not expire effects while another device has unsent historical
+    // actions. Expiration is applied at the time of each accepted command.
 
     const [rosters, events, redBalls] = await Promise.all([
       this.getApprovedRosterPlayers(match),
@@ -2125,11 +2224,11 @@ export class MatchServiceService {
     ]);
     const matchRules = await this.getEffectiveMatchRules(
       match,
-      this.dataSource.manager,
+      this.transactionManager ?? this.dataSource.manager,
     );
     const knockoutTie =
       knockoutLeg(match.bracketPosition).legs === 2
-        ? await this.knockoutBracketService.getTieContext(match)
+        ? await this.knockoutBracketService.getTieContext(match, this.transactionManager)
         : undefined;
 
     return {
@@ -2199,6 +2298,7 @@ export class MatchServiceService {
     return events.map((event) => ({
       id: event.id,
       clientEventId: event.clientEventId,
+      goalValue: event.goalValue,
       eventType: event.eventType,
       matchId: event.matchId,
       teamId: event.teamId,
@@ -2248,6 +2348,7 @@ export class MatchServiceService {
 
   private mapSession(session: MatchServiceSessionEntity) {
     return {
+      revision: session.revision ?? 0,
       id: session.id,
       matchId: session.matchId,
       status: session.status,
@@ -2307,7 +2408,7 @@ export class MatchServiceService {
       return;
     }
 
-    const now = new Date();
+    const now = this.now();
 
     const diffSeconds = Math.floor(
       (now.getTime() - session.startedAt.getTime()) / 1000,
@@ -2340,10 +2441,12 @@ export class MatchServiceService {
 
   async startMatch(matchId: number) {
     const match = await this.findMatchForService(matchId);
+    if (match.postponedAt || !match.matchDatetime || match.status !== MatchStatus.SCHEDULED)
+      throw new BadRequestException('Начать можно только назначенный, ещё не начатый матч');
     if (knockoutLeg(match.bracketPosition).legs === 2) {
       if (match.status !== MatchStatus.SCHEDULED)
         throw new BadRequestException('Матч уже начат или завершён');
-      await this.knockoutBracketService.assertTieResultWritable(match);
+      await this.knockoutBracketService.assertTieResultWritable(match, this.transactionManager);
     }
 
     await this.assertBothRostersApproved(match);
@@ -2358,7 +2461,7 @@ export class MatchServiceService {
     session.previousStatus = null;
     session.currentHalf = 1;
     session.elapsedSeconds = 0;
-    session.startedAt = new Date();
+    session.startedAt = this.now();
     session.pausedAt = null;
     session.finishedAt = null;
 
@@ -2400,7 +2503,7 @@ export class MatchServiceService {
 
     session.previousStatus = session.status;
     session.status = MatchServiceStatus.PAUSED;
-    session.pausedAt = new Date();
+    session.pausedAt = this.now();
 
     const savedSession = await this.matchServiceSessionRepository.save(session);
 
@@ -2428,7 +2531,7 @@ export class MatchServiceService {
 
     session.status = session.previousStatus;
     session.previousStatus = null;
-    session.startedAt = new Date();
+    session.startedAt = this.now();
     session.pausedAt = null;
 
     const savedSession = await this.matchServiceSessionRepository.save(session);
@@ -2476,14 +2579,15 @@ export class MatchServiceService {
         dto,
       );
       session.status = MatchServiceStatus.FINISHED;
-      session.finishedAt = new Date();
+      session.finishedAt = this.now();
 
-      if (knockoutLeg(match.bracketPosition).legs !== 2)
+      if (this.transactionManager || knockoutLeg(match.bracketPosition).legs !== 2)
         await this.matchRepository.save(match);
-      await this.tournamentLifecycleService.markInProgress(match.tournamentId);
+      await this.tournamentLifecycleService.markInProgress(match.tournamentId, this.transactionManager);
       await this.knockoutBracketService.advanceAutomatically(
         match.tournamentId,
         match.id,
+        this.transactionManager,
       );
       await this.playerTournamentStatsService.serveSuspensionsForMatch(
         match.id,
@@ -2519,7 +2623,7 @@ export class MatchServiceService {
     session.previousStatus = null;
     session.currentHalf = 2;
     session.elapsedSeconds = 0;
-    session.startedAt = new Date();
+    session.startedAt = this.now();
     session.pausedAt = null;
 
     const savedSession = await this.matchServiceSessionRepository.save(session);
@@ -2576,7 +2680,7 @@ export class MatchServiceService {
 
     if (
       session.status !== MatchServiceStatus.SECOND_HALF &&
-      session.status !== MatchServiceStatus.PAUSED
+      !(session.status === MatchServiceStatus.PAUSED && session.previousStatus === MatchServiceStatus.SECOND_HALF)
     ) {
       throw new BadRequestException('Завершить можно только второй тайм');
     }
@@ -2601,15 +2705,16 @@ export class MatchServiceService {
     session.previousStatus = null;
     session.startedAt = null;
     session.pausedAt = null;
-    session.finishedAt = new Date();
+    session.finishedAt = this.now();
 
     const savedSession = await this.matchServiceSessionRepository.save(session);
-    if (knockoutLeg(match.bracketPosition).legs !== 2)
+    if (this.transactionManager || knockoutLeg(match.bracketPosition).legs !== 2)
       await this.matchRepository.save(match);
-    await this.tournamentLifecycleService.markInProgress(match.tournamentId);
+    await this.tournamentLifecycleService.markInProgress(match.tournamentId, this.transactionManager);
     await this.knockoutBracketService.advanceAutomatically(
       match.tournamentId,
       match.id,
+      this.transactionManager,
     );
     await this.playerTournamentStatsService.serveSuspensionsForMatch(match.id);
 
@@ -2652,7 +2757,7 @@ export class MatchServiceService {
     session.previousStatus = session.status;
     session.status = MatchServiceStatus.EVENT_RECORDING;
     session.startedAt = null;
-    session.pausedAt = new Date();
+    session.pausedAt = this.now();
 
     const savedSession = await this.matchServiceSessionRepository.save(session);
 
@@ -2672,7 +2777,7 @@ export class MatchServiceService {
       return session.elapsedSeconds;
     }
 
-    const now = new Date();
+    const now = this.now();
 
     const diffSeconds = Math.floor(
       (now.getTime() - session.startedAt.getTime()) / 1000,
@@ -2799,7 +2904,7 @@ export class MatchServiceService {
 
       session.status = session.previousStatus;
       session.previousStatus = null;
-      session.startedAt = new Date();
+      session.startedAt = this.now();
       session.pausedAt = null;
     }
 
@@ -2844,7 +2949,7 @@ export class MatchServiceService {
 
     session.status = session.previousStatus;
     session.previousStatus = null;
-    session.startedAt = new Date();
+    session.startedAt = this.now();
     session.pausedAt = null;
 
     const savedSession = await this.matchServiceSessionRepository.save(session);
@@ -3338,7 +3443,7 @@ export class MatchServiceService {
     match: MatchEntity,
     authoritativeRegularTime: { home: number; away: number },
     dto: FinalizeMatchResultDto,
-    manager: EntityManager = this.dataSource.manager,
+    manager: EntityManager = this.transactionManager ?? this.dataSource.manager,
   ): Promise<void> {
     if (
       knockoutLeg(match.bracketPosition).legs === 2 &&
@@ -3410,7 +3515,7 @@ export class MatchServiceService {
       resolved.resolutionType === MatchResolutionType.TECHNICAL
         ? dto.technicalResultReason
         : undefined;
-    match.resultOfficialAt = new Date();
+    match.resultOfficialAt = this.now();
     match.status = MatchStatus.FINISHED;
   }
 

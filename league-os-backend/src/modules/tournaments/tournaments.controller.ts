@@ -94,6 +94,12 @@ export class TournamentsController {
     return this.lifecycleService.calendar(id);
   }
 
+  @Get('calendar-management')
+  @UseGuards(JwtAuthGuard)
+  managedCalendars(@Req() req: AuthenticatedTournamentRequest) {
+    return this.lifecycleService.managedCalendars(req.user);
+  }
+
   @Patch(':tournamentId/calendar-management/:matchId')
   @UseGuards(JwtAuthGuard, TournamentAccessGuard)
   @RequireTournamentAccess(TournamentAccessAction.EDIT)
@@ -101,8 +107,9 @@ export class TournamentsController {
     @Param('tournamentId', ParseIntPipe) id: number,
     @Param('matchId', ParseIntPipe) matchId: number,
     @Body() dto: UpdateCalendarMatchDto,
+    @Req() req: AuthenticatedTournamentRequest,
   ) {
-    return this.lifecycleService.updateCalendarMatch(id, matchId, dto);
+    return this.lifecycleService.updateCalendarMatch(id, matchId, dto, req.user.id);
   }
 
   @Get(':tournamentId/playoff-launch')

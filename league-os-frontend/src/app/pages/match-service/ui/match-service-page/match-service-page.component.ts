@@ -25,7 +25,7 @@ export class MatchServicePageComponent implements OnInit {
         this.router.navigate(['/dashboard']);
     }
 
-    startMatch(matchId: number): void {
-        this.router.navigate(['/dashboard/match-service', matchId, 'rosters']);
+    startMatch(matchId: number, status: string): void {
+        this.router.navigate(['/dashboard/match-service', matchId, status === 'scheduled' ? 'rosters' : 'protocol']);
     }
 }

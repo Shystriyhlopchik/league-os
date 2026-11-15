@@ -11,7 +11,8 @@
         </div>
 
         <time class="match-card__date">
-            {{ match().matchDateTime | date: "d MMMM, HH:mm" }}
+            @if (match().postponed) { Матч перенесён. Новая дата уточняется }
+            @else { {{ match().matchDateTime | date: "d MMMM, HH:mm" }} }
         </time>
     </header>
 

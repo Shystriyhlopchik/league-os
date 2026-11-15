@@ -5,6 +5,7 @@ export function mapProtocolMatchToScoreboardVm(
     match: MatchProtocolMatch,
 ): MatchScoreboardVm {
     return {
+        postponed: match.postponed,
         competitionLogoUrl:
             match.tournament.logoUrl ??
             match.tournament.competition.logoUrl,

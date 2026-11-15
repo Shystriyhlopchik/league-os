@@ -1,4 +1,4 @@
-import { EMPTY, finalize, tap } from 'rxjs';
+import { EMPTY, finalize, forkJoin, tap } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { MatchServiceApi } from '../../../entities/match-service/api/match-service.api';
@@ -20,11 +20,10 @@ export class MatchServiceStore {
         this.isLoading.set(true);
         this.error.set(null);
 
-        this.matchServiceApi
-            .getAvailableMatches()
+        forkJoin([this.matchServiceApi.getUnfinishedMatches(), this.matchServiceApi.getAvailableMatches()])
             .pipe(
-                tap((matches) => {
-                    this.matches.set(matches);
+                tap(([unfinished, scheduled]) => {
+                    this.matches.set([...unfinished, ...scheduled.filter(m => !unfinished.some(u => u.id === m.id))]);
                 }),
                 catchError(() => {
                     this.error.set('Не удалось загрузить список матчей');

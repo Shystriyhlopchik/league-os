@@ -1,0 +1,96 @@
+:host {
+    display: block;
+}
+.calendar-management {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 32px 20px 64px;
+    color: #f2f2e9;
+}
+h1,
+h2 {
+    font-family: var(--font-heading, "Oswald", sans-serif);
+}
+h1 {
+    font-size: clamp(32px, 5vw, 56px);
+}
+h2 {
+    font-size: 24px;
+    margin-top: 0;
+}
+a {
+    color: #d6ff3f;
+}
+p {
+    line-height: 1.6;
+}
+article,
+form {
+    border: 1px solid #455047;
+    padding: 20px;
+    margin-top: 20px;
+    background: #19211f;
+}
+label {
+    display: grid;
+    gap: 8px;
+    margin: 12px 0;
+    min-width: 0;
+}
+input,
+select,
+textarea {
+    box-sizing: border-box;
+    max-width: 100%;
+    background: #111816;
+    color: #f2f2e9;
+    border: 1px solid #687568;
+    padding: 12px;
+    font: inherit;
+    color-scheme: dark;
+}
+button {
+    background: #d6ff3f;
+    color: #111816;
+    border: 1px solid #d6ff3f;
+    padding: 12px 18px;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+}
+button:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+.filters,
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 16px;
+}
+.filters label {
+    flex: 1;
+}
+.error {
+    border-left: 3px solid #d6ff3f;
+    padding: 12px;
+}
+pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: 13px;
+}
+summary {
+    cursor: pointer;
+    padding: 16px 0;
+}
+@media (max-width: 600px) {
+    article,
+    form {
+        padding: 14px;
+    }
+    .actions button {
+        width: 100%;
+    }
+}

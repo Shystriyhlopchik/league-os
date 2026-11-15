@@ -11,6 +11,9 @@ import { MatchServiceStatus } from '../enums/match-service-status.enum';
 
 @Entity('match_service_sessions')
 export class MatchServiceSessionEntity extends BaseEntity {
+  @Column({ default: 0 })
+  revision: number;
+
   @Column({ name: 'match_id', unique: true })
   matchId: number;
 

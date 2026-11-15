@@ -25,7 +25,7 @@ export class MatchScheduleRowComponent {
         ['finished', 'live'].includes(this.match().status),
     );
     readonly statusLabel = computed(
-        () =>
+        () => this.match().postponed ? 'Новая дата уточняется' :
             ({
                 scheduled: 'Начало матча',
                 live: 'Идёт матч',

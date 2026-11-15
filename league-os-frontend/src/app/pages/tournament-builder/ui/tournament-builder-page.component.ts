@@ -562,6 +562,10 @@ export class TournamentBuilderPageComponent implements OnInit {
         venueId: number,
     ): Promise<void> {
         if (this.operation() || !this.draft().tournamentId) return;
+        if (this.store.structureLocked()) {
+            await this.router.navigate(['/dashboard/calendar'], { queryParams: { tournamentId: this.draft().tournamentId } });
+            return;
+        }
         this.operation.set('calendar');
         try {
             await firstValueFrom(

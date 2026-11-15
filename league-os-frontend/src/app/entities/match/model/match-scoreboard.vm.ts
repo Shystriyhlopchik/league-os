@@ -1,6 +1,7 @@
 import { MatchStatus } from './match.types';
 
 export interface MatchScoreboardVm {
+    postponed?: boolean;
     competitionLogoUrl?: string | null;
     tournamentName: string;
 

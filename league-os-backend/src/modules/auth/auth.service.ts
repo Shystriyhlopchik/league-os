@@ -9,7 +9,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
-import { Repository } from 'typeorm';
+import { Raw, Repository } from 'typeorm';
 
 import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
@@ -50,9 +50,9 @@ export class AuthService {
     const email = dto.email?.trim().toLowerCase();
 
     const existingAuthAccount = await this.findLocalAuthAccount(login);
-    const existingUsername = await this.usersService.findByUsername(username);
+    const existingUsername = await this.usersService.findByEmailOrUsername(username);
     const existingEmail = email
-      ? await this.usersService.findByEmail(email)
+      ? await this.usersService.findByEmailOrUsername(email)
       : null;
 
     if (existingAuthAccount || existingUsername) {
@@ -73,7 +73,16 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
-    const user = await this.usersService.create({
+    const user = await this.authAccountsRepository.manager.transaction(async (manager) => {
+      // Serialize cross-field username/email claims too: separate unique
+      // indexes alone cannot stop concurrent username-vs-email collisions.
+      await manager.query('SELECT pg_advisory_xact_lock(78202, 1)');
+      const identities = [login, email].filter((v): v is string => !!v);
+      const conflicts = await manager.query(`SELECT id FROM users
+        WHERE lower(btrim(username)) = ANY($1::text[]) OR lower(btrim(email)) = ANY($1::text[])
+        UNION ALL SELECT user_id FROM user_auth_accounts WHERE provider='local' AND lower(btrim(login)) = ANY($1::text[]) LIMIT 1`, [identities]);
+      if (conflicts.length) throw new ConflictException('Логин или email уже используется');
+      const created = await manager.getRepository(UserEntity).save({
       email,
       username,
       firstName: dto.firstName.trim(),
@@ -82,16 +91,15 @@ export class AuthService {
       // Kept for backward compatibility with existing local users.
       passwordHash,
       roles: [userRole],
-    });
-
-    await this.authAccountsRepository.save(
-      this.authAccountsRepository.create({
-        userId: user.id,
+      });
+      await manager.getRepository(UserAuthAccountEntity).save({
+        userId: created.id,
         provider: AuthProvider.Local,
         login,
         passwordHash,
-      }),
-    );
+      });
+      return created;
+    });
 
     const createdUser = await this.usersService.findById(user.id);
 
@@ -125,7 +133,7 @@ export class AuthService {
 
     const user = await this.usersService.findByEmailOrUsername(dto.login);
 
-    if (!user) {
+    if (!user?.isActive) {
       throw new UnauthorizedException('Неверный логин или пароль');
     }
 
@@ -284,18 +292,21 @@ export class AuthService {
     };
   }
 
-  private findLocalAuthAccount(login: string) {
-    return this.authAccountsRepository.findOne({
+  private async findLocalAuthAccount(login: string) {
+    const accounts = await this.authAccountsRepository.find({
       where: {
         provider: AuthProvider.Local,
-        login,
+        login: Raw((column) => `LOWER(BTRIM(${column})) = :login`, { login: this.normalizeLogin(login) }),
       },
       relations: {
         user: {
           roles: true,
         },
       },
+      take: 2,
     });
+    if (accounts.length > 1) throw new ConflictException('Неоднозначный логин. Обратитесь к администратору');
+    return accounts[0] ?? null;
   }
 
   private async findPlayerLinkCandidates(user: UserEntity) {

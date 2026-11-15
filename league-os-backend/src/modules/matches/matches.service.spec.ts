@@ -64,7 +64,6 @@ describe('MatchesService', () => {
             status: Not(MatchStatus.CANCELLED),
             homeTeamId: Not(IsNull()),
             awayTeamId: Not(IsNull()),
-            matchDatetime: Not(IsNull()),
             tournament: {
               isActive: true,
               lifecycleStatus: In([
@@ -123,6 +122,15 @@ describe('MatchesService', () => {
       expect(
         (await service.findActiveCommunityMatches()).map((m) => m.id),
       ).toEqual([1]);
+    });
+
+    it('retains explicitly postponed fixtures without a fake date', async () => {
+      const postponed = { ...match(90, 2, 4, MatchStatus.SCHEDULED), matchDatetime: null, postponedAt: new Date() } as never;
+      const { service } = createService([postponed]);
+      const [result] = await service.findActiveCommunityMatches();
+      expect(result.postponed).toBe(true);
+      expect(result.matchDateTime).toBe('');
+      expect(result.id).toBe(90);
     });
 
     it('retains completed tournaments in the separate season/archive endpoint', async () => {

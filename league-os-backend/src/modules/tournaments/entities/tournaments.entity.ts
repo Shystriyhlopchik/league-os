@@ -24,6 +24,9 @@ import type { RegistrationPolicy } from '../../registrations/entities/registrati
 @Index('IDX_tournaments_owner_user', ['ownerUserId'])
 @Index('IDX_tournaments_active_rule_version', ['activeRuleVersionId'])
 export class TournamentEntity extends BaseEntity {
+  @Column({ name: 'applications_locked_at', type: 'timestamptz', nullable: true })
+  applicationsLockedAt: Date | null;
+
   @Column({ name: 'registration_required', default: false })
   registrationRequired: boolean;
 
