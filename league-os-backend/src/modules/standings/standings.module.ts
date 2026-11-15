@@ -17,12 +17,20 @@ import { QualificationSnapshotEntity } from '../tournament-qualifications/entiti
 import { QualificationSnapshotEntryEntity } from '../tournament-qualifications/entities/qualification-snapshot-entry.entity';
 import { KnockoutBracketSnapshotEntity } from '../tournament-knockout-brackets/entities/knockout-bracket-snapshot.entity';
 import { KnockoutBracketPlanEntity } from '../tournament-knockout-brackets/entities/knockout-bracket-plan.entity';
+import { MatchServiceSessionEntity } from '../match-service/entities/match-service-session.entity';
+import { TournamentAccessGuard } from '../tournaments/access/tournament-access.guard';
+import { TournamentAccessService } from '../tournaments/access/tournament-access.service';
+import { TournamentMemberEntity } from '../tournament-members/entities/tournament-member.entity';
+import { CommunityMemberEntity } from '../communities/entities/community-member.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       StandingEntity,
       MatchEntity,
+      MatchServiceSessionEntity,
+      TournamentMemberEntity,
+      CommunityMemberEntity,
       MatchEventEntity,
       TournamentStageEntity,
       TournamentGroupEntity,
@@ -37,7 +45,7 @@ import { KnockoutBracketPlanEntity } from '../tournament-knockout-brackets/entit
     ]),
   ],
   controllers: [StandingsController],
-  providers: [StandingsService, RuleDrivenStandingsEngine],
+  providers: [StandingsService, RuleDrivenStandingsEngine, TournamentAccessService, TournamentAccessGuard],
   exports: [StandingsService],
 })
 export class StandingsModule {}

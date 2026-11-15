@@ -11,6 +11,7 @@ import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
 
 import { MatchEntity } from '../matches/entities/match.entity';
 import { MatchStatus } from '../matches/enums/match-status.enum';
+import { signedMatchResults } from '../matches/helper/signed-match-results';
 import { StandingEntity } from '../standings/entities/standing.entity';
 import { TournamentGroupEntity } from '../tournament-groups/entities/tournament-group.entity';
 import { TournamentRuleVersionEntity } from '../tournament-rules/entities/tournament-rule-version.entity';
@@ -507,7 +508,7 @@ export class QualificationService {
     }
     const comparisonStandings = normalizeCrossGroupStandings(
       standings,
-      matchRows.map((match) => ({
+      (await signedMatchResults(manager, matchRows)).map((match) => ({
         id: match.id,
         groupId: match.groupId,
         homeTeamId: match.homeTeamId,

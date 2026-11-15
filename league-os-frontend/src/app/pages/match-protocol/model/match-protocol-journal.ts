@@ -8,6 +8,8 @@ export interface ProtocolJournal {
     key: string;
     confirmed: MatchProtocolData;
     pending: MatchCommand[];
+    /** Confirmed online reset, retained verbatim until the server acknowledges it. */
+    resetCommand?: MatchCommand;
 }
 
 @Injectable({ providedIn: 'root' })

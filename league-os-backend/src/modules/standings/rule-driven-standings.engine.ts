@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 
 import { MatchStatus } from '../matches/enums/match-status.enum';
+import { MatchResolutionType } from '../matches/enums/match-resolution-type.enum';
 import type {
   HeadToHeadMetricV1,
   TieBreakerRuleV1,
@@ -118,6 +119,9 @@ export class RuleDrivenStandingsEngine {
     const home = rows.get(match.homeTeamId);
     const away = rows.get(match.awayTeamId);
     if (!home || !away) return;
+    const technical = [MatchResolutionType.TECHNICAL, MatchResolutionType.WALKOVER].includes(match.resolutionType!);
+    const winPoints = technical ? scoring.technicalWin ?? scoring.win : scoring.win;
+    const lossPoints = technical ? scoring.technicalLoss ?? scoring.loss : scoring.loss;
 
     home.played += 1;
     away.played += 1;
@@ -131,13 +135,13 @@ export class RuleDrivenStandingsEngine {
     if (match.homeScore > match.awayScore) {
       home.wins += 1;
       away.losses += 1;
-      home.points += scoring.win;
-      away.points += scoring.loss;
+      home.points += winPoints;
+      away.points += lossPoints;
     } else if (match.homeScore < match.awayScore) {
       away.wins += 1;
       home.losses += 1;
-      away.points += scoring.win;
-      home.points += scoring.loss;
+      away.points += winPoints;
+      home.points += lossPoints;
     } else {
       home.draws += 1;
       away.draws += 1;

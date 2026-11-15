@@ -8,11 +8,12 @@ import {
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
 import { InfoCardComponent } from '../../../../shared/ui/info-card/info-card.component';
 import { MatchProtocolStore } from '../../model/match-protocol.store';
+import { elapsedAt, validElapsedSeconds } from '../../model/match-command-state';
 import {
     MatchEventType,
     FinalizePlayedMatch,
@@ -54,7 +55,7 @@ interface OwnGoalDraft {
 
 @Component({
     selector: 'app-match-protocol-page',
-    imports: [PageHeaderComponent, InfoCardComponent, DatePipe, FormsModule],
+    imports: [PageHeaderComponent, InfoCardComponent, DatePipe, FormsModule, RouterLink],
     templateUrl: './match-protocol-page.component.html',
     styleUrl: './match-protocol-page.component.scss',
     providers: [MatchProtocolStore],
@@ -91,6 +92,23 @@ export class MatchProtocolPageComponent {
     awayKicks = 5;
     recoveryReason = '';
     recoverySeconds = 0;
+    resetReason = '';
+    resetAcknowledged = false;
+
+    async resetService(): Promise<void> {
+        await this.store.resetService(this.resetReason, this.resetAcknowledged);
+        if (this.store.notice()) {
+            this.isGoalModalOpen.set(false);
+            this.isCardModalOpen.set(false);
+            this.isOwnGoalModalOpen.set(false);
+            this.isRedBallModalOpen.set(false);
+            this.goalDraft.set(null);
+            this.cardDraft.set(null);
+            this.ownGoalDraft.set(null);
+            this.resetAcknowledged = false;
+            requestAnimationFrame(() => document.getElementById('match-reset-result')?.focus());
+        }
+    }
 
     get aggregateHome(): number {
         return (
@@ -136,27 +154,17 @@ export class MatchProtocolPageComponent {
     }
 
     readonly displaySeconds = computed(() => {
-        const session = this.store.session();
-
-        if (!session) {
-            return 0;
-        }
-
-        const isRunning =
-            session.status === 'first_half' || session.status === 'second_half';
-
-        if (!isRunning || !session.startedAt) {
-            return session.elapsedSeconds;
-        }
-
-        const startedAtMs = new Date(session.startedAt).getTime();
-        const diffSeconds = Math.floor((this.now() - startedAtMs) / 1000);
-
-        return session.elapsedSeconds + Math.max(diffSeconds, 0);
+        const data = this.store.data();
+        return data ? elapsedAt(data, this.now()) : 0;
     });
+
+    readonly clockRecoveryRequired = computed(() =>
+        this.store.match()?.status === 'live' && !validElapsedSeconds(this.displaySeconds()),
+    );
 
     readonly displayTime = computed(() => {
         const totalSeconds = this.displaySeconds();
+        if (!validElapsedSeconds(totalSeconds)) return '—:—';
         const minutes = Math.floor(totalSeconds / 60);
         const seconds = totalSeconds % 60;
 

@@ -32,6 +32,7 @@ export interface ManualMatchEvent {
 }
 
 export interface CreateManualMatchEvent {
+    clientEventId?: string;
     teamId: number;
     eventType: ManualMatchEventType;
     minute: number;

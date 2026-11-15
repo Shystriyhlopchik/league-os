@@ -13,6 +13,10 @@ import { FeatureFlagGuard } from '../../common/feature-flags/feature-flag.guard'
 import { RequireFeature } from '../../common/feature-flags/require-feature.decorator';
 import { RecalculateStageStandingsDto } from './dto/recalculate-stage-standings.dto';
 import { StandingsService } from './standings.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { TournamentAccessGuard } from '../tournaments/access/tournament-access.guard';
+import { RequireTournamentAccess } from '../tournaments/access/tournament-access.decorator';
+import { TournamentAccessAction } from '../tournaments/access/tournament-access-action.enum';
 
 @Controller('standings')
 export class StandingsController {
@@ -41,6 +45,8 @@ export class StandingsController {
   }
 
   @Post('tournaments/:tournamentId/stages/:stageId/groups/:groupId/recalculate')
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
   recalculateGroupStandings(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
     @Param('stageId', ParseIntPipe) stageId: number,
@@ -64,6 +70,8 @@ export class StandingsController {
   }
 
   @Post('tournaments/:tournamentId/stages/:stageId/recalculate')
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
   recalculateStageStandings(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
     @Param('stageId', ParseIntPipe) stageId: number,
@@ -85,6 +93,8 @@ export class StandingsController {
   }
 
   @Post(':tournamentId/recalculate')
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
   recalculateTournamentStandings(
     @Param('tournamentId', ParseIntPipe) tournamentId: number,
   ) {

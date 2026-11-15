@@ -67,7 +67,7 @@ export class MatchServiceController {
   }
 
   @Post('finished-matches/:matchId/events')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, MatchServiceAccessGuard)
   @Roles(RoleCode.Admin, RoleCode.SuperAdmin)
   createFinishedMatchEvent(
     @Param('matchId', ParseIntPipe) matchId: number,
@@ -77,7 +77,7 @@ export class MatchServiceController {
   }
 
   @Delete('finished-matches/:matchId/events/:eventId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, MatchServiceAccessGuard)
   @Roles(RoleCode.Admin, RoleCode.SuperAdmin)
   cancelFinishedMatchEvent(
     @Param('matchId', ParseIntPipe) matchId: number,
@@ -118,7 +118,7 @@ export class MatchServiceController {
   }
 
   @Post('matches/:matchId/manual-events')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(MatchServiceAccessGuard)
   createManualEvent(
     @Param('matchId', ParseIntPipe) matchId: number,
     @Body() dto: CreateManualMatchEventDto,
@@ -127,7 +127,7 @@ export class MatchServiceController {
   }
 
   @Delete('matches/:matchId/manual-events/:eventId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(MatchServiceAccessGuard)
   cancelManualEvent(
     @Param('matchId', ParseIntPipe) matchId: number,
     @Param('eventId', ParseIntPipe) eventId: number,
@@ -136,7 +136,7 @@ export class MatchServiceController {
   }
 
   @Post('matches/:matchId/manual-protocol/sign')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(MatchServiceAccessGuard)
   signManualProtocol(
     @Param('matchId', ParseIntPipe) matchId: number,
     @Body() dto: FinalizeMatchResultDto,

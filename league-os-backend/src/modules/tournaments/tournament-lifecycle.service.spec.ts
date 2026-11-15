@@ -52,6 +52,7 @@ describe('TournamentLifecycleService', () => {
   const txTournaments = repository<TournamentEntity>();
   const txVersions = repository<TournamentRuleVersionEntity>();
   const manager = {
+    query: jest.fn(),
     getRepository: jest.fn((entity) => {
       if (entity === TournamentEntity) return txTournaments;
       if (entity === MatchEntity) return matches;

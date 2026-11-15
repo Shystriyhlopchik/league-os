@@ -131,7 +131,7 @@ export interface MatchProtocolEvent {
     isCancelled: boolean;
 }
 
-export type MatchCommandAction = 'start' | 'pause' | 'resume' | 'finish-half' | 'start-second-half' | 'finish' | 'start-recording' | 'cancel-recording' | 'event' | 'cancel-event' | 'red-ball' | 'sign' | 'recover';
+export type MatchCommandAction = 'start' | 'pause' | 'resume' | 'finish-half' | 'start-second-half' | 'finish' | 'start-recording' | 'cancel-recording' | 'event' | 'cancel-event' | 'red-ball' | 'sign' | 'recover' | 'reset';
 export interface MatchCommand {
     id: string;
     action: MatchCommandAction;

@@ -19,7 +19,7 @@ import {
     MatchProtocolData,
     StartEventRecordingResponse,
 } from '../../../entities/match-service/model/match-service.types';
-import { elapsedAt, projectCommand } from './match-command-state';
+import { CLOCK_RECOVERY_MESSAGE, elapsedAt, projectCommand, validElapsedSeconds } from './match-command-state';
 import {
     MatchProtocolJournal,
     ProtocolJournal,
@@ -41,9 +41,14 @@ export class MatchProtocolStore {
     readonly data = signal<MatchProtocolData | null>(null);
     readonly isLoading = signal(false);
     private readonly saving = signal(false);
+    readonly isResetting = signal(false);
+    readonly resetPending = signal(false);
+    readonly notice = signal<string | null>(null);
     readonly isActionLoading = computed(
         () =>
             this.saving() ||
+            this.isResetting() ||
+            this.resetPending() ||
             this.isSyncing() ||
             this.conflict() ||
             this.locked(),
@@ -86,6 +91,11 @@ export class MatchProtocolStore {
             this.identity.canManageCommunityTournaments() &&
             this.match()?.status === 'live',
     );
+    readonly canResetService = computed(() =>
+        this.identity.canManageCommunityTournaments() &&
+        (this.match()?.status === 'live' ||
+            (!!this.data() && this.journal?.confirmed.match.status === 'live') || this.resetPending()),
+    );
 
     constructor() {
         const connected = () => {
@@ -125,6 +135,7 @@ export class MatchProtocolStore {
             this.journal.pending.reduce(projectCommand, this.journal.confirmed),
         );
         this.pendingCount.set(this.journal.pending.length);
+        this.resetPending.set(!!this.journal.resetCommand);
     }
 
     async load(matchId: number): Promise<void> {
@@ -141,7 +152,7 @@ export class MatchProtocolStore {
             await this.exclusive(async () => {
                 this.journal = await this.storage.read(this.key(matchId));
                 if (this.journal) this.render();
-                if (!this.journal?.pending.length && navigator.onLine) {
+                if (!this.journal?.pending.length && !this.journal?.resetCommand && navigator.onLine) {
                     const confirmed = await firstValueFrom(
                         this.api.getSession(matchId).pipe(timeout(15000)),
                     );
@@ -160,7 +171,9 @@ export class MatchProtocolStore {
                     throw new Error(
                         'Нет сохранённого протокола. Откройте матч при работающем интернете',
                     );
-                this.error.set(null);
+                this.error.set(this.journal?.resetCommand
+                    ? 'Сброс обслуживания ожидает подтверждения сервера. Повторите сброс: будет отправлен тот же запрос без повторного выполнения.'
+                    : null);
             });
         } catch (e: any) {
             this.error.set(
@@ -230,6 +243,8 @@ export class MatchProtocolStore {
         await this.exclusive(async () => {
             const saved = await this.storage.read(this.journal!.key);
             if (!saved) throw new Error('Журнал недоступен');
+            if (saved.resetCommand)
+                throw new Error('Сначала дождитесь подтверждения сброса обслуживания');
             if (JSON.stringify(saved) !== JSON.stringify(this.journal)) {
                 this.journal = saved;
                 this.render();
@@ -238,14 +253,19 @@ export class MatchProtocolStore {
                 );
             }
             const current = this.data()!;
+            // Never persist an invalid command: it would block the entire journal.
+            // A days-old clock needs an explicit organizer correction, not clamping.
+            const elapsedSeconds = payload.elapsedSeconds ??
+                (['start', 'start-second-half'].includes(action) ? 0 : elapsedAt(current, Date.now()));
+            if (!validElapsedSeconds(elapsedSeconds))
+                throw new Error(CLOCK_RECOVERY_MESSAGE);
             const command: MatchCommand = {
                 ...payload,
                 id: crypto.randomUUID(),
                 action,
                 expectedRevision: current.session.revision ?? 0,
                 occurredAt: new Date().toISOString(),
-                elapsedSeconds:
-                    payload.elapsedSeconds ?? elapsedAt(current, Date.now()),
+                elapsedSeconds,
             };
             const next = { ...saved, pending: [...saved.pending, command] };
             // If IndexedDB fails, do not pretend the action has been saved.
@@ -262,6 +282,8 @@ export class MatchProtocolStore {
     async synchronize(): Promise<void> {
         if (
             !navigator.onLine ||
+            this.isResetting() ||
+            this.journal?.resetCommand ||
             this.conflict() ||
             this.isLoading() ||
             this.busy ||
@@ -273,8 +295,19 @@ export class MatchProtocolStore {
             try {
                 this.journal = await this.storage.read(this.journal!.key);
                 this.render();
+                if (this.journal?.resetCommand) {
+                    this.error.set('Сброс обслуживания ожидает подтверждения сервера. Повторите сброс.');
+                    return;
+                }
                 while (this.journal?.pending.length && !this.destroyed) {
                     const command = this.journal.pending[0];
+                    // Old clients may already have queued an over-limit command.
+                    // Retain it verbatim for export/reconciliation; do not retry it forever.
+                    if (!validElapsedSeconds(command.elapsedSeconds)) {
+                        this.conflict.set(true);
+                        this.error.set(`${CLOCK_RECOVERY_MESSAGE} Локальная очередь сохранена. Скачайте резервный журнал и сверьте его с версией сервера перед восстановлением.`);
+                        return;
+                    }
                     const response = await firstValueFrom(
                         this.api
                             .command(this.currentMatchId!, command)
@@ -326,6 +359,64 @@ export class MatchProtocolStore {
         } catch (e: any) {
             this.error.set(e?.error?.message ?? 'Сервер недоступен');
         }
+    }
+
+    async resetService(reason: string, acknowledged: boolean): Promise<void> {
+        if (!this.canResetService()) {
+            this.error.set('Сброс обслуживания доступен организатору начатого матча');
+            return;
+        }
+        if (!acknowledged || !reason.trim() || reason.trim().length > 1000) {
+            this.error.set('Укажите причину и подтвердите сброс пустого обслуживания');
+            return;
+        }
+        if (!navigator.onLine) {
+            this.error.set('Сброс требует связи с сервером. Локальный журнал не изменён');
+            return;
+        }
+        if (this.busy || this.isResetting() || !this.journal) return;
+        this.isResetting.set(true);
+        this.notice.set(null);
+        await this.exclusive(async () => {
+            try {
+                const saved = await this.storage.read(this.journal!.key);
+                if (!saved) throw new Error('Журнал недоступен');
+                this.journal = saved;
+                this.render();
+                let command = saved.resetCommand;
+                if (!command) {
+                    const server = await firstValueFrom(this.api.getSession(this.currentMatchId!).pipe(timeout(15000)));
+                    // Download before abandoning ANY pending actions. The queue
+                    // itself remains intact until an acknowledged reset is saved.
+                    this.exportJournal();
+                    command = { id: crypto.randomUUID(), action: 'reset',
+                        expectedRevision: server.session.revision ?? 0,
+                        elapsedSeconds: 0, occurredAt: new Date().toISOString(), reason: reason.trim() };
+                    const next = { ...saved, resetCommand: command };
+                    await this.storage.save(next);
+                    this.journal = next;
+                    this.render();
+                }
+                const response = await firstValueFrom(this.api.command(this.currentMatchId!, command).pipe(timeout(15000)));
+                const next: ProtocolJournal = { key: saved.key, confirmed: response.data, pending: [] };
+                await this.storage.save(next);
+                this.journal = next;
+                this.render();
+                this.conflict.set(false);
+                this.serverComparison.set(null);
+                this.error.set(null);
+                this.notice.set('Обслуживание сброшено. Таймер остановлен, матч возвращён в состояние «не начат». Составы и расписание сохранены. Теперь можно заполнить протокол вручную.');
+            } catch (e: any) {
+                this.conflict.set(true);
+                const message = Array.isArray(e?.error?.message) ? e.error.message.join('. ') : e?.error?.message ?? e.message;
+                this.error.set(
+                    e.status === 0 || e.name === 'TimeoutError' || e.status >= 500
+                        ? 'Нет подтверждения сброса от сервера. Журнал сохранён. После восстановления связи повторите сброс — запрос не выполнится дважды.'
+                        : message ?? 'Не удалось сбросить обслуживание. Журнал сохранён',
+                );
+            }
+        });
+        this.isResetting.set(false);
     }
 
     exportJournal(): void {
@@ -432,7 +523,22 @@ export class MatchProtocolStore {
         void this.enqueue('sign');
     }
     recover(reason: string, elapsedSeconds = 0): void {
-        if (reason.trim())
-            void this.enqueue('recover', { reason, elapsedSeconds });
+        if (!this.canRecover()) {
+            this.error.set('Восстановление времени доступно организатору для начатого матча');
+            return;
+        }
+        if (!reason.trim()) {
+            this.error.set('Укажите причину восстановления');
+            return;
+        }
+        if (!validElapsedSeconds(elapsedSeconds)) {
+            this.error.set('Укажите фактически сыгранное время во втором тайме: целое число секунд от 0 до 86400. Например, 20 минут — 1200 секунд.');
+            return;
+        }
+        if (this.conflict() || this.pendingCount()) {
+            this.error.set('Перед восстановлением сохраните резервный журнал и сверьте неотправленные действия с сервером. Очередь не удалена.');
+            return;
+        }
+        void this.enqueue('recover', { reason: reason.trim(), elapsedSeconds });
     }
 }

@@ -40,6 +40,14 @@ import { TournamentLifecycleStatus } from '../tournaments/enums/tournament-lifec
 import { TournamentApplicationsService } from '../registrations/tournament-applications.service';
 import { MatchRoundType } from '../matches/enums/match-round-type.enum';
 import { MatchEventType } from '../match-events/enums/match-event-type.enum';
+import { StandingsService } from '../standings/standings.service';
+import { StandingEntity } from '../standings/entities/standing.entity';
+import { RuleDrivenStandingsEngine } from '../standings/rule-driven-standings.engine';
+import { QualificationSnapshotEntity } from '../tournament-qualifications/entities/qualification-snapshot.entity';
+import { TournamentStageType } from '../tournament-stages/enums/tournament-stage-type.enum';
+import { TournamentRuleVersionStatus } from '../tournament-rules/enums/tournament-rule-version-status.enum';
+import { MatchResolutionType } from '../matches/enums/match-resolution-type.enum';
+import { createYardLeagueRules } from '../tournaments/validation/yard-league-rules.fixture';
 
 const url = process.env.MATCH_CONTINUITY_DB_URL;
 const integration = url ? describe : describe.skip;
@@ -127,6 +135,10 @@ integration('Match continuity on disposable PostgreSQL', () => {
       db,
       {} as never,
       {} as never,
+      new StandingsService(r(StandingEntity), r(MatchEntity), r(TournamentStageEntity),
+        r(TournamentGroupEntity), r(TournamentStageParticipantEntity), r(TournamentTeamEntity),
+        r(TournamentEntity), r(TournamentRuleVersionEntity), r(QualificationSnapshotEntity),
+        r(KnockoutBracketSnapshotEntity), db, new RuleDrivenStandingsEngine()),
     );
     actor = await r(UserEntity).save(
       r(UserEntity).create({
@@ -219,6 +231,251 @@ integration('Match continuity on disposable PostgreSQL', () => {
     occurredAt: new Date(Date.now() - 10000).toISOString(),
     elapsedSeconds: 30,
     ...extra,
+  });
+
+  const tableService = () => (service as any).standingsService as StandingsService;
+  const groupFixture = async () => {
+    const t = await db.getRepository(TournamentEntity).save({ name: 'Auto standings', slug: randomUUID(),
+      seasonId: tournament.seasonId, lifecycleStatus: TournamentLifecycleStatus.IN_PROGRESS });
+    const stage = await db.getRepository(TournamentStageEntity).save({ tournamentId: t.id, key: 'groups',
+      name: 'Группы', type: TournamentStageType.GROUP_STAGE, order: 1 });
+    const group = await db.getRepository(TournamentGroupEntity).save({ stageId: stage.id, key: 'a', name: 'A', order: 1 });
+    const config = createYardLeagueRules();
+    const version = await db.getRepository(TournamentRuleVersionEntity).save({ tournamentId: t.id,
+      version: 1, schemaVersion: 1, status: TournamentRuleVersionStatus.PUBLISHED, config });
+    await db.getRepository(TournamentEntity).update(t.id, { activeRuleVersionId: version.id });
+    for (const [index, team] of [home, away].entries()) {
+      const tt = await db.getRepository(TournamentTeamEntity).save({ tournamentId: t.id, teamId: team.id });
+      await db.getRepository(TournamentStageParticipantEntity).save({ stageId: stage.id, groupId: group.id,
+        tournamentTeamId: tt.id, seedNumber: index + 1 });
+    }
+    Object.assign(match, { tournamentId: t.id, stageId: stage.id, groupId: group.id,
+      effectiveRuleVersionId: version.id, roundType: MatchRoundType.GROUP_ROUND, roundNumber: 1 });
+    await db.getRepository(MatchEntity).save(match);
+    const rows = () => db.getRepository(StandingEntity).find({ where: { stageId: stage.id, groupId: group.id }, order: { position: 'ASC' } });
+    return { tournament: t, stage, group, version, rows };
+  };
+  const finishOnline = async (id = match.id, goal = true) => {
+    let revision = 0;
+    await service.command(id, command('start', revision++), actor.id);
+    if (goal) await service.command(id, command('event', revision++, { event: {
+      eventType: MatchEventType.GOAL, teamId: home.id, playerId: player.id, half: 1, second: 30, minute: 1,
+    } }), actor.id);
+    await service.command(id, command('finish-half', revision++), actor.id);
+    await service.command(id, command('start-second-half', revision++), actor.id);
+    await service.command(id, command('finish', revision++), actor.id);
+    return revision;
+  };
+
+  it('updates group standings only after online signature; duplicate signatures do not double points', async () => {
+    const context = await groupFixture();
+    const revision = await finishOnline();
+    expect(await context.rows()).toHaveLength(0);
+    await tableService().recalculateByTournament(context.tournament.id);
+    expect((await context.rows()).every((r) => r.played === 0 && r.points === 0)).toBe(true);
+    const signed = command('sign', revision);
+    await service.command(match.id, signed, actor.id);
+    expect(await context.rows()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ teamId: home.id, played: 1, wins: 1, points: 3, goalsFor: 1 }),
+      expect.objectContaining({ teamId: away.id, played: 1, losses: 1, points: 0 }),
+    ]));
+    await service.command(match.id, signed, actor.id);
+    expect((await context.rows()).find((r) => r.teamId === home.id)?.points).toBe(3);
+  });
+
+  it('rebuilds points after a goal correction and cancellation, keeping the signed session score in sync', async () => {
+    const context = await groupFixture();
+    await service.command(match.id, command('sign', await finishOnline()), actor.id);
+    const added = await service.createFinishedMatchEvent(match.id, { eventType: MatchEventType.GOAL,
+      teamId: away.id, playerId: player.id, minute: 10, half: 2 });
+    expect((await context.rows()).every((r) => r.points === 1 && r.draws === 1 && r.played === 1)).toBe(true);
+    expect((await service.getSession(match.id)).session.awayScore).toBe(1);
+    await service.cancelFinishedMatchEvent(match.id, added.id);
+    expect((await context.rows()).find((r) => r.teamId === home.id)?.points).toBe(3);
+    expect((await service.getSession(match.id)).session.awayScore).toBe(0);
+    await expect(service.cancelFinishedMatchEvent(match.id, added.id)).rejects.toThrow();
+    expect((await context.rows()).find((r) => r.teamId === home.id)?.played).toBe(1);
+  });
+
+  it('recalculates disciplinary tie-breaks when a card is added or cancelled', async () => {
+    const context = await groupFixture();
+    await service.command(match.id, command('sign', await finishOnline()), actor.id);
+    const card = await service.createFinishedMatchEvent(match.id, { eventType: MatchEventType.YELLOW_CARD,
+      teamId: home.id, playerId: player.id, minute: 10, half: 2 });
+    expect((await context.rows()).find((r) => r.teamId === home.id)?.disciplinaryScore).toBeGreaterThan(0);
+    await service.cancelFinishedMatchEvent(match.id, card.id);
+    expect((await context.rows()).find((r) => r.teamId === home.id)?.disciplinaryScore).toBe(0);
+    expect((await db.getRepository(PlayerTournamentStatEntity).findOneByOrFail({ tournamentId: context.tournament.id,
+      teamId: home.id, playerId: player.id })).yellowCards).toBe(0);
+  });
+
+  it('rolls back the signature and receipt if standings calculation fails, then safely retries', async () => {
+    const context = await groupFixture();
+    const revision = await finishOnline();
+    const signed = command('sign', revision);
+    const failure = jest.spyOn(tableService(), 'refreshForMatch').mockRejectedValueOnce(new Error('Injected table failure'));
+    await expect(service.command(match.id, signed, actor.id)).rejects.toThrow('Injected table failure');
+    failure.mockRestore();
+    const session = (await service.getSession(match.id)).session;
+    expect(session.status).toBe('finished');
+    expect(session.revision).toBe(revision);
+    expect(await db.getRepository(MatchEventEntity).countBy({ matchId: match.id, eventType: MatchEventType.PROTOCOL_SIGNED })).toBe(0);
+    expect(await db.query('SELECT id FROM match_service_commands WHERE id=$1', [signed.id])).toHaveLength(0);
+    expect(await context.rows()).toHaveLength(0);
+    await service.command(match.id, signed, actor.id);
+    expect((await context.rows()).find((r) => r.teamId === home.id)?.points).toBe(3);
+  });
+
+  it('rolls back a correction and its player discipline when table recalculation fails', async () => {
+    const context = await groupFixture();
+    await service.command(match.id, command('sign', await finishOnline()), actor.id);
+    const failure = jest.spyOn(tableService(), 'refreshForMatch').mockRejectedValueOnce(new Error('Injected table failure'));
+    await expect(service.createFinishedMatchEvent(match.id, { eventType: MatchEventType.YELLOW_CARD,
+      teamId: home.id, playerId: player.id, minute: 10, half: 2 })).rejects.toThrow('Injected table failure');
+    failure.mockRestore();
+    expect(await db.getRepository(MatchEventEntity).countBy({ matchId: match.id, eventType: MatchEventType.YELLOW_CARD })).toBe(0);
+    const stat = await db.getRepository(PlayerTournamentStatEntity).findOneBy({ tournamentId: context.tournament.id, teamId: home.id, playerId: player.id });
+    expect(stat?.yellowCards ?? 0).toBe(0);
+    expect((await context.rows()).find((r) => r.teamId === home.id)?.disciplinaryScore).toBe(0);
+  });
+
+  it('publishes a manual technical result immediately and prevents ordinary score corrections to it', async () => {
+    const context = await groupFixture();
+    await service.getSession(match.id); // An unused or reset online session must not hide a manual result.
+    await service.signManualProtocol(match.id, { resolutionType: MatchResolutionType.TECHNICAL,
+      winnerTeamId: home.id, technicalResultReason: 'Неявка соперника' });
+    expect((await context.rows()).find((r) => r.teamId === home.id)).toMatchObject({ points: 3, goalsFor: 5, played: 1 });
+    await expect(service.createFinishedMatchEvent(match.id, { eventType: MatchEventType.GOAL,
+      teamId: away.id, playerId: player.id, half: 1, minute: 1 })).rejects.toThrow();
+    expect((await context.rows()).find((r) => r.teamId === home.id)?.points).toBe(3);
+  });
+
+  it('serializes simultaneous signatures for the same group without losing either result', async () => {
+    const context = await groupFixture();
+    const second = await db.getRepository(MatchEntity).save({ tournamentId: context.tournament.id,
+      stageId: context.stage.id, groupId: context.group.id, effectiveRuleVersionId: context.version.id,
+      roundType: MatchRoundType.GROUP_ROUND, roundNumber: 2, homeTeamId: home.id, awayTeamId: away.id,
+      venueId: venue.id, matchDatetime: new Date('2027-01-11T18:00:00') });
+    for (const team of [home, away]) {
+      const roster = await db.getRepository(MatchRosterEntity).save({ matchId: second.id, teamId: team.id, isApproved: true });
+      await db.getRepository(MatchRosterPlayerEntity).save({ matchRosterId: roster.id, playerId: player.id });
+    }
+    const revision = await finishOnline();
+    const secondRevision = await finishOnline(second.id);
+    await Promise.all([service.command(match.id, command('sign', revision), actor.id),
+      service.command(second.id, command('sign', secondRevision), actor.id)]);
+    expect((await context.rows()).find((r) => r.teamId === home.id)).toMatchObject({ played: 2, wins: 2, points: 6 });
+  });
+
+  it('signs a regular manually entered protocol, counts own goals, and deduplicates event retries', async () => {
+    const context = await groupFixture();
+    const community = (await db.getRepository(CommunityEntity).find())[0];
+    if (!await db.getRepository(TeamPlayerEntity).findOneBy({ playerId: player.id, teamId: home.id }))
+      await db.getRepository(TeamPlayerEntity).save({ communityId: community.id, teamId: home.id, playerId: player.id });
+    const rosters = await db.getRepository(MatchRosterEntity).findBy({ matchId: match.id });
+    for (const roster of rosters) {
+      await db.getRepository(MatchRosterEntity).update(roster.id, { isSubmitted: true });
+      for (let i = 0; i < 4; i++) {
+        const p = await db.getRepository(PlayerEntity).save({ firstName: 'Extra', lastName: randomUUID(), slug: randomUUID() });
+        await db.getRepository(MatchRosterPlayerEntity).save({ matchRosterId: roster.id, playerId: p.id });
+      }
+    }
+    const dto = { clientEventId: randomUUID(), eventType: MatchEventType.GOAL, teamId: home.id,
+      playerId: player.id, minute: 10, half: 1 };
+    const goal = await service.createManualEvent(match.id, dto);
+    expect((await service.createManualEvent(match.id, dto)).id).toBe(goal.id);
+    await service.createManualEvent(match.id, { ...dto, clientEventId: randomUUID(), eventType: MatchEventType.OWN_GOAL, half: 2 });
+    expect(await context.rows()).toHaveLength(0);
+    await service.signManualProtocol(match.id);
+    expect((await context.rows()).every((r) => r.played === 1 && r.draws === 1 && r.points === 1)).toBe(true);
+    await expect(service.signManualProtocol(match.id)).rejects.toThrow('подписан');
+    expect((await context.rows()).every((r) => r.played === 1)).toBe(true);
+  });
+
+  it('deduplicates a finished-match goal retry without doubling the corrected score or points', async () => {
+    const context = await groupFixture();
+    await service.command(match.id, command('sign', await finishOnline()), actor.id);
+    const dto = { clientEventId: randomUUID(), eventType: MatchEventType.GOAL,
+      teamId: away.id, playerId: player.id, minute: 10, half: 2 };
+    const first = await service.createFinishedMatchEvent(match.id, dto);
+    expect((await service.createFinishedMatchEvent(match.id, dto)).id).toBe(first.id);
+    expect((await context.rows()).every((r) => r.played === 1 && r.points === 1)).toBe(true);
+    expect((await service.getSession(match.id)).session.awayScore).toBe(1);
+    await expect(service.createFinishedMatchEvent(match.id, { ...dto, minute: 11 })).rejects.toThrow('Идентификатор');
+  });
+
+  it('rolls back a manual signature including its official result if the table cannot be saved', async () => {
+    const context = await groupFixture();
+    const failure = jest.spyOn(tableService(), 'refreshForMatch').mockRejectedValueOnce(new Error('Injected table failure'));
+    await expect(service.signManualProtocol(match.id, { resolutionType: MatchResolutionType.TECHNICAL,
+      winnerTeamId: home.id, technicalResultReason: 'Неявка' })).rejects.toThrow('Injected table failure');
+    failure.mockRestore();
+    const stored = await db.getRepository(MatchEntity).findOneByOrFail({ id: match.id });
+    expect(stored.status).toBe('scheduled');
+    expect(stored.resultOfficialAt).toBeNull();
+    expect(stored.homeScore).toBe(0);
+    expect(await context.rows()).toHaveLength(0);
+  });
+
+  it('updates only the affected group and preserves existing manual tie-break ranks', async () => {
+    const context = await groupFixture();
+    const otherGroup = await db.getRepository(TournamentGroupEntity).save({ stageId: context.stage.id, key: 'b', name: 'B', order: 2 });
+    const other = await db.getRepository(StandingEntity).save({ tournamentId: context.tournament.id,
+      stageId: context.stage.id, groupId: otherGroup.id, ruleVersionId: context.version.id,
+      teamId: home.id, played: 3, points: 9, position: 1 });
+    await tableService().recalculateByTournament(context.tournament.id);
+    // Recreate the isolated table after an explicit full rebuild, then the automatic hook must leave it alone.
+    await db.getRepository(StandingEntity).save({ ...other, id: undefined });
+    await db.getRepository(StandingEntity).update({ stageId: context.stage.id, groupId: context.group.id, teamId: home.id }, { manualDecisionRank: 7 });
+    await service.command(match.id, command('sign', await finishOnline()), actor.id);
+    expect((await context.rows()).find((r) => r.teamId === home.id)?.manualDecisionRank).toBe(7);
+    expect(await db.getRepository(StandingEntity).findOneBy({ stageId: context.stage.id, groupId: otherGroup.id, teamId: home.id }))
+      .toMatchObject({ played: 3, points: 9 });
+  });
+
+  it('does not mix playoff matches into the group table', async () => {
+    const context = await groupFixture();
+    await tableService().recalculateByTournament(context.tournament.id);
+    const playoff = await db.getRepository(TournamentStageEntity).save({ tournamentId: context.tournament.id,
+      key: 'playoff', name: 'Плей-офф', order: 2, type: TournamentStageType.KNOCKOUT });
+    await db.getRepository(MatchEntity).update(match.id, { stageId: playoff.id, groupId: null as any,
+      roundType: MatchRoundType.SEMI_FINAL });
+    await service.command(match.id, command('sign', await finishOnline()), actor.id);
+    expect((await context.rows()).every((r) => r.played === 0 && r.points === 0)).toBe(true);
+    expect(await db.getRepository(StandingEntity).countBy({ stageId: playoff.id })).toBe(0);
+  });
+
+  it('automatically maintains legacy standings without tournament stages', async () => {
+    const t = await db.getRepository(TournamentEntity).save({ name: 'Legacy table', slug: randomUUID(),
+      seasonId: tournament.seasonId, lifecycleStatus: TournamentLifecycleStatus.IN_PROGRESS });
+    for (const team of [home, away]) await db.getRepository(TournamentTeamEntity).save({ tournamentId: t.id, teamId: team.id });
+    await db.getRepository(MatchEntity).update(match.id, { tournamentId: t.id });
+    await service.command(match.id, command('sign', await finishOnline()), actor.id);
+    const rows = await db.getRepository(StandingEntity).findBy({ tournamentId: t.id });
+    expect(rows).toHaveLength(2);
+    expect(rows.find((r) => r.teamId === home.id)).toMatchObject({ played: 1, wins: 1, points: 3 });
+  });
+
+  it('rebuilds every affected table when a newly published rule version changes scoring', async () => {
+    const context = await groupFixture();
+    const otherGroup = await db.getRepository(TournamentGroupEntity).save({ stageId: context.stage.id, key: 'b', name: 'B', order: 2 });
+    for (let i = 0; i < 2; i++) {
+      const team = await db.getRepository(TeamEntity).save({ name: 'Other', slug: randomUUID() });
+      const tt = await db.getRepository(TournamentTeamEntity).save({ tournamentId: context.tournament.id, teamId: team.id });
+      await db.getRepository(TournamentStageParticipantEntity).save({ stageId: context.stage.id, groupId: otherGroup.id,
+        tournamentTeamId: tt.id, seedNumber: i + 1 });
+    }
+    await tableService().recalculateByTournament(context.tournament.id);
+    const config = createYardLeagueRules();
+    if (config.stages[0].type !== 'knockout') config.stages[0].scoring.win = 5;
+    const version = await db.getRepository(TournamentRuleVersionEntity).save({ tournamentId: context.tournament.id,
+      version: 2, schemaVersion: 1, status: TournamentRuleVersionStatus.PUBLISHED, config });
+    await db.getRepository(TournamentEntity).update(context.tournament.id, { activeRuleVersionId: version.id });
+    await service.command(match.id, command('sign', await finishOnline()), actor.id);
+    const all = await db.getRepository(StandingEntity).findBy({ tournamentId: context.tournament.id });
+    expect(all).toHaveLength(4);
+    expect(all.every((r) => r.ruleVersionId === version.id)).toBe(true);
+    expect(all.find((r) => r.teamId === home.id)?.points).toBe(5);
   });
 
   it('migrates and finds legacy usernames/emails without case or whitespace sensitivity', async () => {

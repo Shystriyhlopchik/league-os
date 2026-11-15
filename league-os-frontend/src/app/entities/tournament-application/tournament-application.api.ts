@@ -141,6 +141,8 @@ export interface ManagedCalendar {
         postponementReason?: string | null;
         scheduleRevision?: number;
         durationMinutes?: number;
+        defaultDurationMinutes?: number | null;
+        slotTiming?: { periods: number; periodDurationMinutes: number; changeoverMinutes: number } | null;
         scheduleHistory?: { at: string; actorId: number; reason: string; before: Record<string, unknown>; after: Record<string, unknown> }[];
     }[];
 }

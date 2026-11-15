@@ -389,4 +389,11 @@
     label { display: grid; gap: 8px; margin: 12px 0; }
     input { max-width: 100%; min-width: 0; padding: 10px; border: 1px solid #687568; background: #111816; color: inherit; font: inherit; }
     summary { cursor: pointer; font-weight: 700; }
+    a { color: #d6ff3f; text-decoration: underline; }
+    .reset-confirmation {
+        display: flex;
+        align-items: flex-start;
+        line-height: 1.5;
+        input { flex: 0 0 18px; width: 18px; height: 18px; margin-top: 3px; }
+    }
 }

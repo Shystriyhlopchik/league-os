@@ -1,4 +1,5 @@
 import { MatchStatus } from '../matches/enums/match-status.enum';
+import { MatchResolutionType } from '../matches/enums/match-resolution-type.enum';
 import { RuleDrivenStandingsEngine } from './rule-driven-standings.engine';
 import type { StandingsEngineInput } from './types/standings-engine.type';
 
@@ -19,6 +20,16 @@ const baseInput = (
 
 describe('RuleDrivenStandingsEngine', () => {
   const engine = new RuleDrivenStandingsEngine();
+
+  it('honors separate technical win and loss points without changing regular match scoring', () => {
+    const result = engine.calculate(baseInput({
+      scoring: { win: 3, draw: 1, loss: 0, technicalWin: 2, technicalLoss: -1 },
+      matches: [{ homeTeamId: 1, awayTeamId: 2, homeScore: 5, awayScore: 0,
+        status: MatchStatus.FINISHED, resolutionType: MatchResolutionType.TECHNICAL }],
+    }));
+    expect(result.find((r) => r.teamId === 1)?.points).toBe(2);
+    expect(result.find((r) => r.teamId === 2)?.points).toBe(-1);
+  });
 
   it('includes teams without matches and ignores unfinished matches', () => {
     const result = engine.calculate(

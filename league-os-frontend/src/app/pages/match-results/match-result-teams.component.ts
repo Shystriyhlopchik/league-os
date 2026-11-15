@@ -58,6 +58,7 @@ export class MatchResultTeamsComponent {
     extraHomeScore = 0;
     extraAwayScore = 0;
     eventError = '';
+    private pendingEvent?: { fingerprint: string; id: string };
 
     readonly eventLabels: Record<ManualMatchEventType, string> = {
         goal: 'Гол',
@@ -121,13 +122,18 @@ export class MatchResultTeamsComponent {
                     ? (this.selectedAssistPlayerId ?? undefined)
                     : undefined,
         };
+        const fingerprint = JSON.stringify(dto);
+        if (this.pendingEvent?.fingerprint !== fingerprint)
+            this.pendingEvent = { fingerprint, id: crypto.randomUUID() };
+        const requestDto = { ...dto, clientEventId: this.pendingEvent.id };
         const request = this.isCorrectionMode
-            ? this.rosterApi.createFinishedMatchEvent(this.matchId, dto)
-            : this.rosterApi.createManualEvent(this.matchId, dto);
+            ? this.rosterApi.createFinishedMatchEvent(this.matchId, requestDto)
+            : this.rosterApi.createManualEvent(this.matchId, requestDto);
 
         request.subscribe({
             next: (event) => {
-                this.events = [...this.events, event].sort(
+                this.pendingEvent = undefined;
+                this.events = [...this.events.filter((item) => item.id !== event.id), event].sort(
                     (a, b) => a.half - b.half || a.minute - b.minute,
                 );
                 this.isSavingEvent = false;

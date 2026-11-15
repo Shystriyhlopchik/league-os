@@ -54,6 +54,7 @@ describe('MatchServiceService registration editing', () => {
       dataSource as never,
       tournamentApplications as never,
       { myTeams: jest.fn().mockResolvedValue([]) } as never,
+      {} as never,
     );
 
     return {

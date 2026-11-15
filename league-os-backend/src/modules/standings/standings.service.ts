@@ -5,7 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, DeepPartial, In, IsNull, Repository } from 'typeorm';
+import { DataSource, DeepPartial, EntityManager, In, IsNull, Not, Repository } from 'typeorm';
+import { signedMatchResults } from '../matches/helper/signed-match-results';
 
 import { BaseCrudService } from '../../common/base/base-crud.service';
 import { MatchEventEntity } from '../match-events/entities/match-event.entity';
@@ -52,6 +53,7 @@ import type {
   PublicTournamentView,
 } from './types/public-tournament-view.type';
 import { MatchResolutionType } from '../matches/enums/match-resolution-type.enum';
+import { TournamentFormat } from '../tournaments/enums/tournament-format.enum';
 import type { KnockoutParticipantSourceV1 } from '../tournament-rules/types/tournament-rules-config.type';
 import type { QualificationSelectionReason } from '../tournament-qualifications/types/qualification-engine.type';
 import type { TeamEntity } from '../teams/entities/team.entity';
@@ -82,6 +84,54 @@ export interface StandingView {
 
 @Injectable()
 export class StandingsService extends BaseCrudService<StandingEntity> {
+  private transactionManager?: EntityManager;
+
+  withManager(manager: EntityManager): StandingsService {
+    const scoped = new StandingsService(
+      manager.getRepository(StandingEntity), manager.getRepository(MatchEntity),
+      manager.getRepository(TournamentStageEntity), manager.getRepository(TournamentGroupEntity),
+      manager.getRepository(TournamentStageParticipantEntity), manager.getRepository(TournamentTeamEntity),
+      manager.getRepository(TournamentEntity), manager.getRepository(TournamentRuleVersionEntity),
+      manager.getRepository(QualificationSnapshotEntity), manager.getRepository(KnockoutBracketSnapshotEntity),
+      this.dataSource, this.engine,
+    );
+    scoped.transactionManager = manager;
+    return scoped;
+  }
+
+  /** All result writers and table rebuilds use this lock BEFORE locking matches.
+   * READ COMMITTED then observes the preceding writer's committed result. */
+  async lockTournament(tournamentId: number, manager: EntityManager): Promise<void> {
+    await manager.query('SELECT pg_advisory_xact_lock(78203, $1)', [tournamentId]);
+  }
+
+  async refreshForMatch(match: MatchEntity, manager: EntityManager): Promise<void> {
+    const scoped = this.withManager(manager);
+    if (!match.stageId) {
+      if (match.roundType && ![MatchRoundType.ROUND_ROBIN, MatchRoundType.GROUP_ROUND].includes(match.roundType)) return;
+      const tournament = await manager.getRepository(TournamentEntity).findOne({ where: { id: match.tournamentId } });
+      if (tournament?.format === TournamentFormat.KNOCKOUT) return;
+      if (await manager.getRepository(TournamentStageEntity).exists({ where: { tournamentId: match.tournamentId } }))
+        throw new ConflictException('Матч не привязан к этапу турнира. Исправьте структуру перед подписанием протокола');
+      await scoped.recalculateLegacyTournament(match.tournamentId);
+      return;
+    }
+    const stage = await manager.getRepository(TournamentStageEntity).findOne({
+      where: { id: match.stageId, tournamentId: match.tournamentId },
+    });
+    if (!stage) throw new NotFoundException('Этап матча не найден; таблица не обновлена');
+    if (stage.type === TournamentStageType.KNOCKOUT) return;
+    const tournament = await manager.getRepository(TournamentEntity).findOne({ where: { id: match.tournamentId } });
+    if (tournament?.activeRuleVersionId && await manager.getRepository(StandingEntity).exists({ where: [
+      { tournamentId: match.tournamentId, stageId: Not(IsNull()), ruleVersionId: Not(tournament.activeRuleVersionId) },
+      { tournamentId: match.tournamentId, stageId: Not(IsNull()), ruleVersionId: IsNull() },
+    ] })) {
+      // Do not leave different groups calculated under different published rules.
+      await scoped.recalculateByTournament(match.tournamentId);
+      return;
+    }
+    await scoped.recalculateStage(match.tournamentId, match.stageId, match.groupId);
+  }
   constructor(
     @InjectRepository(StandingEntity)
     private readonly standingsRepository: Repository<StandingEntity>,
@@ -129,6 +179,9 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
   async getPublicTournamentView(
     tournamentId: number,
   ): Promise<PublicTournamentView> {
+    if (!this.transactionManager)
+      return this.dataSource.transaction('REPEATABLE READ', (manager) =>
+        this.withManager(manager).getPublicTournamentView(tournamentId));
     const tournament = await this.tournamentRepository.findOne({
       where: { id: tournamentId },
     });
@@ -236,6 +289,7 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
         })
       : undefined;
 
+    const signedStageMatches = await signedMatchResults(this.transactionManager ?? this.dataSource.manager, stageMatches);
     const views = stages.map((stage) => {
       const stageGroups = groups.filter((group) => group.stageId === stage.id);
       const stageParticipants = participants.filter(
@@ -352,7 +406,7 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
                 qualification,
                 stageRules,
                 transition.crossGroupComparison,
-                stageMatches.filter((match) => match.stageId === stage.id),
+                signedStageMatches.filter((match) => match.stageId === stage.id),
               ),
             )
         : [];
@@ -956,7 +1010,8 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
     groupId: number | undefined,
     dto: RecalculateStageStandingsDto = {},
   ): Promise<StandingView[]> {
-    return this.dataSource.transaction('SERIALIZABLE', async (manager) => {
+    const execute = async (manager: EntityManager) => {
+      await this.lockTournament(tournamentId, manager);
       const stages = manager.getRepository(TournamentStageEntity);
       const groups = manager.getRepository(TournamentGroupEntity);
       const participants = manager.getRepository(
@@ -1033,12 +1088,12 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
         },
         order: { id: 'ASC' },
       });
-      const scopedMatches = matchRows.filter(
+      const scopedMatches = await signedMatchResults(manager, matchRows.filter(
         (match) =>
           match.status === MatchStatus.FINISHED &&
           match.stageId === stageId &&
           (groupId ? match.groupId === groupId : !match.groupId),
-      );
+      ));
       const teamIdSet = new Set(teamIds);
       if (
         scopedMatches.some(
@@ -1138,12 +1193,19 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
           ruleVersion.id,
         ),
       );
-    });
+    };
+    return this.transactionManager ? execute(this.transactionManager)
+      : this.dataSource.transaction('READ COMMITTED', execute);
   }
 
   async recalculateByTournament(
     tournamentId: number,
   ): Promise<StandingEntity[] | StandingView[]> {
+    if (!this.transactionManager) {
+      return this.dataSource.transaction('READ COMMITTED', async (manager) =>
+        this.withManager(manager).recalculateByTournament(tournamentId));
+    }
+    await this.lockTournament(tournamentId, this.transactionManager);
     const stages = await this.stageRepository.find({
       where: { tournamentId },
       order: { order: 'ASC' },
@@ -1180,7 +1242,12 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
   private async recalculateLegacyTournament(
     tournamentId: number,
   ): Promise<StandingEntity[]> {
-    const [matches, tournamentTeams] = await Promise.all([
+    if (!this.transactionManager) {
+      return this.dataSource.transaction('READ COMMITTED', async (manager) =>
+        this.withManager(manager).recalculateLegacyTournament(tournamentId));
+    }
+    await this.lockTournament(tournamentId, this.transactionManager);
+    const [matchRows, tournamentTeams] = await Promise.all([
       this.matchesRepository.find({
         where: {
           tournamentId,
@@ -1192,6 +1259,8 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
         where: { tournamentId, status: TournamentTeamStatus.ACTIVE },
       }),
     ]);
+    const matches = await signedMatchResults(this.transactionManager, matchRows.filter((m) =>
+      !m.roundType || [MatchRoundType.ROUND_ROBIN, MatchRoundType.GROUP_ROUND].includes(m.roundType)));
     const calculated = this.engine.calculate({
       teamIds: tournamentTeams.map((team) => team.teamId),
       matches,
@@ -1240,7 +1309,8 @@ export class StandingsService extends BaseCrudService<StandingEntity> {
     const result = new Map<number, number>();
     existing.forEach((standing) => {
       const value = standing[field];
-      if (value !== undefined) result.set(standing.teamId, value);
+      if (validTeamIds.has(standing.teamId) && typeof value === 'number' && Number.isInteger(value) && value > 0)
+        result.set(standing.teamId, value);
     });
     const suppliedTeamIds = new Set<number>();
     const suppliedRanks = new Set<number>();
