@@ -1,4 +1,5 @@
 import type { MatchStatus } from '../../matches/enums/match-status.enum';
+import type { MatchResolutionType } from '../../matches/enums/match-resolution-type.enum';
 import type { TieBreakerRuleV1 } from '../../tournament-rules/types/tournament-rules-config.type';
 import type { TieBreakReason } from './tie-break-reason.type';
 
@@ -11,6 +12,7 @@ export interface StandingsMatchInput {
   homeScore: number;
   awayScore: number;
   status: MatchStatus;
+  resolutionType?: MatchResolutionType;
 }
 
 export interface StandingsDisciplinaryEventInput {
@@ -22,6 +24,8 @@ export interface StandingsScoringInput {
   win: number;
   draw: number;
   loss: number;
+  technicalWin?: number;
+  technicalLoss?: number;
 }
 
 export interface StandingsEngineInput {

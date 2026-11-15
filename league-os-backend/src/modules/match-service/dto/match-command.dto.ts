@@ -29,13 +29,16 @@ export const MATCH_COMMANDS = [
   'red-ball',
   'sign',
   'recover',
+  'reset',
 ] as const;
 export class MatchCommandDto {
   @IsUUID() id: string;
   @IsIn(MATCH_COMMANDS) action: (typeof MATCH_COMMANDS)[number];
   @IsInt() @Min(0) expectedRevision: number;
   @IsDateString() occurredAt: string;
-  @IsInt() @Min(0) @Max(86400) elapsedSeconds: number;
+  @IsInt() @Min(0)
+  @Max(86400, { message: 'Время таймера превышает 24 часа. Организатору необходимо восстановить фактически сыгранное время через «Восстановление после сбоя».' })
+  elapsedSeconds: number;
   @IsOptional()
   @ValidateNested()
   @Type(() => CreateMatchServiceEventDto)

@@ -20,7 +20,10 @@ export class MatchServiceAccessGuard implements CanActivate {
   ) {}
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest();
-    if (req.method === 'POST' && !req.route.path.endsWith('/commands'))
+    const path = req.route.path as string;
+    const supportedWrite = path.endsWith('/commands') || path.endsWith('/manual-events') ||
+      path.endsWith('/manual-protocol/sign') || path.endsWith('/finished-matches/:matchId/events');
+    if (req.method === 'POST' && !supportedWrite)
       throw new ConflictException(
         'Обновите страницу: обслуживание матча переведено на защищённый журнал действий',
       );
@@ -31,7 +34,7 @@ export class MatchServiceAccessGuard implements CanActivate {
     if (!match) throw new NotFoundException('Матч не найден');
     // There is no referee user_id on match_officials yet: referees are scoped
     // to active community membership, never granted cross-community access.
-    if (req.user.roles?.includes('referee') && req.body?.action !== 'recover') {
+    if (req.user.roles?.includes('referee') && !['recover', 'reset'].includes(req.body?.action)) {
       const member = await this.db.getRepository(CommunityMemberEntity).exists({
         where: {
           userId: req.user.id,

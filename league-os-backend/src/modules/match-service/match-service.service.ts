@@ -77,6 +77,7 @@ import { CommunitySquadsService } from '../registrations/community-squads.servic
 import { TournamentRosterPlayerEntity } from '../registrations/entities/registration.entity';
 import { createHash } from 'node:crypto';
 import { MatchCommandDto } from './dto/match-command.dto';
+import { StandingsService } from '../standings/standings.service';
 
 type SyncEventResult =
   | {
@@ -115,6 +116,7 @@ export class MatchServiceService {
       this.playerTournamentStatsService.withManager(manager), this.playerSuspensionsService.withManager(manager),
       this.usersService, this.tournamentLifecycleService, this.knockoutBracketService,
       this.matchResultResolver, this.dataSource, this.tournamentApplications, this.communitySquads,
+      this.standingsService,
     );
     scoped.transactionManager = manager;
     return scoped;
@@ -126,6 +128,7 @@ export class MatchServiceService {
       throw new BadRequestException('Проверьте дату и время устройства');
     const hash = createHash('sha256').update(JSON.stringify(dto)).digest('hex');
     return this.dataSource.transaction(async (manager) => {
+      await this.lockResultTournament(matchId, manager);
       // Also serializes duplicate requests and commands from other devices.
       const match = await manager.findOne(MatchEntity, { where: { id: matchId }, lock: { mode: 'pessimistic_write' } });
       if (!match) throw new NotFoundException('Матч не найден');
@@ -146,12 +149,15 @@ export class MatchServiceService {
         throw new ConflictException('Протокол уже подписан');
       if (session.status === MatchServiceStatus.FINISHED && dto.action !== 'sign')
         throw new ConflictException('Матч завершён. Исправления вносятся через редактирование протокола');
-      if (!['recover', 'start', 'start-second-half'].includes(dto.action) && dto.elapsedSeconds < session.elapsedSeconds)
+      if (!['recover', 'reset', 'start', 'start-second-half'].includes(dto.action) && dto.elapsedSeconds < session.elapsedSeconds)
         throw new ConflictException('Локальное время матча меньше сохранённого. Проверьте часы и восстановите протокол');
-      session.elapsedSeconds = dto.elapsedSeconds;
-      if (session.startedAt) session.startedAt = occurredAt;
-      await manager.save(session);
+      if (dto.action !== 'reset') {
+        session.elapsedSeconds = dto.elapsedSeconds;
+        if (session.startedAt) session.startedAt = occurredAt;
+        await manager.save(session);
+      }
       let eventDraft: unknown;
+      let resetAudit: unknown;
       switch (dto.action) {
         case 'start': await scoped.startMatch(matchId); break;
         case 'pause': await scoped.pauseMatch(matchId); break;
@@ -186,13 +192,64 @@ export class MatchServiceService {
           await scoped.createSystemEvent({ match, session, eventType: MatchEventType.MATCH_PAUSED,
             description: `Восстановление организатором #${actorId}: ${dto.reason.trim()}` });
           break;
+        case 'reset':
+          if (dto.elapsedSeconds !== 0)
+            throw new BadRequestException('При сбросе время должно быть равно нулю');
+          resetAudit = await scoped.resetEmptyService(match, session, actorId, dto.reason);
+          break;
       }
       await manager.increment(MatchServiceSessionEntity, { matchId }, 'revision', 1);
-      const response = { data: await scoped.getSession(matchId), eventDraft };
+      const response = { data: await scoped.getSession(matchId), eventDraft, ...(resetAudit ? { resetAudit } : {}) };
       await manager.query('INSERT INTO match_service_commands(id,match_id,actor_id,request_hash,response) VALUES($1,$2,$3,$4,$5)',
         [dto.id, matchId, actorId, hash, JSON.stringify(response)]);
       return response;
     });
+  }
+  private async resetEmptyService(
+    match: MatchEntity,
+    session: MatchServiceSessionEntity,
+    actorId: number,
+    reason?: string,
+  ) {
+    if (!reason?.trim()) throw new BadRequestException('Укажите причину сброса обслуживания');
+    if (match.status !== MatchStatus.LIVE ||
+        ![MatchServiceStatus.FIRST_HALF, MatchServiceStatus.SECOND_HALF,
+          MatchServiceStatus.PAUSED, MatchServiceStatus.HALF_TIME,
+          MatchServiceStatus.EVENT_RECORDING].includes(session.status))
+      throw new ConflictException('Сброс доступен только для начатого, незавершённого матча');
+    if (match.homeScore || match.awayScore || session.homeScore || session.awayScore ||
+        match.resultOfficialAt || match.resolutionType || match.technicalResultReason || match.winnerTeamId || match.loserTeamId ||
+        [match.regularTimeHomeScore, match.regularTimeAwayScore, match.extraTimeHomeScore,
+          match.extraTimeAwayScore, match.penaltyHomeScore, match.penaltyAwayScore,
+          match.penaltyHomeKicksTaken, match.penaltyAwayKicksTaken].some((value) => value != null))
+      throw new ConflictException('В матче уже есть результат. Сброс обслуживания недоступен');
+    const manager = this.transactionManager!;
+    // Even cancelled game events may have affected discipline. Reset only empty
+    // service sessions; never silently erase statistics or bracket results.
+    const [gameEvents, redBalls] = await Promise.all([
+      manager.exists(MatchEventEntity, { where: { matchId: match.id,
+        eventType: Not(In([MatchEventType.MATCH_STARTED, MatchEventType.MATCH_PAUSED,
+          MatchEventType.MATCH_RESUMED, MatchEventType.HALF_FINISHED,
+          MatchEventType.SECOND_HALF_STARTED])) } }),
+      manager.exists(MatchRedBallActivationEntity, { where: { matchId: match.id } }),
+    ]);
+    if (gameEvents || redBalls)
+      throw new ConflictException('В протоколе есть игровые события. Для их сохранности используйте восстановление, а не сброс');
+    const audit = { actorId, reason: reason.trim(), at: new Date().toISOString(),
+      previousStatus: session.status, previousElapsedSeconds: session.elapsedSeconds,
+      previousStartedAt: session.startedAt };
+    await manager.update(MatchEventEntity, { matchId: match.id, isCancelled: false }, { isCancelled: true });
+    Object.assign(session, { status: MatchServiceStatus.NOT_STARTED, previousStatus: null,
+      currentHalf: 1, elapsedSeconds: 0, startedAt: null, pausedAt: null, finishedAt: null,
+      homeScore: 0, awayScore: 0 });
+    // Keep the session and its monotonically increasing revision: stale tabs must
+    // not replay the abandoned service. The reset reason is stored in the receipt.
+    await manager.save(session);
+    match.status = MatchStatus.SCHEDULED;
+    match.homeScore = 0;
+    match.awayScore = 0;
+    await manager.save(match);
+    return audit;
   }
   private readonly correctableEventTypes = new Set<MatchEventType>([
     MatchEventType.GOAL,
@@ -239,7 +296,25 @@ export class MatchServiceService {
     private readonly dataSource: DataSource,
     private readonly tournamentApplications: TournamentApplicationsService,
     private readonly communitySquads: CommunitySquadsService,
+    private readonly standingsService: StandingsService,
   ) {}
+
+  private async lockResultTournament(matchId: number, manager: EntityManager): Promise<void> {
+    const reference = await manager.findOne(MatchEntity, { where: { id: matchId }, select: { id: true, tournamentId: true } });
+    if (!reference) throw new NotFoundException('Матч не найден');
+    await this.standingsService.lockTournament(reference.tournamentId, manager);
+    await manager.findOne(MatchEntity, { where: { id: matchId }, lock: { mode: 'pessimistic_write' } });
+  }
+
+  private async existingManualEvent(matchId: number, dto: CreateManualMatchEventDto, manager: EntityManager) {
+    if (!dto.clientEventId) return null;
+    const event = await manager.getRepository(MatchEventEntity).findOne({ where: { clientEventId: dto.clientEventId } });
+    if (!event) return null;
+    if (event.matchId !== matchId || event.isCancelled ||
+        ['teamId', 'eventType', 'minute', 'half', 'playerId', 'assistPlayerId'].some((key) => (event[key] ?? null) !== (dto[key] ?? null)))
+      throw new ConflictException('Идентификатор события уже использован. Обновите протокол перед повторным вводом');
+    return event;
+  }
 
   async findAvailableMatches(): Promise<MatchServiceMatchDto[]> {
     const overdueMatches = await this.matchRepository.find({
@@ -405,6 +480,9 @@ export class MatchServiceService {
     await this.assertCorrectionEventParticipants(matchId, dto);
 
     const savedEvent = await this.dataSource.transaction(async (manager) => {
+      await this.lockResultTournament(matchId, manager);
+      const existing = await this.existingManualEvent(matchId, dto, manager);
+      if (existing) return existing;
       const eventRepository = manager.getRepository(MatchEventEntity);
       const matchRepository = manager.getRepository(MatchEntity);
       const transactionalMatch = await matchRepository.findOne({
@@ -414,10 +492,15 @@ export class MatchServiceService {
       if (!transactionalMatch) {
         throw new NotFoundException('Завершённый матч не найден');
       }
+      this.assertFinishedScoringCorrectionAllowed(transactionalMatch, dto.eventType);
+      const session = await manager.getRepository(MatchServiceSessionEntity).findOne({ where: { matchId } });
+      if (session && ![MatchServiceStatus.NOT_STARTED, MatchServiceStatus.PROTOCOL_SIGNED].includes(session.status))
+        throw new ConflictException('Сначала подпишите протокол онлайн-обслуживания');
 
       const event = await eventRepository.save(
         eventRepository.create({
           matchId,
+          clientEventId: dto.clientEventId,
           teamId: dto.teamId,
           eventType: dto.eventType,
           minute: dto.minute,
@@ -430,19 +513,17 @@ export class MatchServiceService {
 
       if (this.isScoringEvent(event.eventType)) {
         await this.recalculateCorrectedMatchScore(transactionalMatch, manager);
+        await manager.getRepository(MatchServiceSessionEntity).update({ matchId }, {
+          homeScore: transactionalMatch.homeScore, awayScore: transactionalMatch.awayScore,
+        });
       }
+      if (event.playerId) await this.playerTournamentStatsService.withManager(manager).applyCardEvent({
+        match: transactionalMatch, teamId: event.teamId, playerId: event.playerId, eventType: event.eventType,
+      });
+      await this.standingsService.refreshForMatch(transactionalMatch, manager);
 
       return event;
     });
-
-    if (savedEvent.playerId) {
-      await this.playerTournamentStatsService.applyCardEvent({
-        match,
-        teamId: savedEvent.teamId,
-        playerId: savedEvent.playerId,
-        eventType: savedEvent.eventType,
-      });
-    }
 
     return savedEvent;
   }
@@ -454,8 +535,14 @@ export class MatchServiceService {
     const match = await this.findFinishedMatch(matchId);
     const cancelledEvent = await this.dataSource.transaction(
       async (manager) => {
+        await this.lockResultTournament(matchId, manager);
         const eventRepository = manager.getRepository(MatchEventEntity);
         const matchRepository = manager.getRepository(MatchEntity);
+        const transactionalMatch = await matchRepository.findOne({ where: { id: matchId, status: MatchStatus.FINISHED } });
+        if (!transactionalMatch) throw new NotFoundException('Завершённый матч не найден');
+        const session = await manager.getRepository(MatchServiceSessionEntity).findOne({ where: { matchId } });
+        if (session && ![MatchServiceStatus.NOT_STARTED, MatchServiceStatus.PROTOCOL_SIGNED].includes(session.status))
+          throw new ConflictException('Сначала подпишите протокол онлайн-обслуживания');
         const event = await eventRepository.findOne({
           where: { id: eventId, matchId, isCancelled: false },
         });
@@ -464,35 +551,27 @@ export class MatchServiceService {
           throw new NotFoundException('Событие матча не найдено');
         }
 
-        this.assertFinishedScoringCorrectionAllowed(match, event.eventType);
+        this.assertFinishedScoringCorrectionAllowed(transactionalMatch, event.eventType);
         event.isCancelled = true;
         await eventRepository.save(event);
 
         if (this.isScoringEvent(event.eventType)) {
-          const transactionalMatch = await matchRepository.findOne({
-            where: { id: matchId, status: MatchStatus.FINISHED },
-          });
-          if (!transactionalMatch) {
-            throw new NotFoundException('Завершённый матч не найден');
-          }
           await this.recalculateCorrectedMatchScore(
             transactionalMatch,
             manager,
           );
+          await manager.getRepository(MatchServiceSessionEntity).update({ matchId }, {
+            homeScore: transactionalMatch.homeScore, awayScore: transactionalMatch.awayScore,
+          });
         }
+        if (event.playerId) await this.playerTournamentStatsService.withManager(manager).revertCardEvent({
+          match: transactionalMatch, teamId: event.teamId, playerId: event.playerId, eventType: event.eventType,
+        });
+        await this.standingsService.refreshForMatch(transactionalMatch, manager);
 
         return event;
       },
     );
-
-    if (cancelledEvent.playerId) {
-      await this.playerTournamentStatsService.revertCardEvent({
-        match,
-        teamId: cancelledEvent.teamId,
-        playerId: cancelledEvent.playerId,
-        eventType: cancelledEvent.eventType,
-      });
-    }
 
     return { id: cancelledEvent.id, isCancelled: true };
   }
@@ -667,6 +746,14 @@ export class MatchServiceService {
     matchId: number,
     dto: CreateManualMatchEventDto,
   ): Promise<MatchEventEntity> {
+    if (!this.transactionManager) {
+      return this.dataSource.transaction(async (manager) => {
+        await this.lockResultTournament(matchId, manager);
+        return this.inTransaction(manager).createManualEvent(matchId, dto);
+      });
+    }
+    const existing = await this.existingManualEvent(matchId, dto, this.transactionManager);
+    if (existing) return existing;
     const allowedTypes = new Set<MatchEventType>([
       MatchEventType.GOAL,
       MatchEventType.OWN_GOAL,
@@ -735,6 +822,7 @@ export class MatchServiceService {
 
     const event = this.matchEventRepository.create({
       matchId,
+      clientEventId: dto.clientEventId,
       teamId: dto.teamId,
       eventType: dto.eventType,
       minute: dto.minute,
@@ -760,6 +848,12 @@ export class MatchServiceService {
     matchId: number,
     eventId: number,
   ): Promise<{ id: number; isCancelled: true }> {
+    if (!this.transactionManager) {
+      return this.dataSource.transaction(async (manager) => {
+        await this.lockResultTournament(matchId, manager);
+        return this.inTransaction(manager).cancelManualEvent(matchId, eventId);
+      });
+    }
     const match = await this.matchRepository.findOne({
       where: { id: matchId },
     });
@@ -804,8 +898,8 @@ export class MatchServiceService {
     resolutionType?: MatchResolutionType;
     technicalResultReason?: string;
   }> {
-    let tournamentId: number | undefined;
     const result = await this.dataSource.transaction(async (manager) => {
+      await this.lockResultTournament(matchId, manager);
       const matchRepository = manager.getRepository(MatchEntity);
       const eventRepository = manager.getRepository(MatchEventEntity);
       const match = await matchRepository.findOne({
@@ -918,7 +1012,10 @@ export class MatchServiceService {
         manager,
       );
       await matchRepository.save(match);
-      tournamentId = match.tournamentId;
+      await this.tournamentLifecycleService.markInProgress(match.tournamentId, manager);
+      await this.knockoutBracketService.advanceAutomatically(match.tournamentId, matchId, manager);
+      await this.playerTournamentStatsService.withManager(manager).serveSuspensionsForMatch(matchId);
+      await this.standingsService.refreshForMatch(match, manager);
 
       return {
         matchId: match.id,
@@ -930,14 +1027,6 @@ export class MatchServiceService {
         technicalResultReason: match.technicalResultReason,
       };
     });
-    if (tournamentId) {
-      await this.tournamentLifecycleService.markInProgress(tournamentId);
-      await this.knockoutBracketService.advanceAutomatically(
-        tournamentId,
-        matchId,
-      );
-      await this.playerTournamentStatsService.serveSuspensionsForMatch(matchId);
-    }
     return result;
   }
 
@@ -2639,6 +2728,12 @@ export class MatchServiceService {
   }
 
   async signProtocol(matchId: number) {
+    if (!this.transactionManager) {
+      return this.dataSource.transaction(async (manager) => {
+        await this.lockResultTournament(matchId, manager);
+        return this.inTransaction(manager).signProtocol(matchId);
+      });
+    }
     const match = await this.findMatchForService(matchId);
     const session = await this.getOrCreateSession(match);
 
@@ -2661,6 +2756,7 @@ export class MatchServiceService {
       eventType: MatchEventType.PROTOCOL_SIGNED,
       description: 'Протокол матча подписан',
     });
+    await this.standingsService.refreshForMatch(match, this.transactionManager);
 
     return this.mapSession(savedSession);
   }

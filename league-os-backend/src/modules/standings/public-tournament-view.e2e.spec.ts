@@ -5,6 +5,7 @@ import { FeatureFlagGuard } from '../../common/feature-flags/feature-flag.guard'
 import { FeatureFlagsService } from '../../common/feature-flags/feature-flags.service';
 import { StandingsController } from './standings.controller';
 import { StandingsService } from './standings.service';
+import { TournamentAccessService } from '../tournaments/access/tournament-access.service';
 
 describe('public tournament view HTTP scenarios', () => {
   let app: INestApplication;
@@ -40,6 +41,7 @@ describe('public tournament view HTTP scenarios', () => {
         FeatureFlagGuard,
         { provide: FeatureFlagsService, useValue: flags },
         { provide: StandingsService, useValue: service },
+        { provide: TournamentAccessService, useValue: { assertAccess: jest.fn() } },
       ],
     }).compile();
     app = module.createNestApplication();

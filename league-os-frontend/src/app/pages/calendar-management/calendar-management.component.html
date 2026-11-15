@@ -18,14 +18,21 @@
             }
         </select></label
     >
-    @if (error()) {
-        <p class="error" role="alert">{{ error() }}</p>
-    }
-    @if (notice()) {
-        <p role="status">{{ notice() }}</p>
+    @if (error() || notice()) {
+        <aside class="feedback" [class.feedback--error]="error()">
+            <div>
+                @if (notice()) {
+                    <p role="status">{{ notice() }}</p>
+                }
+                @if (error()) {
+                    <p role="alert">{{ error() }}</p>
+                }
+            </div>
+            <button type="button" class="feedback__close" aria-label="Закрыть уведомление" (click)="dismissFeedback()">×</button>
+        </aside>
     }
     @if (busy()) {
-        <p role="status">Загрузка…</p>
+        <p role="status">{{ editing ? 'Сохранение изменений…' : 'Загрузка…' }}</p>
     }
     @if (calendar(); as calendar) {
         <div class="filters">
@@ -85,24 +92,31 @@
                     </button>
                 }
                 @if (editing?.id === match.id) {
-                    <form (ngSubmit)="save(false)">
+                    <form (ngSubmit)="save(false)" novalidate [attr.aria-busy]="busy()">
                         <label
                             >Дата и время (МСК)
                             <input
                                 type="datetime-local"
                                 name="datetime"
                                 [(ngModel)]="datetime"
-                        /></label>
+                                [disabled]="busy()"
+                                [attr.aria-invalid]="fieldErrors()['datetime'] ? 'true' : null"
+                                aria-describedby="calendar-datetime-error"
+                        />
+                            <small id="calendar-datetime-error" class="field-error">{{ fieldErrors()['datetime'] }}</small>
+                        </label>
                         <label
                             >Площадка
-                            <select name="venue" [(ngModel)]="venueId">
+                            <select name="venue" [(ngModel)]="venueId" [disabled]="busy()" [attr.aria-invalid]="fieldErrors()['venue'] ? 'true' : null" aria-describedby="calendar-venue-error">
                                 <option [ngValue]="0">Выберите</option>
                                 @for (v of calendar.venues; track v.id) {
                                     <option [ngValue]="v.id">
                                         {{ v.name }}
                                     </option>
                                 }
-                            </select></label
+                            </select>
+                            <small id="calendar-venue-error" class="field-error">{{ fieldErrors()['venue'] }}</small>
+                            </label
                         >
                         <label
                             >Занятый слот, минут (игра + смена команд)
@@ -112,7 +126,19 @@
                                 max="480"
                                 name="duration"
                                 [(ngModel)]="duration"
-                        /></label>
+                                [disabled]="busy()"
+                                [attr.aria-invalid]="fieldErrors()['duration'] ? 'true' : null"
+                                aria-describedby="calendar-slot-hint calendar-duration-error"
+                        />
+                            <small id="calendar-slot-hint" class="hint">
+                                @if (match.slotTiming; as timing) {
+                                    По настройкам турнира: {{ timing.periods }} × {{ timing.periodDurationMinutes }} + {{ timing.changeoverMinutes }} = {{ match.defaultDurationMinutes }} мин. Можно изменить вручную.
+                                } @else {
+                                    Длительность таймов в правилах не указана. Укажите время игры и добавьте 15 минут на смену команд.
+                                }
+                            </small>
+                            <small id="calendar-duration-error" class="field-error">{{ fieldErrors()['duration'] }}</small>
+                        </label>
                         <label
                             >Причина изменения
                             <textarea
@@ -120,11 +146,19 @@
                                 [(ngModel)]="reason"
                                 maxlength="1000"
                                 required
+                                [disabled]="busy()"
+                                [attr.aria-invalid]="fieldErrors()['reason'] ? 'true' : null"
+                                aria-describedby="calendar-reason-error"
                             ></textarea>
+                            <small id="calendar-reason-error" class="field-error">{{ fieldErrors()['reason'] }}</small>
                         </label>
+                        <p class="hint">Составы команд сохранятся, но после изменения расписания потребуется повторное подтверждение судьи.</p>
+                        @if (error()) {
+                            <p class="error">{{ error() }}</p>
+                        }
                         <div class="actions">
                             <button type="submit" [disabled]="busy()">
-                                Назначить дату
+                                {{ busy() ? 'Сохранение…' : 'Назначить дату' }}
                             </button>
                             <button
                                 type="button"

@@ -1,7 +1,8 @@
-import { IsEnum, IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
 import { MatchEventType } from '../../match-events/enums/match-event-type.enum';
 
 export class CreateManualMatchEventDto {
+  @IsOptional() @IsUUID() clientEventId?: string;
   @IsInt()
   teamId: number;
 

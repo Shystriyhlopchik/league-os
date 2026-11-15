@@ -2,7 +2,7 @@ import {
     MatchCommand,
     MatchProtocolData,
 } from '../../../entities/match-service/model/match-service.types';
-import { elapsedAt, projectCommand } from './match-command-state';
+import { elapsedAt, projectCommand, validElapsedSeconds } from './match-command-state';
 
 export function protocolFixture(): MatchProtocolData {
     return {
@@ -29,6 +29,24 @@ export function protocolFixture(): MatchProtocolData {
     };
 }
 describe('Offline match projection', () => {
+    it('detects an invalid clock without silently changing elapsed time', () => {
+        const data = protocolFixture();
+        data.session.status = 'first_half';
+        data.session.startedAt = '2026-11-12T12:00:00Z';
+        const seconds = elapsedAt(data, Date.parse('2026-11-15T12:00:00Z'));
+        expect(seconds).toBe(259200);
+        expect(validElapsedSeconds(seconds)).toBeFalse();
+        expect(validElapsedSeconds(1200)).toBeTrue();
+        expect(validElapsedSeconds(86400)).toBeTrue();
+        expect(validElapsedSeconds(NaN)).toBeFalse();
+    });
+    it('does not optimistically reset a match before server acknowledgement', () => {
+        const source = protocolFixture();
+        source.match.status = 'live';
+        source.session.status = 'first_half';
+        expect(projectCommand(source, { id: crypto.randomUUID(), action: 'reset',
+            expectedRevision: 0, occurredAt: new Date().toISOString(), elapsedSeconds: 0 })).toEqual(source);
+    });
     const cmd = (
         action: MatchCommand['action'],
         revision: number,

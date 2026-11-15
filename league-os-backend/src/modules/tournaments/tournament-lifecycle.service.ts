@@ -46,6 +46,7 @@ import { VenueEntity } from '../venues/entities/venue.entity';
 import { formatLocalDateTime } from '../matches/helper/formatLocalDateTime';
 import { UpdateCalendarMatchDto } from './dto/update-calendar-match.dto';
 import { applicationEditWindow } from '../registrations/application-edit-window';
+import { calendarSlotTiming } from './scheduling/calendar-slot';
 
 const POST_PUBLISH_METADATA_FIELDS = new Set([
   'name',
@@ -694,6 +695,7 @@ export class TournamentLifecycleService {
     if (!validation.valid) throw new BadRequestException(validation);
 
     await this.dataSource.transaction(async (manager) => {
+      await manager.query('SELECT pg_advisory_xact_lock(78203, $1)', [tournamentId]);
       const tournaments = manager.getRepository(TournamentEntity);
       const versions = manager.getRepository(TournamentRuleVersionEntity);
       const matches = manager.getRepository(MatchEntity);
@@ -787,7 +789,7 @@ export class TournamentLifecycleService {
 
   async calendar(tournamentId: number) {
     const tournament = await this.getTournament(tournamentId);
-    const [stages, matches, venues] = await Promise.all([
+    const [stages, matches, venues, versions] = await Promise.all([
       this.stageRepository.find({
         where: { tournamentId },
         order: { order: 'ASC' },
@@ -800,30 +802,47 @@ export class TournamentLifecycleService {
       this.dataSource
         .getRepository(VenueEntity)
         .find({ where: { isActive: true }, order: { name: 'ASC' } }),
+      this.ruleVersionRepository.find({
+        where: { tournamentId },
+        order: { version: 'DESC' },
+      }),
     ]);
+    const defaultVersion = tournament.activeRuleVersionId
+      ? versions.find((v) => v.id === tournament.activeRuleVersionId)
+      : versions[0];
     return {
       tournament,
       stages,
       venues: venues.map((v) => ({ id: v.id, name: v.name })),
-      matches: matches.map((m) => ({
-        id: m.id,
-        stageId: m.stageId,
-        round: m.round,
-        status: m.status,
-        home: m.homeTeam?.name ?? 'Участник уточняется',
-        away: m.awayTeam?.name ?? 'Участник уточняется',
-        homeTeamId: m.homeTeamId,
-        awayTeamId: m.awayTeamId,
-        groupId: m.groupId,
-        roundNumber: m.roundNumber,
-        matchDatetime: formatLocalDateTime(m.matchDatetime),
-        venueId: m.venueId,
-        postponed: !!m.postponedAt,
-        postponementReason: m.postponementReason,
-        scheduleRevision: m.scheduleRevision,
-        durationMinutes: m.durationMinutes,
-        scheduleHistory: m.scheduleHistory,
-      })),
+      matches: matches.map((m) => {
+        const version = m.effectiveRuleVersionId
+          ? versions.find((v) => v.id === m.effectiveRuleVersionId)
+          : defaultVersion;
+        const stage = stages.find((s) => s.id === m.stageId);
+        const rules = stage
+          ? version?.config.stages.find((s) => s.stageKey === stage.key)
+          : undefined;
+        return {
+          id: m.id,
+          stageId: m.stageId,
+          round: m.round,
+          status: m.status,
+          home: m.homeTeam?.name ?? 'Участник уточняется',
+          away: m.awayTeam?.name ?? 'Участник уточняется',
+          homeTeamId: m.homeTeamId,
+          awayTeamId: m.awayTeamId,
+          groupId: m.groupId,
+          roundNumber: m.roundNumber,
+          matchDatetime: formatLocalDateTime(m.matchDatetime),
+          venueId: m.venueId,
+          postponed: !!m.postponedAt,
+          postponementReason: m.postponementReason,
+          scheduleRevision: m.scheduleRevision,
+          durationMinutes: m.durationMinutes,
+          ...calendarSlotTiming(rules?.match),
+          scheduleHistory: m.scheduleHistory,
+        };
+      }),
     };
   }
 
@@ -854,6 +873,7 @@ export class TournamentLifecycleService {
     )
       throw new BadRequestException('Некорректная дата матча');
     return this.dataSource.transaction(async (manager) => {
+      await manager.query('SELECT pg_advisory_xact_lock(78203, $1)', [tournamentId]);
       const tournament = await manager.findOne(TournamentEntity, {
         where: { id: tournamentId },
         lock: { mode: 'pessimistic_write' },
@@ -902,7 +922,23 @@ export class TournamentLifecycleService {
         }
       }
       const before = { matchDatetime: formatLocalDateTime(match.matchDatetime), venueId: match.venueId ?? null, durationMinutes: match.durationMinutes ?? 60, postponed: !!match.postponedAt };
-      const duration = dto.durationMinutes ?? match.durationMinutes ?? 60;
+      let duration = dto.durationMinutes ?? match.durationMinutes ?? 60;
+      if (dto.durationMinutes === undefined && !(match.scheduleRevision > 0)) {
+        const versionId = match.effectiveRuleVersionId ?? tournament.activeRuleVersionId;
+        const [version, stage] = await Promise.all([
+          manager.findOne(TournamentRuleVersionEntity, {
+            where: versionId ? { id: versionId, tournamentId } : { tournamentId },
+            order: { version: 'DESC' },
+          }),
+          match.stageId ? manager.findOne(TournamentStageEntity, {
+            where: { id: match.stageId, tournamentId },
+          }) : Promise.resolve(null),
+        ]);
+        const rules = version?.config.stages.find((s) => s.stageKey === stage?.key);
+        duration = calendarSlotTiming(rules?.match).defaultDurationMinutes ?? duration;
+      }
+      if (!Number.isInteger(duration) || duration < 1 || duration > 480)
+        throw new BadRequestException('Занятый слот должен быть целым числом от 1 до 480 минут');
       if (!dto.postponed &&
         !(await manager.exists(VenueEntity, {
           where: { id: dto.venueId, isActive: true },

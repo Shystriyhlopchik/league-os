@@ -30,6 +30,13 @@
         }
     </section>
 
+    @if (store.notice()) {
+        <section id="match-reset-result" class="sync-status" role="status" tabindex="-1">
+            <p>{{ store.notice() }}</p>
+            <a [routerLink]="['/dashboard/match-results', matchId]">Перейти к ручному вводу протокола</a>
+        </section>
+    }
+
     @if (store.isLoading()) {
         <p class="state-text">Загружаем матч...</p>
     } @else if (store.error() && !store.match()) {
@@ -82,6 +89,21 @@
                     </div>
                 </div>
             </section>
+
+            @if (clockRecoveryRequired()) {
+                <section class="sync-status" role="alert">
+                    <strong>Нужно восстановить время матча</strong>
+                    <p>Таймер не был остановлен и продолжал отсчёт между сеансами, либо время устройства некорректно. События нельзя записывать с таким временем.</p>
+                    @if (store.canRecover()) {
+                        <p>Если игровых событий нет и протокол будет заполнен вручную, используйте «Сбросить обслуживание и перейти к ручному вводу» ниже. Если события нужно сохранить — укажите фактически сыгранное время в разделе «Восстановление после сбоя».</p>
+                    } @else {
+                        <p>Попросите организатора восстановить фактически сыгранное время матча.</p>
+                    }
+                    @if (store.pendingCount()) {
+                        <p>Сначала скачайте резервный журнал и сверьте неотправленные действия с сервером. Не очищайте данные браузера.</p>
+                    }
+                </section>
+            }
 
             @if (match.knockoutTie; as tie) {
                 <p class="state-text">
@@ -249,12 +271,29 @@
             </section>
 
             @if (store.canRecover()) {
-                <details class="sync-status">
+                <details class="sync-status" [open]="clockRecoveryRequired()">
                     <summary>Восстановление после сбоя — для организатора</summary>
                     <p>Если игра уже прошла, восстановите ввод во втором тайме на паузе. Проверьте события и итоговый счёт, затем завершите матч. Начало игры не отменяется.</p>
                     <label>Причина восстановления <input [(ngModel)]="recoveryReason" maxlength="1000" /></label>
                     <label>Фактически сыграно во втором тайме, секунд <input type="number" min="0" max="86400" [(ngModel)]="recoverySeconds" /></label>
+                    <p>Например, 20 минут — 1200 секунд. Это время игры во втором тайме, а не длительность отсутствия связи. После восстановления таймер будет на паузе.</p>
+                    @if (store.pendingCount() || store.conflict()) {
+                        <p>Перед восстановлением скачайте резервный журнал и сверьте очередь с сервером через блок синхронизации вверху страницы.</p>
+                    }
                     <button type="button" [disabled]="!recoveryReason.trim() || store.isActionLoading()" (click)="store.recover(recoveryReason, recoverySeconds)">Восстановить ввод протокола</button>
+                </details>
+            }
+
+            @if (store.canResetService()) {
+                <details class="sync-status" [open]="store.resetPending()">
+                    <summary>Сбросить обслуживание и перейти к ручному вводу</summary>
+                    <p>Для ошибочно запущенного или зависшего матча без игровых событий. Таймер остановится, статус станет «не начат». Дата, площадка и составы сохранятся. Это не фиксирует результат матча.</p>
+                    <p>Матчи с голами, карточками, другими игровыми событиями или утверждённым результатом сбросить нельзя. Неотправленные действия этого браузера будут исключены из очереди только после успешного сброса; перед запросом скачается резервный журнал.</p>
+                    <label>Причина сброса <input [(ngModel)]="resetReason" maxlength="1000" [disabled]="store.isResetting()" /></label>
+                    <label class="reset-confirmation"><input type="checkbox" [(ngModel)]="resetAcknowledged" [disabled]="store.isResetting()" /> Подтверждаю сброс обслуживания и отказ от неотправленных действий. Протокол заполню вручную.</label>
+                    <button type="button" [disabled]="!resetReason.trim() || !resetAcknowledged || store.isResetting() || store.isSyncing()" (click)="resetService()">
+                        {{ store.isResetting() ? 'Сброс обслуживания…' : store.resetPending() ? 'Повторить запрос сброса' : 'Подтвердить сброс обслуживания' }}
+                    </button>
                 </details>
             }
 

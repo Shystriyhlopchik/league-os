@@ -32,6 +32,7 @@ describe('MatchServiceService match listings', () => {
       dataSource as never,
       { matchRoster: jest.fn().mockResolvedValue(null) } as never,
       { myTeams: jest.fn().mockResolvedValue([]) } as never,
+      {} as never,
     );
 
     return { service, matchRepository, matchRosterRepository };

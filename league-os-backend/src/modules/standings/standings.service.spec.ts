@@ -16,6 +16,7 @@ import { createYardLeagueRules } from '../tournaments/validation/yard-league-rul
 import { StandingEntity } from './entities/standing.entity';
 import { RuleDrivenStandingsEngine } from './rule-driven-standings.engine';
 import { StandingsService } from './standings.service';
+import { MatchServiceSessionEntity } from '../match-service/entities/match-service-session.entity';
 import { QualificationSnapshotEntity } from '../tournament-qualifications/entities/qualification-snapshot.entity';
 import { KnockoutBracketSnapshotEntity } from '../tournament-knockout-brackets/entities/knockout-bracket-snapshot.entity';
 
@@ -140,7 +141,12 @@ describe('StandingsService rule-driven scope', () => {
     find: jest.fn(async () => []),
   } as unknown as Repository<MatchEventEntity>;
   const manager = {
+    query: jest.fn(),
     getRepository: jest.fn((entity) => {
+      if (entity === QualificationSnapshotEntity) return qualificationSnapshotRepository;
+      if (entity === KnockoutBracketSnapshotEntity) return bracketSnapshotRepository;
+      if (entity === TournamentTeamEntity) return tournamentTeamRepository;
+      if (entity === MatchServiceSessionEntity) return { find: jest.fn(async () => []) };
       if (entity === StandingEntity) return standingsRepository;
       if (entity === MatchEntity) return matchesRepository;
       if (entity === MatchEventEntity) return eventRepository;
@@ -153,6 +159,7 @@ describe('StandingsService rule-driven scope', () => {
     }),
   };
   const dataSource = {
+    manager,
     transaction: jest.fn(async (_isolation, callback) => callback(manager)),
   } as unknown as DataSource;
   const service = new StandingsService(
@@ -189,7 +196,7 @@ describe('StandingsService rule-driven scope', () => {
       expect.objectContaining({ played: 0, points: 0 }),
     );
     expect(dataSource.transaction).toHaveBeenCalledWith(
-      'SERIALIZABLE',
+      'READ COMMITTED',
       expect.any(Function),
     );
   });

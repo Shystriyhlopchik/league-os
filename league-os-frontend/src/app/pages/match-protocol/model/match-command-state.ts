@@ -4,6 +4,15 @@ import {
     MatchProtocolEvent,
 } from '../../../entities/match-service/model/match-service.types';
 
+export const MAX_MATCH_ELAPSED_SECONDS = 86400;
+
+export function validElapsedSeconds(value: number): boolean {
+    return Number.isInteger(value) && value >= 0 && value <= MAX_MATCH_ELAPSED_SECONDS;
+}
+
+export const CLOCK_RECOVERY_MESSAGE =
+    'Время таймера некорректно или превышает 24 часа. Организатору нужно открыть «Восстановление после сбоя» и указать фактически сыгранное время, а не время с момента разрыва связи.';
+
 export function elapsedAt(data: MatchProtocolData, now: number): number {
     const s = data.session;
     return (
@@ -21,6 +30,8 @@ export function projectCommand(
     c: MatchCommand,
 ): MatchProtocolData {
     const d = structuredClone(source);
+    // A reset is online-only and never projected before a server acknowledgment.
+    if (c.action === 'reset') return d;
     const s = d.session;
     s.elapsedSeconds = c.elapsedSeconds;
     const previous = s.status;
