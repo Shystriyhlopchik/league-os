@@ -1,0 +1,167 @@
+<main class="calendar-management">
+    <a routerLink="/dashboard">В кабинет</a>
+    <h1>Управление календарём</h1>
+    <p>
+        Меняйте даты, время и площадки по ходу турнира. Пары, туры, результаты и
+        история матчей сохраняются.
+    </p>
+    <label
+        >Турнир
+        <select
+            [(ngModel)]="tournamentId"
+            (ngModelChange)="load()"
+            [disabled]="busy()"
+        >
+            <option [ngValue]="0">Выберите турнир</option>
+            @for (t of tournaments(); track t.id) {
+                <option [ngValue]="t.id">{{ t.name }}</option>
+            }
+        </select></label
+    >
+    @if (error()) {
+        <p class="error" role="alert">{{ error() }}</p>
+    }
+    @if (notice()) {
+        <p role="status">{{ notice() }}</p>
+    }
+    @if (busy()) {
+        <p role="status">Загрузка…</p>
+    }
+    @if (calendar(); as calendar) {
+        <div class="filters">
+            <label
+                >Статус
+                <select
+                    [ngModel]="filter()"
+                    (ngModelChange)="filter.set($event)"
+                >
+                    <option value="all">Все матчи</option>
+                    <option value="scheduled">Не начатые</option>
+                    <option value="postponed">Перенесённые</option>
+                    <option value="live">Идут сейчас</option>
+                    <option value="finished">Завершённые</option>
+                </select></label
+            >
+            <label
+                >Номер тура
+                <input
+                    type="number"
+                    min="1"
+                    [ngModel]="round()"
+                    (ngModelChange)="round.set($event ? '' + $event : '')"
+                    placeholder="Все"
+            /></label>
+            <button type="button" (click)="load()" [disabled]="busy()">
+                Обновить
+            </button>
+        </div>
+        @for (match of matches(); track match.id) {
+            <article>
+                <h2>{{ match.home }} — {{ match.away }}</h2>
+                <p>{{ match.round }} · №{{ match.id }} · {{ match.status }}</p>
+                <p>
+                    {{
+                        match.postponed
+                            ? "Матч перенесён. Новая дата уточняется"
+                            : match.matchDatetime
+                              ? (match.matchDatetime
+                                    | date: "dd.MM.yyyy HH:mm") + " (МСК)"
+                              : "Дата не назначена"
+                    }}
+                </p>
+                @if (match.postponementReason) {
+                    <p>Причина: {{ match.postponementReason }}</p>
+                }
+                @if (
+                    match.status === "scheduled" &&
+                    calendar.tournament?.lifecycleStatus !== "completed"
+                ) {
+                    <button
+                        type="button"
+                        (click)="edit(match)"
+                        [disabled]="busy()"
+                    >
+                        Изменить расписание
+                    </button>
+                }
+                @if (editing?.id === match.id) {
+                    <form (ngSubmit)="save(false)">
+                        <label
+                            >Дата и время (МСК)
+                            <input
+                                type="datetime-local"
+                                name="datetime"
+                                [(ngModel)]="datetime"
+                        /></label>
+                        <label
+                            >Площадка
+                            <select name="venue" [(ngModel)]="venueId">
+                                <option [ngValue]="0">Выберите</option>
+                                @for (v of calendar.venues; track v.id) {
+                                    <option [ngValue]="v.id">
+                                        {{ v.name }}
+                                    </option>
+                                }
+                            </select></label
+                        >
+                        <label
+                            >Занятый слот, минут (игра + смена команд)
+                            <input
+                                type="number"
+                                min="1"
+                                max="480"
+                                name="duration"
+                                [(ngModel)]="duration"
+                        /></label>
+                        <label
+                            >Причина изменения
+                            <textarea
+                                name="reason"
+                                [(ngModel)]="reason"
+                                maxlength="1000"
+                                required
+                            ></textarea>
+                        </label>
+                        <div class="actions">
+                            <button type="submit" [disabled]="busy()">
+                                Назначить дату
+                            </button>
+                            <button
+                                type="button"
+                                (click)="save(true)"
+                                [disabled]="busy()"
+                            >
+                                Перенести — дата неизвестна
+                            </button>
+                            <button
+                                type="button"
+                                (click)="editing = undefined"
+                                [disabled]="busy()"
+                            >
+                                Отмена
+                            </button>
+                        </div>
+                    </form>
+                }
+                @if (match.scheduleHistory?.length) {
+                    <details>
+                        <summary>История расписания</summary>
+                        @for (entry of match.scheduleHistory; track $index) {
+                            <p>
+                                {{ entry.at | date: "dd.MM.yyyy HH:mm" }} ·
+                                организатор #{{ entry.actorId }} ·
+                                {{ entry.reason }}
+                            </p>
+                            <pre
+                                >{{ entry.before | json }} → {{
+                                    entry.after | json
+                                }}</pre>
+                        }
+                    </details>
+                }
+            </article>
+        } @empty {
+            <p>Матчей по выбранным условиям нет.</p>
+        }
+    }
+</main>

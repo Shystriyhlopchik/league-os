@@ -81,6 +81,7 @@
     "typescript-eslint": "^8.20.0"
   },
   "jest": {
+    "setupFiles": ["reflect-metadata"],
     "moduleFileExtensions": [
       "js",
       "json",

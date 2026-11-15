@@ -345,8 +345,9 @@ export class KnockoutBracketService {
   async advanceAutomatically(
     tournamentId: number,
     matchId: number,
+    manager?: EntityManager,
   ): Promise<MatchEntity | undefined> {
-    return this.advanceInternal(tournamentId, matchId, undefined, true);
+    return this.advanceInternal(tournamentId, matchId, undefined, true, manager);
   }
 
   async getTieContext(match: MatchEntity, manager = this.dataSource.manager) {
@@ -451,8 +452,9 @@ export class KnockoutBracketService {
     matchId: number,
     suppliedWinnerTeamId: number | undefined,
     allowUnresolvedDraw: boolean,
+    transactionManager?: EntityManager,
   ): Promise<MatchEntity | undefined> {
-    return this.dataSource.transaction('SERIALIZABLE', async (manager) => {
+    const execute = async (manager: EntityManager) => {
       const matches = manager.getRepository(MatchEntity);
       const match = await matches.findOne({
         where: { id: matchId, tournamentId },
@@ -607,7 +609,8 @@ export class KnockoutBracketService {
         if (changed) await matches.save(candidate);
       }
       return match;
-    });
+    };
+    return transactionManager ? execute(transactionManager) : this.dataSource.transaction('SERIALIZABLE', execute);
   }
 
   private async loadSourceContext(

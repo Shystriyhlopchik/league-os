@@ -17,6 +17,7 @@ import { MatchResultResolver } from '../matches/match-result.resolver';
 import { PlayerSuspensionsModule } from '../player-suspensions/player-suspensions.module';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { RegistrationsModule } from '../registrations/registrations.module';
+import { MatchServiceAccessGuard } from './match-service-access.guard';
 
 @Module({
   imports: [
@@ -37,6 +38,6 @@ import { RegistrationsModule } from '../registrations/registrations.module';
     RegistrationsModule,
   ],
   controllers: [MatchServiceController],
-  providers: [MatchServiceService, MatchResultResolver, RolesGuard],
+  providers: [MatchServiceService, MatchResultResolver, RolesGuard, MatchServiceAccessGuard],
 })
 export class MatchServiceModule {}

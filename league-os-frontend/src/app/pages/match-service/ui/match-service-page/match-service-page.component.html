@@ -32,8 +32,8 @@
                         <p>{{ match.venue?.name }}</p>
                     </div>
 
-                    <button type="button" (click)="startMatch(match.id)">
-                        Начать
+                    <button type="button" (click)="startMatch(match.id, match.status)">
+                        {{ match.status === 'live' ? 'Продолжить обслуживание' : match.status === 'finished' ? 'Проверить и подписать протокол' : 'Подготовить протокол' }}
                     </button>
                 </article>
             }

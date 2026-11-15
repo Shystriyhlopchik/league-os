@@ -1904,7 +1904,10 @@
 
             @if (workflowPhase() === "preparation") {
                 <section class="step-card preparation-calendar">
-                    <h2>Подготовка календаря</h2>
+                    <h2>{{ store.structureLocked() ? 'Календарь турнира' : 'Подготовка календаря' }}</h2>
+                    @if (store.structureLocked()) {
+                        <a class="button button--primary" routerLink="/dashboard/calendar" [queryParams]="{ tournamentId: draft().tournamentId }">Управлять датами и переносами</a>
+                    }
                     <p class="hint">
                         Сохраните распределение команд, затем сформируйте пары
                         автоматически или добавьте матчи вручную. После

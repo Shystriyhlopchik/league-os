@@ -25,10 +25,22 @@ import { SaveMatchRegistrationDto } from './dto/save-match-registration.dto';
 import { CreateManualMatchEventDto } from './dto/create-manual-match-event.dto';
 import { FinalizeMatchResultDto } from './dto/finalize-match-result.dto';
 import { RoleCode } from '../users/enums/role-code.enum';
+import { MatchCommandDto } from './dto/match-command.dto';
+import { MatchServiceAccessGuard } from './match-service-access.guard';
 
 @Controller('match-service')
+@UseGuards(JwtAuthGuard)
 export class MatchServiceController {
   constructor(private readonly matchService: MatchServiceService) {}
+
+  @Post('matches/:matchId/commands')
+  @UseGuards(MatchServiceAccessGuard)
+  command(@Param('matchId', ParseIntPipe) id: number, @Body() dto: MatchCommandDto, @Req() req: any) {
+    return this.matchService.command(id, dto, req.user.id);
+  }
+
+  @Get('unfinished-matches')
+  unfinished() { return this.matchService.findUnfinishedMatches(); }
 
   @Get('matches')
   findAvailableMatches(): Promise<MatchServiceMatchDto[]> {
@@ -230,6 +242,7 @@ export class MatchServiceController {
   }
 
   @Get('matches/:matchId/session')
+  @UseGuards(MatchServiceAccessGuard)
   getSession(
     @Param('matchId', ParseIntPipe) matchId: number,
   ): Promise<MatchServiceSessionDto> {
@@ -237,21 +250,25 @@ export class MatchServiceController {
   }
 
   @Post('matches/:matchId/start')
+  @UseGuards(MatchServiceAccessGuard)
   startMatch(@Param('matchId', ParseIntPipe) matchId: number) {
     return this.matchService.startMatch(matchId);
   }
 
   @Post('matches/:matchId/pause')
+  @UseGuards(MatchServiceAccessGuard)
   pauseMatch(@Param('matchId', ParseIntPipe) matchId: number) {
     return this.matchService.pauseMatch(matchId);
   }
 
   @Post('matches/:matchId/resume')
+  @UseGuards(MatchServiceAccessGuard)
   resumeMatch(@Param('matchId', ParseIntPipe) matchId: number) {
     return this.matchService.resumeMatch(matchId);
   }
 
   @Post('matches/:matchId/finish-half')
+  @UseGuards(MatchServiceAccessGuard)
   finishHalf(
     @Param('matchId', ParseIntPipe) matchId: number,
     @Body() dto: FinalizeMatchResultDto,
@@ -260,11 +277,13 @@ export class MatchServiceController {
   }
 
   @Post('matches/:matchId/start-second-half')
+  @UseGuards(MatchServiceAccessGuard)
   startSecondHalf(@Param('matchId', ParseIntPipe) matchId: number) {
     return this.matchService.startSecondHalf(matchId);
   }
 
   @Post('matches/:matchId/finish')
+  @UseGuards(MatchServiceAccessGuard)
   finishMatch(
     @Param('matchId', ParseIntPipe) matchId: number,
     @Body() dto: FinalizeMatchResultDto,
@@ -273,6 +292,7 @@ export class MatchServiceController {
   }
 
   @Post('matches/:matchId/events')
+  @UseGuards(MatchServiceAccessGuard)
   createEvent(
     @Param('matchId', ParseIntPipe) matchId: number,
     @Body() dto: CreateMatchServiceEventDto,
@@ -281,6 +301,7 @@ export class MatchServiceController {
   }
 
   @Post('matches/:matchId/events/sync')
+  @UseGuards(MatchServiceAccessGuard)
   syncEvents(
     @Param('matchId', ParseIntPipe) matchId: number,
     @Body() dto: SyncMatchServiceEventsDto,
@@ -289,6 +310,7 @@ export class MatchServiceController {
   }
 
   @Post('matches/:matchId/events/start-recording')
+  @UseGuards(MatchServiceAccessGuard)
   startEventRecording(
     @Param('matchId', ParseIntPipe) matchId: number,
     @Body() dto: StartEventRecordingDto,
@@ -297,11 +319,13 @@ export class MatchServiceController {
   }
 
   @Post('matches/:matchId/events/cancel-recording')
+  @UseGuards(MatchServiceAccessGuard)
   cancelEventRecording(@Param('matchId', ParseIntPipe) matchId: number) {
     return this.matchService.cancelEventRecording(matchId);
   }
 
   @Post('matches/:matchId/events/:eventId/cancel')
+  @UseGuards(MatchServiceAccessGuard)
   cancelEvent(
     @Param('matchId', ParseIntPipe) matchId: number,
     @Param('eventId', ParseIntPipe) eventId: number,
@@ -310,6 +334,7 @@ export class MatchServiceController {
   }
 
   @Post('matches/:matchId/red-ball/activate')
+  @UseGuards(MatchServiceAccessGuard)
   activateRedBall(
     @Param('matchId', ParseIntPipe) matchId: number,
     @Body() dto: ActivateRedBallDto,
@@ -318,6 +343,7 @@ export class MatchServiceController {
   }
 
   @Post('matches/:matchId/sign-protocol')
+  @UseGuards(MatchServiceAccessGuard)
   signProtocol(@Param('matchId', ParseIntPipe) matchId: number) {
     return this.matchService.signProtocol(matchId);
   }

@@ -65,6 +65,8 @@
                 }}<span class="match-schedule__colon">:</span
                 >{{ match().awayTeamScore ?? "—" }}</strong
             >
+        } @else if (match().postponed) {
+            <strong>Перенесён</strong>
         } @else {
             <strong>{{ match().matchDateTime | date: "HH:mm" }}</strong>
         }

@@ -10,6 +10,10 @@
                 class="login-form__input"
                 type="text"
                 formControlName="login"
+                autocomplete="username"
+                autocapitalize="none"
+                autocorrect="off"
+                [spellcheck]="false"
                 placeholder=""
             />
         </span>
@@ -26,6 +30,7 @@
                 class="login-form__input"
                 [type]="passwordInputType()"
                 formControlName="password"
+                autocomplete="current-password"
                 placeholder=""
             />
         </span>

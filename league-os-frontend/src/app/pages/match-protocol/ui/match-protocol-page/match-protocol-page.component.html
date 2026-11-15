@@ -5,6 +5,31 @@
         (back)="goBack()"
     />
 
+    <section class="sync-status" aria-live="polite">
+        <strong>{{ store.offline() ? 'Нет связи с сервером' : 'Связь с сервером доступна' }}</strong>
+        <p>{{ store.shellReady() ? 'Страница подготовлена к открытию без интернета.' : 'Для работы без интернета держите эту вкладку открытой. Подготовка офлайн-копии…' }}</p>
+        <p>Не отправлено действий: {{ store.pendingCount() }}.
+            {{ store.isSyncing() ? 'Синхронизация…' : '' }}
+            @if (store.pendingCount()) { Действия сохранены на этом устройстве. Счёт и завершение пока предварительные. Не очищайте данные браузера. }
+        </p>
+        <button type="button" (click)="store.synchronize()" [disabled]="store.isSyncing()">Синхронизировать</button>
+        <button type="button" (click)="store.exportJournal()">Скачать резервный журнал</button>
+        @if (store.conflict()) {
+            <p role="alert">Очередь сохранена. Автоматическая отправка остановлена: необходимо сверить данные.</p>
+            <button type="button" (click)="store.compareWithServer()">Показать версию сервера</button>
+            @if (store.serverComparison(); as server) {
+                <p>На сервере: {{ server.session.status }}, тайм {{ server.session.currentHalf }},
+                    {{ server.session.homeScore }} : {{ server.session.awayScore }}.</p>
+                <details><summary>События сервера для сверки</summary>
+                    @for (event of server.events; track event.id) {
+                        <p>{{ event.half }} тайм · {{ event.minute }} мин · {{ event.eventType }} · команда #{{ event.teamId }} · игрок #{{ event.playerId }}</p>
+                    }
+                </details>
+                <button type="button" (click)="store.useServerVersion()">После сверки оставить версию сервера (с резервной копией)</button>
+            }
+        }
+    </section>
+
     @if (store.isLoading()) {
         <p class="state-text">Загружаем матч...</p>
     } @else if (store.error() && !store.match()) {
@@ -154,6 +179,10 @@
             }
 
             <section class="controls">
+                @if (store.isEventRecording() && !isGoalModalOpen() && !isCardModalOpen() && !isOwnGoalModalOpen()) {
+                    <p>Фиксация события была прервана. Вернитесь к таймеру, затем внесите событие.</p>
+                    <button type="button" (click)="store.cancelEventRecording(matchId)" [disabled]="store.isActionLoading()">Вернуться к таймеру</button>
+                }
                 @if (store.isNotStarted()) {
                     <button
                         type="button"
@@ -207,7 +236,7 @@
                     </button>
                 }
 
-                @if (store.session()?.status === "second_half") {
+                @if (store.session()?.status === "second_half" || (store.isPaused() && store.session()?.currentHalf === 2)) {
                     <button
                         type="button"
                         class="control-button control-button--danger"
@@ -218,6 +247,16 @@
                     </button>
                 }
             </section>
+
+            @if (store.canRecover()) {
+                <details class="sync-status">
+                    <summary>Восстановление после сбоя — для организатора</summary>
+                    <p>Если игра уже прошла, восстановите ввод во втором тайме на паузе. Проверьте события и итоговый счёт, затем завершите матч. Начало игры не отменяется.</p>
+                    <label>Причина восстановления <input [(ngModel)]="recoveryReason" maxlength="1000" /></label>
+                    <label>Фактически сыграно во втором тайме, секунд <input type="number" min="0" max="86400" [(ngModel)]="recoverySeconds" /></label>
+                    <button type="button" [disabled]="!recoveryReason.trim() || store.isActionLoading()" (click)="store.recover(recoveryReason, recoverySeconds)">Восстановить ввод протокола</button>
+                </details>
+            }
 
             <section class="event-actions">
                 <button
@@ -297,7 +336,7 @@
                                 <button
                                     type="button"
                                     class="journal-event__cancel"
-                                    [disabled]="store.isActionLoading()"
+                                    [disabled]="store.isActionLoading() || store.isFinished() || isProtocolSigned()"
                                     (click)="cancelEvent(event.id)"
                                 >
                                     Отменить
@@ -613,14 +652,14 @@
     }
     @if (store.isFinished()) {
         <section class="protocol-sign">
-            <h2>Матч завершён</h2>
+            <h2>{{ store.pendingCount() ? 'Завершение ожидает синхронизации' : 'Матч завершён' }}</h2>
 
             <p>Проверьте события матча и подпишите протокол.</p>
 
             <button
                 type="button"
                 class="control-button control-button--primary"
-                [disabled]="store.isActionLoading()"
+                [disabled]="store.isActionLoading() || store.pendingCount() > 0 || store.offline()"
                 (click)="signProtocol()"
             >
                 Подпись протокола

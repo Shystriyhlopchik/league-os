@@ -89,6 +89,8 @@ export class MatchProtocolPageComponent {
     penaltyAway = 0;
     homeKicks = 5;
     awayKicks = 5;
+    recoveryReason = '';
+    recoverySeconds = 0;
 
     get aggregateHome(): number {
         return (
@@ -654,6 +656,6 @@ export class MatchProtocolPageComponent {
     }
 
     canLeavePage(): boolean {
-        return this.isProtocolSigned();
+        return this.isProtocolSigned() && this.store.pendingCount() === 0;
     }
 }

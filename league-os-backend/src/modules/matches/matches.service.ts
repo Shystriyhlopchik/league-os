@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MatchEntity } from './entities/match.entity';
-import { DeepPartial, In, IsNull, Not, Repository } from 'typeorm';
+import { DeepPartial, FindOptionsWhere, In, IsNull, Not, Repository } from 'typeorm';
 import { BaseCrudService } from '../../common/base/base-crud.service';
 import { formatLocalDateTime } from './helper/formatLocalDateTime';
 import { MatchRosterPlayerEntity } from '../match-rosters/entities/match-roster-player.entity';
@@ -40,7 +40,7 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
   }
 
   override updateOne(
-    query: Partial<MatchEntity>,
+    query: FindOptionsWhere<MatchEntity>,
     dto: DeepPartial<MatchEntity>,
   ): Promise<MatchEntity> {
     if (dto.homeTeamId && dto.awayTeamId && dto.homeTeamId === dto.awayTeamId) {
@@ -85,7 +85,6 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
         status: Not(MatchStatus.CANCELLED),
         homeTeamId: Not(IsNull()),
         awayTeamId: Not(IsNull()),
-        matchDatetime: Not(IsNull()),
         tournament: {
           isActive: true,
           lifecycleStatus: In([
@@ -129,7 +128,7 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
           match.status !== MatchStatus.CANCELLED &&
           match.tournament?.lifecycleStatus !==
             TournamentLifecycleStatus.DRAFT &&
-          Boolean(match.matchDatetime),
+          (Boolean(match.matchDatetime) || !!match.postponedAt),
       )
       .map((match) => ({
         id: match.id,
@@ -137,7 +136,9 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
 
         round: match.round,
         status: match.status,
-        matchDateTime: formatLocalDateTime(match.matchDatetime),
+        matchDateTime: formatLocalDateTime(match.matchDatetime) || '',
+        postponed: !!match.postponedAt,
+        postponementReason: match.postponementReason,
 
         tournament: {
           id: match.tournament.id,
@@ -221,14 +222,15 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
           match.status !== MatchStatus.CANCELLED &&
           match.tournament?.lifecycleStatus !==
             TournamentLifecycleStatus.DRAFT &&
-          Boolean(match.matchDatetime),
+          (Boolean(match.matchDatetime) || !!match.postponedAt),
       )
       .map((match) => ({
         id: match.id,
         tournamentId: match.tournamentId,
         round: match.round,
         status: match.status,
-        matchDateTime: formatLocalDateTime(match.matchDatetime),
+        matchDateTime: formatLocalDateTime(match.matchDatetime) || '',
+        postponed: !!match.postponedAt,
 
         tournament: {
           id: match.tournament.id,
@@ -325,6 +327,8 @@ export class MatchesService extends BaseCrudService<MatchEntity> {
         status: match.status,
         round: match.round,
         matchDateTime: formatLocalDateTime(match.matchDatetime),
+        postponed: !!match.postponedAt,
+        postponementReason: match.postponementReason,
 
         tournament: {
           id: match.tournament.id,

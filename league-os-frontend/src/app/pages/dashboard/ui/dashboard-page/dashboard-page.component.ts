@@ -23,6 +23,12 @@ export class DashboardPageComponent {
 
     readonly actions: DashboardAction[] = [
         {
+            title: 'Управление календарём',
+            description: 'Изменение дат, площадок и переносы матчей по ходу турнира',
+            route: '/dashboard/calendar', roles: [UserRole.Admin, UserRole.SuperAdmin], variant: '#D6FF3F',
+            capability: 'communityTournaments',
+        },
+        {
             title: 'Видео лиги',
             description: 'Обложки, ролики ВК и восемь видео на главной',
             route: '/dashboard/videos',
@@ -109,7 +115,9 @@ export class DashboardPageComponent {
     readonly availableActions = computed(() => {
         return this.actions.filter(
             (action) =>
-                (action.capability === 'communityNews'
+                (action.capability === 'communityTournaments'
+                    ? this.sessionStore.canManageCommunityTournaments()
+                    : action.capability === 'communityNews'
                     ? this.sessionStore.canManageCommunityNews()
                     : action.capability === 'communityVideos'
                     ? this.sessionStore.canManageCommunityVideos()

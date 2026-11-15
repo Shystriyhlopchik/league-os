@@ -8,6 +8,8 @@ export interface MatchProtocol {
 }
 
 export interface MatchProtocolMatch {
+    postponed?: boolean;
+    postponementReason?: string | null;
     id: number;
     status: MatchStatus;
     round: string | null;

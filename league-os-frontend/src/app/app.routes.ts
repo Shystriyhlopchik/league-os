@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { MainComponent } from './features/main/main.component';
 import { authGuard } from './guards/auth.guard';
 import { roleGuard } from './guards/role.guard';
+import { matchServiceGuard } from './guards/match-service.guard';
 import { UserRole } from './entities/user/model/user-role.type';
 import { guestGuard } from './guards/guest.guard';
 import { matchProtocolLeaveGuard } from './pages/match-protocol/model/match-protocol-leave.guard';
@@ -194,9 +195,7 @@ export const routes: Routes = [
             },
             {
                 path: 'match-service',
-                canActivate: [
-                    roleGuard([UserRole.SuperAdmin, UserRole.Referee]),
-                ],
+                canActivate: [matchServiceGuard],
                 loadComponent: () =>
                     import(
                         './pages/match-service/ui/match-service-page/match-service-page.component'
@@ -204,9 +203,7 @@ export const routes: Routes = [
             },
             {
                 path: 'match-service/:matchId/rosters',
-                canActivate: [
-                    roleGuard([UserRole.SuperAdmin, UserRole.Referee]),
-                ],
+                canActivate: [matchServiceGuard],
                 loadComponent: () =>
                     import(
                         './pages/match-roster-check/ui/match-roster-check-page/match-roster-check-page.component'
@@ -214,9 +211,7 @@ export const routes: Routes = [
             },
             {
                 path: 'match-service/:matchId/protocol',
-                canActivate: [
-                    roleGuard([UserRole.SuperAdmin, UserRole.Referee]),
-                ],
+                canActivate: [matchServiceGuard],
                 canDeactivate: [matchProtocolLeaveGuard],
                 loadComponent: () =>
                     import(
@@ -323,6 +318,11 @@ export const routes: Routes = [
                     import(
                         './pages/tournament-builder/ui/tournament-builder-page.component'
                     ).then((m) => m.TournamentBuilderPageComponent),
+            },
+            {
+                path: 'calendar',
+                canActivate: [authGuard],
+                loadComponent: () => import('./pages/calendar-management/calendar-management.component').then(m => m.CalendarManagementComponent),
             },
             {
                 path: 'playoff-launch',
