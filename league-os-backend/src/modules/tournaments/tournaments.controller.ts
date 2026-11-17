@@ -73,6 +73,7 @@ import { LaunchPlayoffDto } from './dto/launch-playoff.dto';
 import { PlayoffLaunchService } from './playoff-launch.service';
 import { UpdateCalendarMatchDto } from './dto/update-calendar-match.dto';
 import { ManualScheduleMatchDto } from './dto/manual-schedule-match.dto';
+import { PreviewCalendarBatchDto, SaveCalendarBatchDto } from './dto/update-calendar-batch.dto';
 
 @Controller('tournaments')
 export class TournamentsController {
@@ -110,6 +111,21 @@ export class TournamentsController {
     @Req() req: AuthenticatedTournamentRequest,
   ) {
     return this.lifecycleService.updateCalendarMatch(id, matchId, dto, req.user.id);
+  }
+
+  @Post(':tournamentId/calendar-management/preview')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  previewCalendarBatch(@Param('tournamentId', ParseIntPipe) id: number, @Body() dto: PreviewCalendarBatchDto, @Req() req: AuthenticatedTournamentRequest) {
+    return this.lifecycleService.previewCalendarBatch(id, dto, req.user.id);
+  }
+
+  @Patch(':tournamentId/calendar-management')
+  @UseGuards(JwtAuthGuard, TournamentAccessGuard)
+  @RequireTournamentAccess(TournamentAccessAction.EDIT)
+  saveCalendarBatch(@Param('tournamentId', ParseIntPipe) id: number, @Body() dto: SaveCalendarBatchDto, @Req() req: AuthenticatedTournamentRequest) {
+    return this.lifecycleService.saveCalendarBatch(id, dto, req.user.id);
   }
 
   @Get(':tournamentId/playoff-launch')

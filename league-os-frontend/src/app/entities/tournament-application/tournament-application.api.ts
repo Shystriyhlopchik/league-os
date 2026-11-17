@@ -5,6 +5,7 @@ import {
     CalendarImportPreview,
     CalendarImportRequest,
 } from './calendar-import.types';
+import { CalendarBatchPreview, CalendarBatchRequest, CalendarBatchResult } from './calendar-batch.types';
 
 export interface RegistrationPolicy {
     version: 1;
@@ -129,6 +130,8 @@ export interface ManagedCalendar {
         stageId?: number;
         groupId?: number;
         roundNumber?: number;
+        groupName?: string;
+        canChangeRound?: boolean;
         homeTeamId?: number;
         awayTeamId?: number;
         home: string;
@@ -165,6 +168,12 @@ export class TournamentApplicationApi {
         return this.http.get<ManagedCalendar>(
             `${environment.apiUrl}/tournaments/${id}/calendar-management`,
         );
+    }
+    previewCalendarBatch(id: number, body: CalendarBatchRequest) {
+        return this.http.post<CalendarBatchPreview>(`${environment.apiUrl}/tournaments/${id}/calendar-management/preview`, body);
+    }
+    saveCalendarBatch(id: number, body: CalendarBatchRequest & { expectedVersion: string }) {
+        return this.http.patch<CalendarBatchResult>(`${environment.apiUrl}/tournaments/${id}/calendar-management`, body);
     }
     generateSchedule(id: number, stage: number, legs: number) {
         return this.http.post(

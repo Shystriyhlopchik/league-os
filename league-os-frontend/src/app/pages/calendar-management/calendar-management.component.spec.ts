@@ -1,33 +1,110 @@
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import {
+    ActivatedRoute,
+    convertToParamMap,
+    provideRouter,
+    Router,
+} from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
 import { CalendarManagementComponent } from './calendar-management.component';
-import { ManagedCalendar, TournamentApplicationApi } from '../../entities/tournament-application/tournament-application.api';
+import {
+    ManagedCalendar,
+    TournamentApplicationApi,
+} from '../../entities/tournament-application/tournament-application.api';
+import {
+    CalendarBatchPreview,
+    CalendarBatchResult,
+} from '../../entities/tournament-application/calendar-batch.types';
+import { shiftCalendarTime } from './calendar-draft';
 
-describe('Calendar management feedback and default slot', () => {
-    let fixture: ComponentFixture<CalendarManagementComponent>;
-    let component: CalendarManagementComponent;
-    let api: jasmine.SpyObj<TournamentApplicationApi>;
-    let calendar: ManagedCalendar;
-
+describe('Batch calendar editor', () => {
+    let fixture: ComponentFixture<CalendarManagementComponent>,
+        component: CalendarManagementComponent;
+    let api: jasmine.SpyObj<TournamentApplicationApi>,
+        calendar: ManagedCalendar;
+    const valid: CalendarBatchPreview = {
+        valid: true,
+        version: 'a'.repeat(64),
+        replayed: false,
+        updatedCount: 0,
+        issues: [],
+        warnings: [],
+        changes: [],
+    };
     beforeEach(async () => {
         calendar = {
             tournament: { name: 'Лига', lifecycleStatus: 'in_progress' },
-            stages: [], venues: [{ id: 3, name: 'ФСК Восток' }],
-            matches: [{ id: 7, home: 'Водоканал', away: 'КРИКС', status: 'scheduled',
-                matchDatetime: '2026-11-20T12:00:00', venueId: 3, durationMinutes: 60,
-                scheduleRevision: 0, defaultDurationMinutes: 55,
-                slotTiming: { periods: 2, periodDurationMinutes: 20, changeoverMinutes: 15 } }],
+            stages: [],
+            venues: [{ id: 3, name: 'ФСК Восток' }],
+            matches: [
+                {
+                    id: 7,
+                    home: 'Водоканал',
+                    away: 'КРИКС',
+                    status: 'scheduled',
+                    roundNumber: 1,
+                    canChangeRound: true,
+                    matchDatetime: '2030-11-20T18:00:00',
+                    venueId: 3,
+                    durationMinutes: 60,
+                    scheduleRevision: 0,
+                    defaultDurationMinutes: 55,
+                    slotTiming: {
+                        periods: 2,
+                        periodDurationMinutes: 20,
+                        changeoverMinutes: 15,
+                    },
+                },
+                {
+                    id: 8,
+                    home: 'Соляное',
+                    away: 'Арман голд',
+                    status: 'scheduled',
+                    roundNumber: 2,
+                    canChangeRound: true,
+                    matchDatetime: '2030-11-20T19:00:00',
+                    venueId: 3,
+                    durationMinutes: 75,
+                    scheduleRevision: 1,
+                },
+                {
+                    id: 9,
+                    home: 'ЧЭТК',
+                    away: 'ЧТСиГХ',
+                    status: 'finished',
+                    roundNumber: 1,
+                    matchDatetime: '2030-11-19T18:00:00',
+                    venueId: 3,
+                },
+            ],
         };
-        api = jasmine.createSpyObj('TournamentApplicationApi', ['managedCalendars', 'calendar', 'schedule']);
+        api = jasmine.createSpyObj('TournamentApplicationApi', [
+            'managedCalendars',
+            'calendar',
+            'previewCalendarBatch',
+            'saveCalendarBatch',
+        ]);
         api.managedCalendars.and.returnValue(of([{ id: 1, name: 'Лига' }]));
         api.calendar.and.returnValue(of(calendar));
-        api.schedule.and.returnValue(of({}));
+        api.previewCalendarBatch.and.returnValue(of(valid));
+        api.saveCalendarBatch.and.returnValue(
+            of({ requestId: 'r', updatedCount: 1, replayed: false }),
+        );
         await TestBed.configureTestingModule({
             imports: [CalendarManagementComponent],
-            providers: [provideRouter([]),
+            providers: [
+                provideRouter([]),
                 { provide: TournamentApplicationApi, useValue: api },
-                { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({ tournamentId: '1' }) } } },
+                {
+                    provide: ActivatedRoute,
+                    useValue: {
+                        snapshot: {
+                            queryParamMap: convertToParamMap({
+                                tournamentId: '1',
+                            }),
+                        },
+                    },
+                },
             ],
         }).compileComponents();
         spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
@@ -35,102 +112,210 @@ describe('Calendar management feedback and default slot', () => {
         component = fixture.componentInstance;
         fixture.detectChanges();
         await fixture.whenStable();
-        component.edit(calendar.matches[0]);
-        component.reason = 'Уточнено время начала';
+        fixture.detectChanges();
+    });
+    const flush = async () => {
         fixture.detectChanges();
         await fixture.whenStable();
-    });
-
-    it('uses tournament playing time plus 15 minutes instead of the initial DB default', () => {
-        expect(component.duration).toBe(55);
-        expect(fixture.nativeElement.textContent).toContain('2 × 20 + 15 = 55');
-    });
-
-    it('preserves a previously saved custom slot', () => {
-        component.edit({ ...calendar.matches[0], scheduleRevision: 2, durationMinutes: 75 });
-        expect(component.duration).toBe(75);
-    });
-
-    it('shows missing fields and does not silently ignore submit', async () => {
-        component.datetime = '';
-        component.venueId = 0;
-        component.reason = '   ';
-        await component.save(false);
         fixture.detectChanges();
-        expect(api.schedule).not.toHaveBeenCalled();
-        expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain('проверьте');
-        expect(fixture.nativeElement.querySelectorAll('[aria-invalid="true"]').length).toBe(3);
-        expect(fixture.nativeElement.textContent).toContain('Укажите причину изменения');
+    };
+    function change() {
+        component.editField(calendar.matches[0], 'time', '20:00');
+        component.reason = 'Новое время аренды';
+    }
+    it('starts clean, uses rule-derived slots and preserves custom slots', () => {
+        expect(component.changed().length).toBe(0);
+        expect(component.row(calendar.matches[0]).durationMinutes).toBe(60);
+        component.editField(calendar.matches[0], 'time', '20:00');
+        expect(component.row(calendar.matches[0]).durationMinutes).toBe(55);
+        expect(component.row(calendar.matches[1]).durationMinutes).toBe(75);
+        expect(fixture.nativeElement.textContent).toContain('2 × 20 + 15');
     });
-
-    it('validates the occupied slot before sending the request', async () => {
+    it('keeps the common draft while switching rounds and includes both rounds in one request', async () => {
+        change();
+        component.setRound('2');
+        component.editField(calendar.matches[1], 'time', '21:00');
+        expect(component.changed().length).toBe(2);
+        await component.preview();
+        expect(
+            api.previewCalendarBatch.calls
+                .mostRecent()
+                .args[1].changes.map((m) => m.id),
+        ).toEqual([7, 8]);
+    });
+    it('keeps moved rows visible in both source and destination until saved; date does not change', () => {
+        component.setRound('1');
+        component.editField(calendar.matches[0], 'roundNumber', 2);
+        expect(component.matches().some((m) => m.id === 7)).toBeTrue();
+        component.setRound('2');
+        expect(component.matches().some((m) => m.id === 7)).toBeTrue();
+        expect(component.row(calendar.matches[0]).date).toBe('2030-11-20');
+    });
+    it('does not change finished matches', () => {
+        component.editField(calendar.matches[2], 'time', '22:00');
+        expect(component.changed().length).toBe(0);
+    });
+    it('shows required-field errors before sending anything', async () => {
+        component.editField(calendar.matches[0], 'date', '');
+        await component.preview();
+        await flush();
+        expect(api.previewCalendarBatch).not.toHaveBeenCalled();
+        expect(
+            fixture.nativeElement.querySelector('[role="alert"]').textContent,
+        ).toContain('Проверьте');
+        expect(
+            fixture.nativeElement.querySelectorAll('[aria-invalid="true"]')
+                .length,
+        ).toBeGreaterThan(0);
+    });
+    it('validates slot bounds', async () => {
         for (const value of [0, 481, 1.5, NaN]) {
-            component.duration = value;
-            await component.save(false);
-            expect(component.fieldErrors()['duration']).toBeTruthy();
+            change();
+            component.editField(calendar.matches[0], 'durationMinutes', value);
+            await component.preview();
+            expect(component.fieldIssue(7, 'durationMinutes')).toBeTrue();
         }
-        expect(api.schedule).not.toHaveBeenCalled();
+        expect(api.previewCalendarBatch).not.toHaveBeenCalled();
     });
-
-    it('submits the form, saves the calculated slot and visibly reports success', async () => {
-        const form: HTMLFormElement = fixture.nativeElement.querySelector('form');
-        expect(form.noValidate).toBeTrue();
-        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-        await fixture.whenStable();
-        fixture.detectChanges();
-        expect(api.schedule).toHaveBeenCalledWith(1, 7, '2026-11-20T12:00', 3,
-            jasmine.objectContaining({ durationMinutes: 55, expectedRevision: 0 }));
-        expect(fixture.nativeElement.querySelector('.feedback [role="status"]').textContent).toContain('успешно обновлено');
-        expect(component.editing).toBeUndefined();
+    it('requires review and only then sends one atomic request', async () => {
+        change();
+        await component.preview();
+        expect(api.saveCalendarBatch).not.toHaveBeenCalled();
+        await component.save();
+        expect(api.saveCalendarBatch).toHaveBeenCalledTimes(1);
+        expect(api.saveCalendarBatch.calls.mostRecent().args[1]).toEqual(
+            jasmine.objectContaining({
+                expectedVersion: valid.version,
+                reason: 'Новое время аренды',
+            }),
+        );
+        expect(component.notice()).toContain('Календарь сохранён');
+        expect(component.changed().length).toBe(0);
     });
-
-    it('keeps the form and shows the server conflict message', async () => {
-        api.schedule.and.returnValue(throwError(() => ({ status: 409, error: { message: 'Пересечение времени с матчем №12' } })));
-        await component.save(false);
-        fixture.detectChanges();
-        expect(component.editing?.id).toBe(7);
-        expect(component.busy()).toBeFalse();
-        expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain('матчем №12');
+    it('keeps drafts and highlights all server conflicts', async () => {
+        api.previewCalendarBatch.and.returnValue(
+            of({
+                ...valid,
+                valid: false,
+                issues: [
+                    {
+                        matchId: 7,
+                        otherMatchId: 8,
+                        field: 'matchDatetime',
+                        message: 'Площадка занята',
+                    },
+                ],
+            }),
+        );
+        change();
+        await component.preview();
+        await flush();
+        expect(component.changed().length).toBe(1);
+        expect(component.review()).toBeNull();
+        expect(component.fieldIssue(7, 'matchDatetime')).toBeTrue();
+        expect(component.fieldIssue(8, 'matchDatetime')).toBeTrue();
+        expect(fixture.nativeElement.textContent).toContain('Площадка занята');
     });
-
-    it('renders validation arrays and network failures as understandable errors', async () => {
-        api.schedule.and.returnValue(throwError(() => ({ error: { message: ['Ошибка даты', 'Ошибка площадки'] } })));
-        await component.save(false);
-        expect(component.error()).toBe('Ошибка даты. Ошибка площадки');
-        api.schedule.and.returnValue(throwError(() => ({ status: 0 })));
-        await component.save(false);
-        expect(component.error()).toContain('Нет связи с сервером');
+    it('uses the same request ID when repeating an unconfirmed save', async () => {
+        change();
+        await component.preview();
+        api.saveCalendarBatch.and.returnValue(
+            throwError(() => ({ status: 0 })),
+        );
+        await component.save();
+        const first = api.saveCalendarBatch.calls.mostRecent().args[1];
+        expect(component.changed().length).toBe(1);
+        expect(component.review()).not.toBeNull();
+        await component.save();
+        expect(api.saveCalendarBatch.calls.mostRecent().args[1].requestId).toBe(
+            first.requestId,
+        );
+        expect(component.error()).toContain('Нет подтверждения');
     });
-
-    it('does not misreport a saved change when refreshing the list fails', async () => {
-        api.calendar.and.returnValue(throwError(() => new Error('refresh failed')));
-        await component.save(false);
-        expect(component.notice()).toContain('успешно обновлено');
-        expect(component.error()).toContain('Изменения сохранены');
-        expect(component.editing).toBeUndefined();
+    it('requires a fresh review after modifying checked fields', async () => {
+        change();
+        await component.preview();
+        component.editField(calendar.matches[0], 'time', '21:00');
+        await component.save();
+        expect(api.saveCalendarBatch).not.toHaveBeenCalled();
+        expect(component.review()).toBeNull();
     });
-
-    it('shows saving state and prevents a duplicate click', async () => {
-        const response = new Subject<object>();
-        api.schedule.and.returnValue(response);
-        const saving = component.save(false);
-        fixture.detectChanges();
-        expect(component.busy()).toBeTrue();
-        expect(fixture.nativeElement.querySelector('button[type="submit"]').textContent).toContain('Сохранение');
-        await component.save(false);
-        expect(api.schedule).toHaveBeenCalledTimes(1);
-        response.next({}); response.complete();
+    it('prevents duplicate clicks while saving', async () => {
+        change();
+        await component.preview();
+        const response = new Subject<CalendarBatchResult>();
+        api.saveCalendarBatch.and.returnValue(response);
+        const saving = component.save();
+        await component.save();
+        expect(api.saveCalendarBatch).toHaveBeenCalledTimes(1);
+        response.next({ requestId: 'r', updatedCount: 1, replayed: false });
+        response.complete();
         await saving;
         expect(component.busy()).toBeFalse();
     });
-
-    it('allows postponing without a date or venue and reports it', async () => {
-        component.datetime = '';
-        component.venueId = 0;
-        await component.save(true);
-        expect(api.schedule).toHaveBeenCalled();
-        expect(component.notice()).toContain('Новая дата уточняется');
-        component.dismissFeedback();
-        expect(component.notice()).toBe('');
+    it('reports successful commit separately from failed refresh and blocks stale edits', async () => {
+        change();
+        await component.preview();
+        api.calendar.and.returnValue(throwError(() => new Error('refresh')));
+        await component.save();
+        expect(component.notice()).toContain('Календарь сохранён');
+        expect(component.error()).toContain('список не обновился');
+        expect(component.needsRefresh()).toBeTrue();
+        component.editField(calendar.matches[0], 'time', '23:00');
+        expect(component.changed().length).toBe(0);
+    });
+    it('can explicitly postpone without requiring date or venue', async () => {
+        component.editField(calendar.matches[0], 'postponed', true);
+        component.reason = 'Площадка закрыта';
+        await component.preview();
+        expect(
+            api.previewCalendarBatch.calls.mostRecent().args[1].changes[0],
+        ).toEqual(jasmine.objectContaining({ postponed: true }));
+        expect(
+            api.previewCalendarBatch.calls.mostRecent().args[1].changes[0]
+                .matchDatetime,
+        ).toBeUndefined();
+    });
+    it('sequences selected slots using each duration, in row order', () => {
+        component.selected.set([8, 7]);
+        component.bulkDate = '2030-11-21';
+        component.bulkVenueId = 3;
+        component.startTime = '18:00';
+        component.bulkSequence();
+        expect(component.row(calendar.matches[0]).time).toBe('18:00');
+        expect(component.row(calendar.matches[1]).time).toBe('18:55');
+    });
+    it('shifts across midnight without depending on browser timezone', () => {
+        component.editField(calendar.matches[0], 'time', '23:50');
+        component.selected.set([7]);
+        component.shiftMinutes = 20;
+        component.bulkShift();
+        expect(component.row(calendar.matches[0])).toEqual(
+            jasmine.objectContaining({ date: '2030-11-21', time: '00:10' }),
+        );
+        expect(shiftCalendarTime('2030-02-30', '18:00', 15)).toBeNull();
+        expect(shiftCalendarTime('2030-02-01', '25:00', 15)).toBeNull();
+    });
+    it('does not lose the draft when leaving is cancelled', async () => {
+        change();
+        spyOn(window, 'confirm').and.returnValue(false);
+        await component.switchTournament(2);
+        expect(component.tournamentId).toBe(1);
+        expect(component.changed().length).toBe(1);
+        expect(component.canLeave()).toBeFalse();
+    });
+    it('retains downloaded-data candidates on revision conflicts and requires rechecking', async () => {
+        change();
+        await component.preview();
+        api.saveCalendarBatch.and.returnValue(
+            throwError(() => ({
+                status: 409,
+                error: { message: 'Календарь изменён' },
+            })),
+        );
+        await component.save();
+        expect(component.changed().length).toBe(1);
+        expect(component.review()).toBeNull();
+        expect(component.error()).toBe('Календарь изменён');
     });
 });
