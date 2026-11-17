@@ -14,6 +14,7 @@ import { videosLeaveGuard } from './guards/videos-leave.guard';
 import { teamWorkspaceLeaveGuard } from './pages/team-workspace/team-workspace-leave.guard';
 import { tournamentApplicationsLeaveGuard } from './pages/tournament-applications/tournament-applications-leave.guard';
 import { playerProfileReviewLeaveGuard } from './guards/player-profile-review-leave.guard';
+import { calendarManagementLeaveGuard } from './pages/calendar-management/calendar-management-leave.guard';
 
 export const routes: Routes = [
     {
@@ -322,6 +323,7 @@ export const routes: Routes = [
             {
                 path: 'calendar',
                 canActivate: [authGuard],
+                canDeactivate: [calendarManagementLeaveGuard],
                 loadComponent: () => import('./pages/calendar-management/calendar-management.component').then(m => m.CalendarManagementComponent),
             },
             {

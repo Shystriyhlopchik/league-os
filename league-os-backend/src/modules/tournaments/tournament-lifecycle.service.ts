@@ -47,6 +47,8 @@ import { formatLocalDateTime } from '../matches/helper/formatLocalDateTime';
 import { UpdateCalendarMatchDto } from './dto/update-calendar-match.dto';
 import { applicationEditWindow } from '../registrations/application-edit-window';
 import { calendarSlotTiming } from './scheduling/calendar-slot';
+import { canMoveCalendarRound, editCalendarBatch } from './scheduling/calendar-batch';
+import { PreviewCalendarBatchDto, SaveCalendarBatchDto } from './dto/update-calendar-batch.dto';
 
 const POST_PUBLISH_METADATA_FIELDS = new Set([
   'name',
@@ -796,7 +798,7 @@ export class TournamentLifecycleService {
       }),
       this.matchRepository.find({
         where: { tournamentId, status: Not(MatchStatus.CANCELLED) },
-        relations: { homeTeam: true, awayTeam: true },
+        relations: { homeTeam: true, awayTeam: true, group: true },
         order: { stageId: 'ASC', roundNumber: 'ASC', id: 'ASC' },
       }),
       this.dataSource
@@ -833,6 +835,8 @@ export class TournamentLifecycleService {
           awayTeamId: m.awayTeamId,
           groupId: m.groupId,
           roundNumber: m.roundNumber,
+          groupName: m.group?.name ?? m.group?.key,
+          canChangeRound: canMoveCalendarRound(m, stages, tournament.format),
           matchDatetime: formatLocalDateTime(m.matchDatetime),
           venueId: m.venueId,
           postponed: !!m.postponedAt,
@@ -1020,6 +1024,14 @@ export class TournamentLifecycleService {
         postponed: !!match.postponedAt,
       };
     });
+  }
+
+  previewCalendarBatch(tournamentId: number, dto: PreviewCalendarBatchDto, actorId: number) {
+    return editCalendarBatch(this.dataSource, tournamentId, dto, actorId, false);
+  }
+
+  saveCalendarBatch(tournamentId: number, dto: SaveCalendarBatchDto, actorId: number) {
+    return editCalendarBatch(this.dataSource, tournamentId, dto, actorId, true);
   }
 
   async complete(tournamentId: number): Promise<TournamentEntity> {

@@ -54,7 +54,7 @@ export class MatchEntity extends BaseEntity {
   durationMinutes: number;
 
   @Column({ name: 'schedule_history', type: 'jsonb', default: () => "'[]'::jsonb" })
-  scheduleHistory: { at: string; actorId: number; reason: string; before: Record<string, unknown>; after: Record<string, unknown> }[];
+  scheduleHistory: { at: string; actorId: number; reason: string; requestId?: string; requestHash?: string; before: Record<string, unknown>; after: Record<string, unknown> }[];
 
   @Column({ name: 'tournament_id' })
   tournamentId: number;

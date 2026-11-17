@@ -48,6 +48,8 @@ import { TournamentStageType } from '../tournament-stages/enums/tournament-stage
 import { TournamentRuleVersionStatus } from '../tournament-rules/enums/tournament-rule-version-status.enum';
 import { MatchResolutionType } from '../matches/enums/match-resolution-type.enum';
 import { createYardLeagueRules } from '../tournaments/validation/yard-league-rules.fixture';
+import { PreviewCalendarBatchDto } from '../tournaments/dto/update-calendar-batch.dto';
+import { MatchStatus } from '../matches/enums/match-status.enum';
 
 const url = process.env.MATCH_CONTINUITY_DB_URL;
 const integration = url ? describe : describe.skip;
@@ -680,6 +682,94 @@ integration('Match continuity on disposable PostgreSQL', () => {
       (await db.getRepository(MatchEntity).findOneByOrFail({ id: match.id }))
         .postponedAt,
     ).toBeNull();
+  });
+
+  describe('Atomic calendar batches', () => {
+    let day = 0;
+    const fixture = async () => {
+      const context=await groupFixture();
+      const date=`2040-06-${String(++day).padStart(2,'0')}`;
+      await db.getRepository(MatchEntity).update(match.id,{matchDatetime:new Date(`${date}T18:00:00`),durationMinutes:60});
+      const second=await db.getRepository(MatchEntity).save({tournamentId:context.tournament.id,stageId:context.stage.id,
+        groupId:context.group.id,roundType:MatchRoundType.GROUP_ROUND,roundNumber:2,homeTeamId:home.id,awayTeamId:away.id,
+        matchDatetime:new Date(`${date}T19:00:00`),venueId:venue.id,durationMinutes:60});
+      const body:PreviewCalendarBatchDto={requestId:randomUUID(),reason:'Обмен времени',changes:[
+        {id:match.id,expectedRevision:0,roundNumber:1,postponed:false,matchDatetime:`${date}T19:00`,venueId:venue.id,durationMinutes:60},
+        {id:second.id,expectedRevision:0,roundNumber:2,postponed:false,matchDatetime:`${date}T18:00`,venueId:venue.id,durationMinutes:60},
+      ]};
+      const rows=()=>db.getRepository(MatchEntity).find({where:{tournamentId:context.tournament.id},order:{id:'ASC'}});
+      const preview=()=>lifecycle.previewCalendarBatch(context.tournament.id,body,actor.id);
+      const commit=async()=>{const check=await preview();return lifecycle.saveCalendarBatch(context.tournament.id,{...body,expectedVersion:check.version!},actor.id);};
+      return {...context,date,second,body,rows,preview,commit};
+    };
+    it('previews without writes; swaps occupied slots atomically and preserves IDs/roster players',async()=>{
+      const c=await fixture();const check=await c.preview();expect(check.valid).toBe(true);
+      expect((await c.rows()).map(m=>m.scheduleRevision)).toEqual([0,0]);
+      expect((await c.commit()).updatedCount).toBe(2);
+      const rows=await c.rows();expect(rows.map(m=>m.matchDatetime!.getHours())).toEqual([19,18]);
+      expect(rows.map(m=>m.scheduleRevision)).toEqual([1,1]);expect(rows[0].scheduleHistory[0].requestId).toBe(c.body.requestId);
+      const rosters=await db.getRepository(MatchRosterEntity).find({where:{matchId:match.id}});
+      expect(rosters.every(r=>!r.isApproved)).toBe(true);
+      for(const roster of rosters) expect(await db.getRepository(MatchRosterPlayerEntity).countBy({matchRosterId:roster.id})).toBe(1);
+    });
+    it('retries an accepted request safely, including after another later correction',async()=>{
+      const c=await fixture();const check=await c.preview();const request={...c.body,expectedVersion:check.version!};
+      await lifecycle.saveCalendarBatch(c.tournament.id,request,actor.id);
+      await lifecycle.updateCalendarMatch(c.tournament.id,match.id,{matchDatetime:`${c.date}T21:00`,venueId:venue.id,expectedRevision:1,reason:'Later'},actor.id);
+      expect((await lifecycle.saveCalendarBatch(c.tournament.id,request,actor.id)).replayed).toBe(true);
+      expect((await c.rows())[0].scheduleRevision).toBe(2);
+      await expect(lifecycle.saveCalendarBatch(c.tournament.id,{...request,reason:'Different'},actor.id)).rejects.toThrow('уже использован');
+    });
+    it('moves fixtures between rounds coherently; rejects duplicate team in a target round',async()=>{
+      const c=await fixture();c.body.changes[0].roundNumber=2;
+      expect((await c.preview()).issues.some(i=>i.field==='roundNumber')).toBe(true);
+      c.body.changes[1].roundNumber=1;expect((await c.preview()).valid).toBe(true);await c.commit();
+      expect((await c.rows()).map(m=>m.roundNumber)).toEqual([2,1]);
+    });
+    it('rejects stale revisions and leaves every row unchanged',async()=>{
+      const c=await fixture();c.body.changes[1].expectedRevision=1;const check=await c.preview();expect(check.valid).toBe(false);
+      await expect(lifecycle.saveCalendarBatch(c.tournament.id,{...c.body,expectedVersion:check.version!},actor.id)).rejects.toThrow('не сохранён');
+      expect((await c.rows()).map(m=>m.scheduleRevision)).toEqual([0,0]);
+    });
+    it('rechecks a match that started after preview',async()=>{
+      const c=await fixture();const check=await c.preview();await db.getRepository(MatchEntity).update(c.second.id,{status:MatchStatus.LIVE});
+      await expect(lifecycle.saveCalendarBatch(c.tournament.id,{...c.body,expectedVersion:check.version!},actor.id)).rejects.toThrow();
+      expect((await c.rows())[0].scheduleRevision).toBe(0);
+    });
+    it('detects a competing booking from another tournament after preview',async()=>{
+      const c=await fixture();const check=await c.preview();
+      await db.getRepository(MatchEntity).save({tournamentId:tournament.id,homeTeamId:home.id,awayTeamId:away.id,venueId:venue.id,
+        matchDatetime:new Date(`${c.date}T18:30:00`),durationMinutes:60});
+      await expect(lifecycle.saveCalendarBatch(c.tournament.id,{...c.body,expectedVersion:check.version!},actor.id)).rejects.toThrow();
+      expect((await c.rows()).map(m=>m.scheduleRevision)).toEqual([0,0]);
+    });
+    it('serializes concurrent saves; the second stale draft cannot overwrite the first',async()=>{
+      const c=await fixture();const check=await c.preview();
+      const results=await Promise.allSettled([
+        lifecycle.saveCalendarBatch(c.tournament.id,{...c.body,expectedVersion:check.version!},actor.id),
+        lifecycle.saveCalendarBatch(c.tournament.id,{...c.body,requestId:randomUUID(),expectedVersion:check.version!},actor.id),
+      ]);
+      expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);
+      expect((await c.rows()).map(m=>m.scheduleRevision)).toEqual([1,1]);
+    });
+    it('rolls back earlier match writes when a later write fails',async()=>{
+      const c=await fixture();const check=await c.preview();
+      await db.query(`ALTER TABLE matches ADD CONSTRAINT batch_test_failure CHECK (id <> ${c.second.id} OR schedule_revision = 0)`);
+      try {
+        await expect(lifecycle.saveCalendarBatch(c.tournament.id,{...c.body,expectedVersion:check.version!},actor.id)).rejects.toThrow();
+        expect((await c.rows()).map(m=>m.scheduleRevision)).toEqual([0,0]);
+        expect((await db.getRepository(MatchRosterEntity).find({where:{matchId:match.id}})).every(r=>r.isApproved)).toBe(true);
+      } finally {await db.query('ALTER TABLE matches DROP CONSTRAINT batch_test_failure');}
+    });
+    it('postpones without a fake date and never reopens the reached fourth-round cutoff',async()=>{
+      const c=await fixture();await db.getRepository(TournamentEntity).update(c.tournament.id,{registrationRequired:true});
+      await db.getRepository(MatchEntity).update(match.id,{roundNumber:4,matchDatetime:new Date('2020-01-01T18:00:00')});
+      c.body.changes=[{id:match.id,expectedRevision:0,roundNumber:2,postponed:true,durationMinutes:60}];
+      // Moving this one fixture into round 2 would duplicate its team, so retain the sporting round.
+      c.body.changes[0].roundNumber=4;await c.commit();
+      const saved=(await c.rows())[0];expect(saved.matchDatetime).toBeNull();expect(saved.venueId).toBeNull();expect(saved.postponedAt).not.toBeNull();
+      expect((await db.getRepository(TournamentEntity).findOneByOrFail({id:c.tournament.id})).applicationsLockedAt).not.toBeNull();
+    });
   });
 
   it('blocks overlapping venue/team slots and never reopens the reached fourth-round cutoff', async () => {

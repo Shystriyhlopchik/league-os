@@ -1,201 +1,627 @@
 <main class="calendar-management">
-    <a routerLink="/dashboard">В кабинет</a>
-    <h1>Управление календарём</h1>
-    <p>
-        Меняйте даты, время и площадки по ходу турнира. Пары, туры, результаты и
-        история матчей сохраняются.
+    <a routerLink="/dashboard" class="back-link">В кабинет</a>
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Организация соревнований</p>
+            <h1>Календарь игр<span>.</span></h1>
+        </div>
+        <label class="tournament-picker"
+            >Турнир
+            <select
+                [ngModel]="tournamentId"
+                (ngModelChange)="switchTournament($event)"
+                [disabled]="busy()"
+            >
+                <option [ngValue]="0">Выберите турнир</option>
+                @for (t of tournaments(); track t.id) {
+                    <option [ngValue]="t.id">{{ t.name }}</option>
+                }
+            </select>
+        </label>
+    </header>
+    <p class="intro">
+        Изменяйте несколько матчей и сохраняйте вместе. Пока вы редактируете
+        черновик, публичный календарь не меняется.
     </p>
-    <label
-        >Турнир
-        <select
-            [(ngModel)]="tournamentId"
-            (ngModelChange)="load()"
-            [disabled]="busy()"
-        >
-            <option [ngValue]="0">Выберите турнир</option>
-            @for (t of tournaments(); track t.id) {
-                <option [ngValue]="t.id">{{ t.name }}</option>
-            }
-        </select></label
-    >
     @if (error() || notice()) {
-        <aside class="feedback" [class.feedback--error]="error()">
-            <div>
-                @if (notice()) {
-                    <p role="status">{{ notice() }}</p>
-                }
-                @if (error()) {
-                    <p role="alert">{{ error() }}</p>
-                }
-            </div>
-            <button type="button" class="feedback__close" aria-label="Закрыть уведомление" (click)="dismissFeedback()">×</button>
+        <aside
+            id="calendar-feedback"
+            class="feedback"
+            [class.feedback--error]="error()"
+        >
+            @if (notice()) {
+                <p role="status">{{ notice() }}</p>
+            }
+            @if (error()) {
+                <p role="alert">{{ error() }}</p>
+            }
         </aside>
     }
-    @if (busy()) {
-        <p role="status">{{ editing ? 'Сохранение изменений…' : 'Загрузка…' }}</p>
-    }
-    @if (calendar(); as calendar) {
-        <div class="filters">
-            <label
-                >Статус
-                <select
-                    [ngModel]="filter()"
-                    (ngModelChange)="filter.set($event)"
-                >
-                    <option value="all">Все матчи</option>
-                    <option value="scheduled">Не начатые</option>
-                    <option value="postponed">Перенесённые</option>
-                    <option value="live">Идут сейчас</option>
-                    <option value="finished">Завершённые</option>
-                </select></label
-            >
-            <label
-                >Номер тура
-                <input
-                    type="number"
-                    min="1"
-                    [ngModel]="round()"
-                    (ngModelChange)="round.set($event ? '' + $event : '')"
-                    placeholder="Все"
-            /></label>
-            <button type="button" (click)="load()" [disabled]="busy()">
-                Обновить
-            </button>
-        </div>
-        @for (match of matches(); track match.id) {
-            <article>
-                <h2>{{ match.home }} — {{ match.away }}</h2>
-                <p>{{ match.round }} · №{{ match.id }} · {{ match.status }}</p>
-                <p>
-                    {{
-                        match.postponed
-                            ? "Матч перенесён. Новая дата уточняется"
-                            : match.matchDatetime
-                              ? (match.matchDatetime
-                                    | date: "dd.MM.yyyy HH:mm") + " (МСК)"
-                              : "Дата не назначена"
-                    }}
-                </p>
-                @if (match.postponementReason) {
-                    <p>Причина: {{ match.postponementReason }}</p>
-                }
-                @if (
-                    match.status === "scheduled" &&
-                    calendar.tournament?.lifecycleStatus !== "completed"
-                ) {
+    @if (calendar(); as cal) {
+        <section class="workspace" [attr.aria-busy]="busy()">
+            <div class="workspace-nav">
+                <div class="round-navigation">
                     <button
                         type="button"
-                        (click)="edit(match)"
-                        [disabled]="busy()"
+                        aria-label="Предыдущий тур"
+                        (click)="stepRound(-1)"
+                        [disabled]="rounds().indexOf(+round()) <= 0"
                     >
-                        Изменить расписание
+                        ‹
                     </button>
-                }
-                @if (editing?.id === match.id) {
-                    <form (ngSubmit)="save(false)" novalidate [attr.aria-busy]="busy()">
-                        <label
-                            >Дата и время (МСК)
-                            <input
-                                type="datetime-local"
-                                name="datetime"
-                                [(ngModel)]="datetime"
-                                [disabled]="busy()"
-                                [attr.aria-invalid]="fieldErrors()['datetime'] ? 'true' : null"
-                                aria-describedby="calendar-datetime-error"
-                        />
-                            <small id="calendar-datetime-error" class="field-error">{{ fieldErrors()['datetime'] }}</small>
-                        </label>
-                        <label
-                            >Площадка
-                            <select name="venue" [(ngModel)]="venueId" [disabled]="busy()" [attr.aria-invalid]="fieldErrors()['venue'] ? 'true' : null" aria-describedby="calendar-venue-error">
-                                <option [ngValue]="0">Выберите</option>
-                                @for (v of calendar.venues; track v.id) {
-                                    <option [ngValue]="v.id">
-                                        {{ v.name }}
-                                    </option>
-                                }
-                            </select>
-                            <small id="calendar-venue-error" class="field-error">{{ fieldErrors()['venue'] }}</small>
-                            </label
+                    <label
+                        >Тур<select
+                            [ngModel]="round()"
+                            (ngModelChange)="setRound($event)"
                         >
-                        <label
-                            >Занятый слот, минут (игра + смена команд)
-                            <input
-                                type="number"
-                                min="1"
-                                max="480"
-                                name="duration"
-                                [(ngModel)]="duration"
-                                [disabled]="busy()"
-                                [attr.aria-invalid]="fieldErrors()['duration'] ? 'true' : null"
-                                aria-describedby="calendar-slot-hint calendar-duration-error"
-                        />
-                            <small id="calendar-slot-hint" class="hint">
-                                @if (match.slotTiming; as timing) {
-                                    По настройкам турнира: {{ timing.periods }} × {{ timing.periodDurationMinutes }} + {{ timing.changeoverMinutes }} = {{ match.defaultDurationMinutes }} мин. Можно изменить вручную.
-                                } @else {
-                                    Длительность таймов в правилах не указана. Укажите время игры и добавьте 15 минут на смену команд.
-                                }
-                            </small>
-                            <small id="calendar-duration-error" class="field-error">{{ fieldErrors()['duration'] }}</small>
-                        </label>
-                        <label
-                            >Причина изменения
-                            <textarea
-                                name="reason"
-                                [(ngModel)]="reason"
-                                maxlength="1000"
-                                required
-                                [disabled]="busy()"
-                                [attr.aria-invalid]="fieldErrors()['reason'] ? 'true' : null"
-                                aria-describedby="calendar-reason-error"
-                            ></textarea>
-                            <small id="calendar-reason-error" class="field-error">{{ fieldErrors()['reason'] }}</small>
-                        </label>
-                        <p class="hint">Составы команд сохранятся, но после изменения расписания потребуется повторное подтверждение судьи.</p>
-                        @if (error()) {
-                            <p class="error">{{ error() }}</p>
-                        }
-                        <div class="actions">
-                            <button type="submit" [disabled]="busy()">
-                                {{ busy() ? 'Сохранение…' : 'Назначить дату' }}
-                            </button>
-                            <button
+                            <option value="">Все туры</option>
+                            @for (r of rounds(); track r) {
+                                <option [value]="'' + r">{{ r }} тур</option>
+                            }
+                        </select></label
+                    >
+                    <button
+                        type="button"
+                        aria-label="Следующий тур"
+                        (click)="stepRound(1)"
+                        [disabled]="
+                            rounds().indexOf(+round()) >= rounds().length - 1
+                        "
+                    >
+                        ›
+                    </button>
+                </div>
+                @if (cal.stages.length > 1) {
+                    <label
+                        >Этап<select
+                            [ngModel]="stage()"
+                            (ngModelChange)="stage.set($event); group.set('')"
+                        >
+                            <option value="">Все этапы</option>
+                            @for (s of cal.stages; track s.id) {
+                                <option [value]="'' + s.id">
+                                    {{ s.name }}
+                                </option>
+                            }
+                        </select></label
+                    >
+                }
+                @if (groups().length) {
+                    <label
+                        >Группа<select
+                            [ngModel]="group()"
+                            (ngModelChange)="group.set($event)"
+                        >
+                            <option value="">Все группы</option>
+                            @for (g of groups(); track g[0]) {
+                                <option [value]="'' + g[0]">{{ g[1] }}</option>
+                            }
+                        </select></label
+                    >
+                }
+                <label
+                    >Показать<select
+                        [ngModel]="filter()"
+                        (ngModelChange)="filter.set($event)"
+                    >
+                        <option value="all">Все матчи</option>
+                        <option value="scheduled">Не начатые</option>
+                        <option value="postponed">Дата уточняется</option>
+                        <option value="changed">Изменённые</option>
+                        <option value="live">Идут сейчас</option>
+                        <option value="finished">Завершённые</option>
+                    </select></label
+                >
+                <button
+                    class="secondary"
+                    type="button"
+                    (click)="load()"
+                    [disabled]="busy()"
+                >
+                    Обновить
+                </button>
+                <span class="workspace-nav__context"
+                    >{{ round() ? "Тур " + round() : "Все туры" }} ·
+                    {{ matches().length }} матчей · МСК</span
+                >
+            </div>
+
+            @if (selected().length) {
+                <section
+                    class="bulk-editor"
+                    aria-label="Действия с выделенными матчами"
+                >
+                    <div class="bulk-heading">
+                        <strong
+                            >Выбрано матчей: {{ selected().length }}
+                            @if (selectedHidden()) {
+                                <span
+                                    >· скрыто фильтрами:
+                                    {{ selectedHidden() }}</span
+                                >
+                            }</strong
+                        ><button
+                            class="text-button"
+                            type="button"
+                            (click)="selected.set([])"
+                        >
+                            Снять выделение
+                        </button>
+                    </div>
+                    <fieldset [disabled]="busy() || needsRefresh()">
+                        <div class="bulk-line">
+                            <label
+                                >Общая дата<input
+                                    type="date"
+                                    [(ngModel)]="bulkDate" /></label
+                            ><label
+                                >Общая площадка<select
+                                    [(ngModel)]="bulkVenueId"
+                                >
+                                    <option [ngValue]="0">Не менять</option>
+                                    @for (v of cal.venues; track v.id) {
+                                        <option [ngValue]="v.id">
+                                            {{ v.name }}
+                                        </option>
+                                    }
+                                </select></label
+                            ><button
                                 type="button"
-                                (click)="save(true)"
-                                [disabled]="busy()"
+                                class="secondary"
+                                (click)="bulkApply()"
                             >
-                                Перенести — дата неизвестна
-                            </button>
-                            <button
-                                type="button"
-                                (click)="editing = undefined"
-                                [disabled]="busy()"
-                            >
-                                Отмена
+                                Применить дату / площадку
                             </button>
                         </div>
-                    </form>
-                }
-                @if (match.scheduleHistory?.length) {
-                    <details>
-                        <summary>История расписания</summary>
-                        @for (entry of match.scheduleHistory; track $index) {
-                            <p>
-                                {{ entry.at | date: "dd.MM.yyyy HH:mm" }} ·
-                                организатор #{{ entry.actorId }} ·
-                                {{ entry.reason }}
-                            </p>
-                            <pre
-                                >{{ entry.before | json }} → {{
-                                    entry.after | json
-                                }}</pre>
+                        <div class="bulk-line">
+                            <label
+                                >Начать с (МСК)<input
+                                    type="time"
+                                    [(ngModel)]="startTime" /></label
+                            ><button
+                                type="button"
+                                class="secondary"
+                                (click)="bulkSequence()"
+                            >
+                                Расставить последовательно</button
+                            ><span class="hint"
+                                >В порядке строк, с учётом длительности
+                                слотов</span
+                            >
+                        </div>
+                        <div class="bulk-line">
+                            <label
+                                >Сдвиг, минут<input
+                                    type="number"
+                                    min="-1440"
+                                    max="1440"
+                                    [(ngModel)]="shiftMinutes" /></label
+                            ><button
+                                type="button"
+                                class="secondary"
+                                (click)="bulkShift()"
+                            >
+                                Сдвинуть выбранные</button
+                            ><label
+                                >Новый тур<input
+                                    type="number"
+                                    min="1"
+                                    max="10000"
+                                    [(ngModel)]="bulkRound" /></label
+                            ><button
+                                type="button"
+                                class="secondary"
+                                (click)="bulkMove()"
+                            >
+                                Переместить в тур
+                            </button>
+                        </div>
+                    </fieldset>
+                </section>
+            }
+            <div class="table-container">
+                <table class="calendar-table">
+                    <caption>
+                        {{
+                            round()
+                                ? "Матчи " + round() + "-го тура"
+                                : "Матчи турнира"
+                        }}. Даты и время указаны по Москве. Перенесённая в
+                        другой тур строка остаётся здесь до сохранения.
+                    </caption>
+                    <thead>
+                        <tr>
+                            <th class="select-cell">
+                                <input
+                                    type="checkbox"
+                                    aria-label="Выбрать все доступные матчи на экране"
+                                    [checked]="allVisibleSelected()"
+                                    (change)="
+                                        selectVisible(
+                                            $any($event.target).checked
+                                        )
+                                    "
+                                    [disabled]="busy() || needsRefresh()"
+                                />
+                            </th>
+                            <th>Матч</th>
+                            <th>Тур</th>
+                            <th>Дата</th>
+                            <th>Начало, МСК</th>
+                            <th>Площадка</th>
+                            <th>Слот, мин</th>
+                            <th>Без даты</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (m of matches(); track m.id) {
+                            @let r = row(m);
+                            <tr
+                                [id]="'calendar-match-' + m.id"
+                                [class.changed]="isChanged(m)"
+                                [class.locked]="!editable(m)"
+                            >
+                                <td class="select-cell">
+                                    <input
+                                        type="checkbox"
+                                        [attr.aria-label]="
+                                            'Выбрать ' + m.home + ' — ' + m.away
+                                        "
+                                        [checked]="selected().includes(m.id)"
+                                        (change)="
+                                            toggle(
+                                                m,
+                                                $any($event.target).checked
+                                            )
+                                        "
+                                        [disabled]="disabled(m)"
+                                    />
+                                </td>
+                                <th scope="row" class="match-cell">
+                                    <strong
+                                        >{{ m.home
+                                        }}<span class="versus"> — </span
+                                        >{{ m.away }}</strong
+                                    ><small
+                                        >{{
+                                            m.groupName || m.round || "Матч"
+                                        }}
+                                        · №{{ m.id }} ·
+                                        {{ statusLabel(m.status) }}</small
+                                    >
+                                    @if (isChanged(m)) {
+                                        <span class="changed-mark"
+                                            >Изменено
+                                            @if (
+                                                r.roundNumber !== m.roundNumber
+                                            ) {
+                                                · → {{ r.roundNumber }} тур
+                                            }</span
+                                        ><button
+                                            type="button"
+                                            class="text-button"
+                                            (click)="undoRow(m)"
+                                            [disabled]="busy()"
+                                        >
+                                            Отменить правки
+                                        </button>
+                                    }
+                                    @if (m.scheduleHistory?.length) {
+                                        <details>
+                                            <summary>История</summary>
+                                            @for (
+                                                h of m.scheduleHistory;
+                                                track $index
+                                            ) {
+                                                <p>
+                                                    {{
+                                                        h.at
+                                                            | date
+                                                                : "dd.MM.yyyy HH:mm"
+                                                                : "+0300"
+                                                    }}
+                                                    · {{ h.reason }}
+                                                </p>
+                                                <small
+                                                    >{{ h.before | json }} →
+                                                    {{ h.after | json }}</small
+                                                >
+                                            }
+                                        </details>
+                                    }
+                                </th>
+                                <td data-label="Тур">
+                                    @if (m.canChangeRound) {
+                                        <select
+                                            [attr.aria-label]="
+                                                'Тур матча №' + m.id
+                                            "
+                                            [ngModel]="r.roundNumber"
+                                            (ngModelChange)="
+                                                editField(
+                                                    m,
+                                                    'roundNumber',
+                                                    $event
+                                                )
+                                            "
+                                            [disabled]="disabled(m)"
+                                            [attr.aria-invalid]="
+                                                fieldIssue(m.id, 'roundNumber')
+                                            "
+                                        >
+                                            <option [ngValue]="null" disabled>
+                                                —
+                                            </option>
+                                            @for (
+                                                n of roundOptions(m);
+                                                track n
+                                            ) {
+                                                <option [ngValue]="n">
+                                                    {{ n }}
+                                                </option>
+                                            }
+                                        </select>
+                                    } @else {
+                                        <span>{{ m.roundNumber || "—" }}</span
+                                        ><small>Фиксирован</small>
+                                    }
+                                </td>
+                                <td data-label="Дата">
+                                    <input
+                                        type="date"
+                                        [attr.aria-label]="
+                                            'Дата матча №' + m.id
+                                        "
+                                        [ngModel]="r.date"
+                                        (ngModelChange)="
+                                            editField(m, 'date', $event)
+                                        "
+                                        [disabled]="disabled(m) || r.postponed"
+                                        [attr.aria-invalid]="
+                                            fieldIssue(m.id, 'matchDatetime')
+                                        "
+                                    />
+                                </td>
+                                <td data-label="Начало, МСК">
+                                    <input
+                                        type="time"
+                                        [attr.aria-label]="
+                                            'Время матча №' + m.id
+                                        "
+                                        [ngModel]="r.time"
+                                        (ngModelChange)="
+                                            editField(m, 'time', $event)
+                                        "
+                                        [disabled]="disabled(m) || r.postponed"
+                                        [attr.aria-invalid]="
+                                            fieldIssue(m.id, 'matchDatetime')
+                                        "
+                                    /><small>{{ endTime(m) }}</small>
+                                </td>
+                                <td data-label="Площадка">
+                                    <select
+                                        [attr.aria-label]="
+                                            'Площадка матча №' + m.id
+                                        "
+                                        [ngModel]="r.venueId"
+                                        (ngModelChange)="
+                                            editField(m, 'venueId', $event)
+                                        "
+                                        [disabled]="disabled(m) || r.postponed"
+                                        [attr.aria-invalid]="
+                                            fieldIssue(m.id, 'venueId')
+                                        "
+                                    >
+                                        <option [ngValue]="0">Выберите</option>
+                                        @for (v of cal.venues; track v.id) {
+                                            <option [ngValue]="v.id">
+                                                {{ v.name }}
+                                            </option>
+                                        }
+                                    </select>
+                                </td>
+                                <td data-label="Слот, мин">
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="480"
+                                        [attr.aria-label]="
+                                            'Длительность слота матча №' + m.id
+                                        "
+                                        [ngModel]="r.durationMinutes"
+                                        (ngModelChange)="
+                                            editField(
+                                                m,
+                                                'durationMinutes',
+                                                $event
+                                            )
+                                        "
+                                        [disabled]="disabled(m)"
+                                        [attr.aria-invalid]="
+                                            fieldIssue(m.id, 'durationMinutes')
+                                        "
+                                    />
+                                    @if (m.slotTiming; as timing) {
+                                        <small
+                                            >{{ timing.periods }} ×
+                                            {{ timing.periodDurationMinutes }} +
+                                            {{
+                                                timing.changeoverMinutes
+                                            }}</small
+                                        >
+                                    }
+                                </td>
+                                <td data-label="Дата уточняется">
+                                    <label class="postponed-control"
+                                        ><input
+                                            type="checkbox"
+                                            [attr.aria-label]="
+                                                'Дата матча №' +
+                                                m.id +
+                                                ' уточняется'
+                                            "
+                                            [ngModel]="r.postponed"
+                                            (ngModelChange)="
+                                                editField(
+                                                    m,
+                                                    'postponed',
+                                                    $event
+                                                )
+                                            "
+                                            [disabled]="disabled(m)"
+                                        /><span>Дата уточняется</span></label
+                                    >
+                                </td>
+                            </tr>
+                        } @empty {
+                            <tr>
+                                <td colspan="8" class="empty">
+                                    Матчей по выбранным условиям нет
+                                </td>
+                            </tr>
                         }
-                    </details>
-                }
-            </article>
-        } @empty {
-            <p>Матчей по выбранным условиям нет.</p>
-        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (issues().length) {
+                <section
+                    id="calendar-issues"
+                    class="issues"
+                    aria-label="Ошибки календаря"
+                >
+                    <h2>Нужно исправить</h2>
+                    <ul>
+                        @for (issue of issues(); track $index) {
+                            <li>
+                                {{ issue.message }}
+                                @if (issue.matchId) {
+                                    <button
+                                        type="button"
+                                        class="text-button"
+                                        (click)="showIssue(issue)"
+                                    >
+                                        К матчу
+                                    </button>
+                                }
+                            </li>
+                        }
+                    </ul>
+                </section>
+            }
+
+            @if (changed().length) {
+                <section class="save-settings">
+                    <label
+                        >Общая причина изменений<textarea
+                            [(ngModel)]="reason"
+                            (ngModelChange)="invalidate()"
+                            maxlength="1000"
+                            rows="2"
+                            [disabled]="busy()"
+                            [attr.aria-invalid]="fieldIssue(0, 'reason')"
+                            placeholder="Например: скорректировано время аренды площадки"
+                        ></textarea>
+                    </label>
+                    <p class="hint">
+                        Смена тура не меняет дату автоматически. Составы
+                        сохраняются; для изменённых матчей потребуется повторное
+                        подтверждение судьи.
+                    </p>
+                </section>
+            }
+            @if (review(); as preview) {
+                <section class="review" aria-labelledby="calendar-review-title">
+                    <h2 id="calendar-review-title">
+                        Проверка пройдена. Сохранить изменения?
+                    </h2>
+                    @for (warning of preview.warnings; track $index) {
+                        <p class="warning">{{ warning }}</p>
+                    }
+                    @for (change of preview.changes; track change.id) {
+                        <article>
+                            <h3>{{ change.match }}</h3>
+                            <p>
+                                <span>Было</span>
+                                {{ stateLabel(change.before) }}
+                            </p>
+                            <p>
+                                <span>Станет</span>
+                                {{ stateLabel(change.after) }}
+                            </p>
+                        </article>
+                    }
+                    <div class="review-actions">
+                        <button
+                            type="button"
+                            class="secondary"
+                            (click)="review.set(null)"
+                            [disabled]="busy()"
+                        >
+                            Вернуться к правкам</button
+                        ><button
+                            type="button"
+                            (click)="save()"
+                            [disabled]="busy()"
+                        >
+                            {{
+                                saving()
+                                    ? "Сохранение…"
+                                    : "Подтвердить изменения"
+                            }}
+                        </button>
+                    </div>
+                </section>
+            }
+            <footer class="save-bar">
+                <div>
+                    <strong>{{
+                        changed().length
+                            ? "Изменено матчей: " + changed().length
+                            : "Нет несохранённых изменений"
+                    }}</strong
+                    ><small>{{
+                        round()
+                            ? "Сохраняются правки всех туров, не только открытого"
+                            : "Все правки сохраняются одним пакетом"
+                    }}</small>
+                </div>
+                <div class="save-actions">
+                    @if (changed().length) {
+                        <button
+                            type="button"
+                            class="text-button"
+                            (click)="exportDraft()"
+                        >
+                            Скачать черновик</button
+                        ><button
+                            type="button"
+                            class="secondary"
+                            (click)="undoAll()"
+                            [disabled]="busy()"
+                        >
+                            Отменить всё
+                        </button>
+                    }
+                    <button
+                        type="button"
+                        (click)="preview()"
+                        [disabled]="
+                            busy() || needsRefresh() || !changed().length
+                        "
+                    >
+                        {{
+                            busy()
+                                ? saving()
+                                    ? "Сохранение…"
+                                    : "Проверка…"
+                                : "Проверить и сохранить"
+                        }}
+                    </button>
+                </div>
+            </footer>
+        </section>
+    } @else if (busy()) {
+        <p role="status">Загрузка календаря…</p>
     }
 </main>
