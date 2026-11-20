@@ -1,6 +1,9 @@
 :host {
     display: block;
 }
+.mobile-calendar-editor--hidden {
+    display: none;
+}
 .calendar-management {
     --line: #435047;
     --surface: #19211f;
@@ -538,5 +541,21 @@ summary {
 @media (prefers-reduced-motion: reduce) {
     * {
         scroll-behavior: auto !important;
+    }
+}
+@media (min-width: 1024px) {
+    .calendar-management {
+        max-width: 1800px;
+        padding: 16px 20px 32px;
+    }
+    .page-heading {
+        margin-top: 12px;
+    }
+    h1 {
+        font-size: 36px;
+    }
+    .intro {
+        margin: 12px 0 16px;
+        max-width: none;
     }
 }

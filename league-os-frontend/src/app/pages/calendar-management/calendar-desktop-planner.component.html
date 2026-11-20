@@ -1,0 +1,658 @@
+<section
+    class="planner"
+    cdkDropListGroup
+    aria-label="Визуальное планирование матчей"
+>
+    <header class="planner-toolbar">
+        <label
+            >Этап и группа<select
+                [ngModel]="scope()?.key"
+                (ngModelChange)="chooseScope($event)"
+                [disabled]="disabled()"
+            >
+                @for (s of scopes(); track s.key) {
+                    <option [value]="s.key">{{ s.label }}</option>
+                }
+            </select></label
+        >
+        <span class="planner-toolbar__hint"
+            >Перетащите матч в слот или выберите матч и нажмите нужное
+            время</span
+        >
+        <button
+            type="button"
+            class="secondary"
+            (click)="refresh.emit()"
+            [disabled]="disabled()"
+        >
+            Обновить
+        </button>
+    </header>
+
+    @if (feedback()) {
+        <p
+            class="planner-feedback"
+            [class.error]="feedbackError()"
+            [attr.role]="feedbackError() ? 'alert' : 'status'"
+        >
+            {{ feedback() }}
+        </p>
+    }
+    @if (pickedMatch(); as selected) {
+        <div class="picked">
+            <span
+                >Выбран:
+                <strong>{{ selected.home }} — {{ selected.away }}</strong></span
+            ><button
+                type="button"
+                class="text-button"
+                (click)="picked.set(null)"
+            >
+                Отменить выбор
+            </button>
+        </div>
+    }
+
+    <div
+        #plannerColumns
+        class="planner-columns"
+        [style.height.px]="panelHeight()"
+    >
+        <nav class="days-panel" aria-label="Туры и даты">
+            <h2>Туры и даты</h2>
+            <div class="days-list">
+                @for (d of days(); track d.key) {
+                    <div
+                        cdkDropList
+                        [cdkDropListData]="dayTarget(d)"
+                        [cdkDropListEnterPredicate]="canEnter"
+                        [cdkDropListSortingDisabled]="true"
+                        [cdkDropListDisabled]="disabled()"
+                        (cdkDropListDropped)="dropped($event)"
+                        class="day-target"
+                    >
+                        <button
+                            type="button"
+                            class="day-button"
+                            [class.active]="day()?.key === d.key"
+                            [attr.aria-pressed]="day()?.key === d.key"
+                            (click)="chooseDay(d)"
+                        >
+                            <strong>{{ d.label }}</strong
+                            ><span>{{ dateLabel(d.date) }}</span
+                            ><small>{{ dayCount(d) }} матчей</small>
+                        </button>
+                    </div>
+                } @empty {
+                    <p class="empty">
+                        В календаре пока нет матчей. Сначала сформируйте пары в
+                        конструкторе турнира.
+                    </p>
+                }
+            </div>
+            <p class="panel-note">
+                Без даты: {{ unscheduled().length }}<br />День можно выбрать и
+                после выбора матча.
+            </p>
+            <button
+                type="button"
+                class="secondary"
+                (click)="openDayEditor(true)"
+                [disabled]="disabled() || !day()"
+            >
+                Добавить день
+            </button>
+        </nav>
+
+        <section class="schedule-panel" aria-label="Сетка времени по площадкам">
+            @if (day(); as current) {
+                <header class="schedule-heading">
+                    <div>
+                        <h2>
+                            {{ current.label }}
+                            <span>· {{ dateLabel(current.date) }}</span>
+                        </h2>
+                        <p>{{ scope()?.label }} · время МСК</p>
+                    </div>
+                    <div class="schedule-actions">
+                        <button
+                            type="button"
+                            class="secondary"
+                            (click)="openDayEditor()"
+                            [disabled]="disabled()"
+                        >
+                            Настроить день</button
+                        ><button
+                            type="button"
+                            class="secondary"
+                            (click)="openSlotEditor()"
+                            [disabled]="disabled()"
+                        >
+                            + Слот
+                        </button>
+                    </div>
+                </header>
+                <div class="schedule-grid-scroll">
+                    @if (current.date && visibleVenues().length) {
+                        <div
+                            class="schedule-grid"
+                            [style.grid-template-columns]="
+                                '64px repeat(' +
+                                visibleVenues().length +
+                                ', minmax(176px, 1fr))'
+                            "
+                        >
+                            <div class="grid-corner">Время</div>
+                            @for (v of visibleVenues(); track v.id) {
+                                <h3 class="venue-heading">{{ v.name }}</h3>
+                            }
+                            @for (time of times(); track time) {
+                                <div class="time-label">
+                                    <strong>{{ time }}</strong
+                                    ><small>МСК</small>
+                                </div>
+                                @for (v of visibleVenues(); track v.id) {
+                                    @let cell = slot(time, v.id);
+                                    @let games = occupants(cell);
+                                    <div
+                                        class="slot-cell"
+                                        [class.slot-cell--blocked]="
+                                            blockedSlot(cell)
+                                        "
+                                        [class.slot-cell--target]="
+                                            picked() && !blockedSlot(cell)
+                                        "
+                                        [attr.data-slot]="cell.key"
+                                        cdkDropList
+                                        [cdkDropListData]="slotTarget(cell)"
+                                        [cdkDropListEnterPredicate]="canEnter"
+                                        [cdkDropListSortingDisabled]="true"
+                                        [cdkDropListDisabled]="
+                                            disabled() || blockedSlot(cell)
+                                        "
+                                        (cdkDropListDropped)="dropped($event)"
+                                    >
+                                        @for (m of games; track m.id) {
+                                            <div
+                                                cdkDrag
+                                                [cdkDragData]="m"
+                                                [cdkDragDisabled]="
+                                                    !editable(m) ||
+                                                    plannerScopeKeyFor(m) !==
+                                                        scope()?.key
+                                                "
+                                            >
+                                                <ng-container
+                                                    [ngTemplateOutlet]="
+                                                        matchCard
+                                                    "
+                                                    [ngTemplateOutletContext]="{
+                                                        $implicit: m,
+                                                        bank: false,
+                                                    }"
+                                                ></ng-container>
+                                                <div
+                                                    *cdkDragPlaceholder
+                                                    class="match-placeholder"
+                                                >
+                                                    Перемещение матча…
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (!games.length) {
+                                            <button
+                                                type="button"
+                                                class="empty-slot"
+                                                [disabled]="disabled()"
+                                                [attr.aria-label]="
+                                                    (picked()
+                                                        ? 'Назначить выбранный матч'
+                                                        : 'Настроить слот') +
+                                                    ' ' +
+                                                    time +
+                                                    ' ' +
+                                                    v.name +
+                                                    ' ' +
+                                                    dateLabel(current.date)
+                                                "
+                                                (click)="useSlot(cell)"
+                                            >
+                                                <span>{{
+                                                    picked()
+                                                        ? "Назначить сюда"
+                                                        : "Перетащите матч"
+                                                }}</span
+                                                ><small
+                                                    >{{ time }} —
+                                                    {{ slotEnd(cell) }} ·
+                                                    {{ cell.durationMinutes }}
+                                                    мин</small
+                                                >
+                                            </button>
+                                        }
+                                        @if (
+                                            games.length && !blockedSlot(cell)
+                                        ) {
+                                            <button
+                                                type="button"
+                                                class="slot-settings"
+                                                [attr.aria-label]="
+                                                    'Изменить слот ' +
+                                                    time +
+                                                    ' ' +
+                                                    v.name
+                                                "
+                                                (click)="openSlotEditor(cell)"
+                                                [disabled]="disabled()"
+                                            >
+                                                ⋯
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                            }
+                        </div>
+                    } @else {
+                        <div class="empty-grid">
+                            <h3>
+                                {{
+                                    visibleVenues().length
+                                        ? "Назначьте дату и создайте слоты"
+                                        : "Нет доступных площадок"
+                                }}
+                            </h3>
+                            <p>
+                                Можно задать время начала, длительность и
+                                количество игр. У одного тура может быть
+                                несколько игровых дней.
+                            </p>
+                            <button
+                                type="button"
+                                (click)="openDayEditor()"
+                                [disabled]="disabled()"
+                            >
+                                Настроить день
+                            </button>
+                        </div>
+                    }
+                </div>
+                <p class="panel-note">
+                    Слот по умолчанию: {{ defaultDuration() }} мин. Пересечения
+                    в черновике выделены; окончательная проверка учитывает и
+                    другие турниры.
+                </p>
+            } @else {
+                <p class="empty">Выберите турнир с подготовленными матчами.</p>
+            }
+        </section>
+
+        <aside class="matches-panel" aria-label="Колонка матчей">
+            <h2>Матчи</h2>
+            <label class="search-label"
+                ><span class="sr-only">Найти матч по команде</span
+                ><input
+                    type="search"
+                    placeholder="Найти команду"
+                    [ngModel]="search()"
+                    (ngModelChange)="search.set($event)"
+            /></label>
+            <div class="bank-tabs">
+                <button
+                    type="button"
+                    [class.active]="bankFilter() === 'unscheduled'"
+                    [attr.aria-pressed]="bankFilter() === 'unscheduled'"
+                    (click)="bankFilter.set('unscheduled')"
+                >
+                    Без даты <span>{{ unscheduled().length }}</span></button
+                ><button
+                    type="button"
+                    [class.active]="bankFilter() === 'all'"
+                    [attr.aria-pressed]="bankFilter() === 'all'"
+                    (click)="bankFilter.set('all')"
+                >
+                    Все
+                </button>
+            </div>
+            <div
+                class="bank-list"
+                cdkDropList
+                [cdkDropListData]="bankTarget"
+                [cdkDropListEnterPredicate]="canEnter"
+                [cdkDropListSortingDisabled]="true"
+                [cdkDropListDisabled]="disabled()"
+                (cdkDropListDropped)="dropped($event)"
+            >
+                @for (m of bankMatches(); track m.id) {
+                    <div
+                        cdkDrag
+                        [cdkDragData]="m"
+                        [cdkDragDisabled]="!editable(m)"
+                    >
+                        <ng-container
+                            [ngTemplateOutlet]="matchCard"
+                            [ngTemplateOutletContext]="{
+                                $implicit: m,
+                                bank: true,
+                            }"
+                        ></ng-container>
+                        <div *cdkDragPlaceholder class="match-placeholder">
+                            Перемещение матча…
+                        </div>
+                    </div>
+                }
+                @if (!bankMatches().length) {
+                    <p class="empty">
+                        {{
+                            search()
+                                ? "Матчей по запросу нет"
+                                : "Все матчи этой группы назначены. Откройте «Все», чтобы перенести существующий матч."
+                        }}
+                    </p>
+                }
+                <div class="bank-drop-hint">
+                    Перетащите сюда назначенный матч, чтобы снять дату и время
+                </div>
+            </div>
+            <p class="panel-note">
+                Для переноса в другой тур откройте «Все», выберите нужный день
+                слева и перетащите матч в сетку.
+            </p>
+        </aside>
+    </div>
+
+    <ng-template #matchCard let-m let-bank="bank">
+        <article
+            class="match-card"
+            [id]="
+                bank
+                    ? 'planner-bank-match-' + m.id
+                    : 'planner-grid-match-' + m.id
+            "
+            [class.changed]="changed(m)"
+            [class.selected]="picked() === m.id"
+            [class.conflict]="problem(m)"
+            [class.locked]="!editable(m)"
+        >
+            <span class="drag-handle" aria-hidden="true">⠿</span>
+            <div class="match-content">
+                <button
+                    type="button"
+                    class="match-pick"
+                    (click)="pick(m)"
+                    [disabled]="
+                        !editable(m) || plannerScopeKeyFor(m) !== scope()?.key
+                    "
+                    [attr.aria-pressed]="picked() === m.id"
+                >
+                    {{ m.home }} <span>—</span> {{ m.away }}
+                </button>
+                <small>{{
+                    bank
+                        ? matchLocation(m)
+                        : row(m).time +
+                          " — " +
+                          matchEnd(m) +
+                          " · " +
+                          row(m).durationMinutes +
+                          " мин"
+                }}</small>
+                @if (!editable(m)) {
+                    <small>{{
+                        m.status === "finished"
+                            ? "Завершён · Только просмотр"
+                            : m.status === "live"
+                              ? "Идёт · Только просмотр"
+                              : "Только просмотр"
+                    }}</small>
+                }
+                @if (plannerScopeKeyFor(m) !== scope()?.key) {
+                    <small>Занято другой группой</small>
+                }
+                @if (changed(m)) {
+                    <span class="change-tag">Изменено</span>
+                }
+                @if (problem(m)) {
+                    <span class="conflict-tag"
+                        >Конфликт · проверьте расписание</span
+                    >
+                }
+            </div>
+            @if (editable(m) && plannerScopeKeyFor(m) === scope()?.key) {
+                <button
+                    type="button"
+                    class="match-edit"
+                    [attr.aria-label]="
+                        'Редактировать расписание ' + m.home + ' — ' + m.away
+                    "
+                    (click)="openMatchEditor(m)"
+                >
+                    Изменить
+                </button>
+            }
+        </article>
+    </ng-template>
+
+    <dialog
+        #plannerDialog
+        class="planner-dialog"
+        (cancel)="onCancel($event)"
+        aria-labelledby="planner-dialog-title"
+    >
+        @if (editor(); as kind) {
+            <div class="dialog-heading">
+                <h2 id="planner-dialog-title">
+                    {{
+                        kind === "day"
+                            ? "День и временные слоты"
+                            : kind === "swap"
+                              ? "Занятый слот"
+                              : kind === "match"
+                                ? "Расписание матча"
+                                : "Настройка слота"
+                    }}
+                </h2>
+                <button
+                    type="button"
+                    class="dialog-close"
+                    (click)="closeEditor()"
+                    aria-label="Закрыть"
+                >
+                    ×
+                </button>
+            </div>
+            @if (kind === "swap") {
+                <p>
+                    В этом слоте уже назначен матч
+                    <strong
+                        >{{ swap()?.other?.home }} —
+                        {{ swap()?.other?.away }}</strong
+                    >.
+                </p>
+                <p>
+                    Поставить сюда
+                    <strong
+                        >{{ swapMatch()?.home }} —
+                        {{ swapMatch()?.away }}</strong
+                    >, а предыдущий матч
+                    {{
+                        sourceAssigned()
+                            ? "перенести в освободившийся слот (обменять местами)"
+                            : "вернуть в список без даты"
+                    }}?
+                </p>
+                @if (editorError()) {
+                    <p class="dialog-error" role="alert">{{ editorError() }}</p>
+                }
+                <div class="dialog-actions">
+                    <button
+                        type="button"
+                        class="secondary"
+                        (click)="closeEditor()"
+                    >
+                        Отмена</button
+                    ><button
+                        type="button"
+                        (click)="confirmSwap()"
+                        [disabled]="disabled()"
+                    >
+                        {{
+                            sourceAssigned()
+                                ? "Обменять матчи"
+                                : "Заменить и снять дату"
+                        }}
+                    </button>
+                </div>
+            } @else {
+                @if (editorMatch(); as m) {
+                    <p>{{ m.home }} — {{ m.away }}</p>
+                }
+                <form (ngSubmit)="applyEditor()" novalidate>
+                    <div class="editor-fields">
+                        <label
+                            >Тур<select
+                                name="formRound"
+                                [(ngModel)]="formRound"
+                                [disabled]="disabled() || !canEditFormRound()"
+                            >
+                                <option
+                                    [ngValue]="null"
+                                    [disabled]="!canUseUnnumberedRound()"
+                                >
+                                    Без номера
+                                </option>
+                                @for (r of roundChoices(); track r) {
+                                    <option [ngValue]="r">{{ r }} тур</option>
+                                }
+                            </select></label
+                        >
+                        <label
+                            >Дата (МСК)<input
+                                name="formDate"
+                                type="date"
+                                [(ngModel)]="formDate"
+                                required
+                        /></label>
+                        <label
+                            >{{
+                                kind === "day"
+                                    ? "Первый слот, МСК"
+                                    : "Начало, МСК"
+                            }}<input
+                                name="formTime"
+                                type="time"
+                                [(ngModel)]="formTime"
+                                required
+                        /></label>
+                        <label
+                            >Занятый слот, минут<input
+                                name="formDuration"
+                                type="number"
+                                min="1"
+                                max="480"
+                                [(ngModel)]="formDuration"
+                                required
+                        /></label>
+                        @if (kind === "day") {
+                            <label
+                                >Количество слотов<input
+                                    name="formCount"
+                                    type="number"
+                                    min="1"
+                                    max="24"
+                                    [(ngModel)]="formCount"
+                                    required
+                            /></label>
+                            <fieldset class="venue-picker">
+                                <legend>Площадки</legend>
+                                @for (v of calendar().venues; track v.id) {
+                                    <label
+                                        ><input
+                                            type="checkbox"
+                                            [checked]="
+                                                formVenues.includes(v.id)
+                                            "
+                                            (change)="
+                                                toggleVenue(
+                                                    v.id,
+                                                    $any($event.target).checked
+                                                )
+                                            "
+                                        />{{ v.name }}</label
+                                    >
+                                }
+                            </fieldset>
+                        } @else {
+                            <label class="full-width"
+                                >Площадка<select
+                                    name="formVenue"
+                                    [(ngModel)]="formVenue"
+                                >
+                                    <option [ngValue]="0">
+                                        Выберите площадку
+                                    </option>
+                                    @for (v of calendar().venues; track v.id) {
+                                        <option [ngValue]="v.id">
+                                            {{ v.name }}
+                                        </option>
+                                    }
+                                </select></label
+                            >
+                        }
+                    </div>
+                    @if (kind === "day") {
+                        <label class="check-label"
+                            ><input
+                                type="checkbox"
+                                name="moveDayMatches"
+                                [(ngModel)]="moveDayMatches"
+                            />При изменении даты перенести назначенные игры
+                            открытого дня, сохранив их время и площадки</label
+                        >
+                        <p class="dialog-note">
+                            Новая дата добавляет игровой день этого тура. Пустые
+                            слоты — рабочая сетка текущей страницы; на сервер
+                            сохраняются назначения матчей.
+                        </p>
+                        <p class="dialog-note">
+                            Создание сетки не меняет время уже назначенных игр.
+                            Их можно перенести в новые слоты отдельно.
+                        </p>
+                    }
+                    <p class="dialog-note">
+                        По правилам турнира слот по умолчанию —
+                        {{ defaultDuration() }} мин. Можно изменить вручную.
+                    </p>
+                    @if (editorError()) {
+                        <p class="dialog-error" role="alert">
+                            {{ editorError() }}
+                        </p>
+                    }
+                    <div class="dialog-actions">
+                        @if (kind === "match" && editorMatch(); as m) {
+                            <button
+                                type="button"
+                                class="text-button"
+                                (click)="unschedule(m)"
+                            >
+                                Снять дату
+                            </button>
+                        }
+                        <button
+                            type="button"
+                            class="secondary"
+                            (click)="closeEditor()"
+                        >
+                            Отмена</button
+                        ><button type="submit" [disabled]="disabled()">
+                            {{
+                                kind === "day"
+                                    ? "Создать слоты / применить дату"
+                                    : "Применить в черновике"
+                            }}
+                        </button>
+                    </div>
+                </form>
+            }
+        }
+    </dialog>
+</section>

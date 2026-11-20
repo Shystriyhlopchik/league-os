@@ -1,0 +1,628 @@
+:host {
+    display: block;
+    color: #f2f2e9;
+    --panel: #19221e;
+    --line: #435047;
+    --muted: #b4bfb5;
+    --accent: #d6ff3f;
+    min-width: 0;
+}
+* {
+    box-sizing: border-box;
+}
+h2,
+h3,
+p {
+    margin: 0;
+}
+h2,
+h3 {
+    font-family: var(--font-heading, "Oswald", sans-serif);
+}
+h2 {
+    font-size: 24px;
+    font-weight: 600;
+}
+h3 {
+    font-size: 20px;
+}
+button,
+input,
+select {
+    font: inherit;
+    color: inherit;
+    max-width: 100%;
+    border-radius: 4px;
+}
+button {
+    cursor: pointer;
+    border: 1px solid var(--accent);
+    padding: 9px 12px;
+    background: var(--accent);
+    color: #101711;
+    font-weight: 600;
+}
+button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+button.secondary {
+    background: var(--panel);
+    border-color: var(--line);
+    color: inherit;
+}
+button.text-button {
+    border: 0;
+    background: none;
+    color: var(--accent);
+    font-size: 13px;
+    padding: 4px;
+}
+input,
+select {
+    width: 100%;
+    min-width: 0;
+    background: #101813;
+    border: 1px solid #687568;
+    padding: 9px;
+    color-scheme: dark;
+}
+input[type="checkbox"] {
+    width: 17px;
+    height: 17px;
+    accent-color: var(--accent);
+    flex-shrink: 0;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+label {
+    display: grid;
+    gap: 5px;
+    font-size: 13px;
+    min-width: 0;
+}
+small {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--muted);
+}
+.planner {
+    min-width: 0;
+}
+.planner-toolbar {
+    display: flex;
+    gap: 16px;
+    align-items: end;
+    flex-wrap: wrap;
+    margin: 0 0 14px;
+}
+.planner-toolbar label {
+    width: 320px;
+}
+.planner-toolbar__hint {
+    font-size: 13px;
+    color: var(--muted);
+    flex: 1;
+    min-width: 200px;
+    padding: 8px 0;
+}
+.planner-feedback,
+.picked {
+    margin: 0 0 12px;
+    background: #202b21;
+    padding: 10px 14px;
+    border-left: 3px solid var(--accent);
+    font-size: 13px;
+    line-height: 1.5;
+}
+.planner-feedback.error {
+    border-color: #ffaaa3;
+    background: #34231f;
+}
+.picked {
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    align-items: center;
+}
+.planner-columns {
+    display: grid;
+    grid-template-columns: 176px minmax(0, 1fr) 280px;
+    gap: 12px;
+    min-width: 0;
+    height: clamp(420px, calc(100dvh - 430px), 840px);
+}
+.days-panel,
+.matches-panel,
+.schedule-panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    min-width: 0;
+    min-height: 0;
+}
+.days-panel,
+.matches-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+}
+.days-list,
+.bank-list {
+    overflow-y: auto;
+    min-height: 80px;
+    flex: 1;
+    overscroll-behavior: contain;
+    scrollbar-color: #637466 #19221e;
+}
+.days-panel h2,
+.matches-panel h2 {
+    flex-shrink: 0;
+}
+.day-target {
+    margin-bottom: 10px;
+}
+.day-button {
+    width: 100%;
+    text-align: left;
+    display: grid;
+    gap: 4px;
+    color: inherit;
+    background: #1b2720;
+    border: 1px solid #59695e;
+    padding: 12px 10px;
+}
+.day-button strong {
+    font-size: 19px;
+    font-family: var(--font-heading, "Oswald", sans-serif);
+}
+.day-button span {
+    font-size: 14px;
+}
+.day-button.active {
+    border-color: var(--accent);
+    box-shadow: inset 3px 0 var(--accent);
+    background: #29351f;
+}
+.day-target.cdk-drop-list-receiving .day-button {
+    border-color: var(--accent);
+}
+.day-target.cdk-drop-list-dragging .day-button {
+    background: #3a491e;
+}
+.panel-note {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--muted);
+}
+.schedule-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.schedule-heading {
+    padding: 14px;
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--line);
+}
+.schedule-heading h2 {
+    font-size: 23px;
+}
+.schedule-heading h2 span {
+    font-size: 20px;
+}
+.schedule-heading p {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 5px;
+}
+.schedule-actions {
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+.schedule-actions button {
+    font-size: 12px;
+    padding: 8px;
+}
+.schedule-grid-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-color: #637466 #19221e;
+}
+.schedule-grid {
+    display: grid;
+    gap: 0;
+    min-width: 100%;
+}
+.grid-corner,
+.venue-heading {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #243028;
+    padding: 12px 10px;
+    border-bottom: 1px solid #627466;
+}
+.grid-corner {
+    font-size: 12px;
+    color: var(--muted);
+}
+.venue-heading {
+    font-size: 18px;
+    overflow-wrap: anywhere;
+}
+.time-label {
+    padding: 18px 6px 14px 9px;
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid var(--line);
+    font-variant-numeric: tabular-nums;
+}
+.time-label strong {
+    font-size: 17px;
+}
+.slot-cell {
+    min-height: 104px;
+    position: relative;
+    padding: 8px;
+    border-bottom: 1px solid var(--line);
+    border-left: 1px solid #354439;
+    min-width: 0;
+}
+.slot-cell--blocked {
+    background: #17201c;
+}
+.slot-cell.cdk-drop-list-receiving {
+    background: #2c381f;
+}
+.slot-cell.cdk-drop-list-dragging {
+    box-shadow: inset 0 0 0 2px var(--accent);
+    background: #344522;
+}
+.slot-cell > .cdk-drag-placeholder {
+    // CDK's temporary item must not expand a row under the moving pointer.
+    position: absolute;
+    inset: 8px;
+    z-index: 3;
+    min-height: 0;
+    background: #29361f;
+    pointer-events: none;
+}
+.slot-cell--target:not(.slot-cell--blocked) {
+    background: #24311f;
+}
+.empty-slot {
+    width: 100%;
+    height: 100%;
+    min-height: 98px;
+    border: 1px dashed #687568;
+    background: transparent;
+    color: var(--muted);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 400;
+}
+.slot-settings {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    z-index: 1;
+    border: 0;
+    background: #26352a;
+    color: var(--muted);
+    padding: 1px 7px;
+    font-size: 20px;
+}
+.schedule-panel > .panel-note {
+    padding: 10px 14px;
+    border-top: 1px solid var(--line);
+}
+.empty-grid {
+    display: grid;
+    justify-items: start;
+    gap: 14px;
+    padding: 32px;
+    line-height: 1.5;
+}
+.empty-grid p {
+    color: var(--muted);
+    font-size: 14px;
+}
+.search-label {
+    margin: 0;
+}
+.bank-tabs {
+    display: flex;
+    gap: 4px;
+    background: #111a14;
+    padding: 3px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+}
+.bank-tabs button {
+    flex: 1;
+    color: inherit;
+    background: transparent;
+    border-color: transparent;
+    font-size: 13px;
+    padding: 8px;
+}
+.bank-tabs .active {
+    background: var(--accent);
+    color: #111811;
+}
+.bank-tabs span {
+    margin-left: 4px;
+}
+.bank-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 2px;
+}
+.bank-list.cdk-drop-list-receiving {
+    background: #26371d;
+    outline: 2px dashed var(--accent);
+    outline-offset: -2px;
+}
+.bank-drop-hint {
+    margin-top: auto;
+    padding: 16px 8px;
+    border: 1px dashed #596a5e;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--muted);
+    text-align: center;
+}
+.empty {
+    padding: 20px 8px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.55;
+}
+.match-card {
+    position: relative;
+    display: flex;
+    align-items: start;
+    gap: 6px;
+    padding: 12px 8px;
+    min-height: 86px;
+    background: #25312a;
+    border: 1px solid #687568;
+    border-radius: 5px;
+    cursor: grab;
+    min-width: 0;
+}
+.match-card + .match-card {
+    margin-top: 8px;
+}
+.match-card.changed {
+    border-left: 3px solid var(--accent);
+}
+.match-card.selected {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+.match-card.conflict {
+    border-color: #ffaaa3;
+    background: #382923;
+}
+.match-card.locked {
+    cursor: default;
+    background: #1b2620;
+}
+.drag-handle {
+    border: 0;
+    padding: 0 2px;
+    background: none;
+    color: var(--muted);
+    font-size: 20px;
+    cursor: grab;
+    line-height: 1;
+}
+.match-content {
+    flex: 1;
+    min-width: 0;
+    padding-right: 12px;
+}
+.match-pick {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    padding: 0;
+    background: none;
+    color: inherit;
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+.match-pick span {
+    color: var(--muted);
+}
+.match-content small {
+    display: block;
+    margin-top: 7px;
+}
+.match-edit {
+    border: 0;
+    background: none;
+    color: var(--accent);
+    padding: 0;
+    font-size: 11px;
+    font-weight: 400;
+    align-self: end;
+    position: absolute;
+    right: 8px;
+    bottom: 7px;
+}
+.change-tag,
+.conflict-tag {
+    display: block;
+    font-size: 11px;
+    margin-top: 5px;
+}
+.change-tag {
+    color: var(--accent);
+}
+.conflict-tag {
+    color: #ffc2b5;
+}
+.match-placeholder {
+    min-height: 86px;
+    border: 1px dashed var(--accent);
+    color: var(--accent);
+    padding: 20px;
+    font-size: 12px;
+}
+.cdk-drag-preview {
+    box-sizing: border-box;
+    border: 2px solid var(--accent);
+    box-shadow: 0 10px 28px #0006;
+    max-width: 300px;
+}
+.cdk-drag-animating {
+    transition: transform 160ms ease;
+}
+.slot-cell .match-edit {
+    bottom: 8px;
+}
+.slot-cell .match-card {
+    padding-bottom: 24px;
+}
+.planner-dialog {
+    border: 1px solid #748563;
+    border-radius: 8px;
+    background: #19221e;
+    color: #f2f2e9;
+    width: min(620px, 90vw);
+    max-height: 85dvh;
+    overflow: auto;
+    padding: 24px;
+    box-shadow: 0 24px 70px #0008;
+}
+.planner-dialog::backdrop {
+    background: #0009;
+}
+.dialog-heading {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+.dialog-close {
+    background: transparent;
+    border: 0;
+    color: inherit;
+    font-size: 25px;
+    padding: 0 5px;
+}
+.planner-dialog p {
+    line-height: 1.6;
+    margin: 12px 0;
+    font-size: 14px;
+}
+.editor-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+.full-width,
+.venue-picker {
+    grid-column: 1/-1;
+}
+.venue-picker {
+    margin: 0;
+    padding: 12px;
+    border: 1px solid var(--line);
+}
+.venue-picker legend {
+    font-size: 13px;
+    color: var(--muted);
+}
+.venue-picker label,
+.check-label {
+    display: flex;
+    align-items: start;
+    gap: 10px;
+    margin: 9px 0;
+    line-height: 1.5;
+}
+.check-label {
+    margin-top: 18px;
+}
+.dialog-note {
+    color: var(--muted);
+    font-size: 12px !important;
+}
+.dialog-error {
+    background: #3b2922;
+    padding: 12px;
+    border-left: 3px solid #ffaaa3;
+}
+.dialog-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: end;
+    align-items: center;
+    gap: 12px;
+    margin-top: 22px;
+}
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+}
+@media (max-width: 1279px) {
+    .planner-columns {
+        grid-template-columns: 148px minmax(0, 1fr) 240px;
+        gap: 9px;
+    }
+    .days-panel,
+    .matches-panel {
+        padding: 10px;
+    }
+    .planner-toolbar label {
+        width: 270px;
+    }
+    .schedule-heading h2 {
+        font-size: 20px;
+    }
+    .schedule-heading h2 span {
+        font-size: 18px;
+    }
+    .schedule-actions button {
+        padding: 7px;
+    }
+    .match-content {
+        padding-right: 0;
+    }
+    .match-pick {
+        font-size: 13px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .cdk-drag-animating {
+        transition: none;
+    }
+}

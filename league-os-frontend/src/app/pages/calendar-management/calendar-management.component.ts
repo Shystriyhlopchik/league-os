@@ -4,11 +4,15 @@ import {
     HostListener,
     inject,
     signal,
+    viewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { firstValueFrom, timeout } from 'rxjs';
+import { firstValueFrom, map, timeout } from 'rxjs';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { CalendarDesktopPlannerComponent } from './calendar-desktop-planner.component';
 import {
     ManagedCalendar,
     TournamentApplicationApi,
@@ -28,7 +32,12 @@ import {
 
 @Component({
     selector: 'app-calendar-management',
-    imports: [CommonModule, FormsModule, RouterLink],
+    imports: [
+        CommonModule,
+        FormsModule,
+        RouterLink,
+        CalendarDesktopPlannerComponent,
+    ],
     templateUrl: './calendar-management.component.html',
     styleUrl: './calendar-management.component.scss',
 })
@@ -36,6 +45,13 @@ export class CalendarManagementComponent {
     private readonly api = inject(TournamentApplicationApi);
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
+    readonly desktop = toSignal(
+        inject(BreakpointObserver)
+            .observe('(min-width: 1024px)')
+            .pipe(map((state) => state.matches)),
+        { initialValue: false },
+    );
+    readonly desktopPlanner = viewChild(CalendarDesktopPlannerComponent);
     readonly tournaments = signal<{ id: number; name: string }[]>([]);
     readonly calendar = signal<ManagedCalendar | null>(null);
     readonly drafts = signal<Record<number, CalendarDraftRow>>({});
@@ -203,6 +219,36 @@ export class CalendarManagementComponent {
                 this.calendar()?.tournament?.lifecycleStatus ?? '',
             )
         );
+    }
+    plannerLocked() {
+        return (
+            this.busy() ||
+            this.needsRefresh() ||
+            ['completed', 'cancelled'].includes(
+                this.calendar()?.tournament?.lifecycleStatus ?? '',
+            )
+        );
+    }
+    applyPlannerRows(changes: CalendarDraftRow[]) {
+        if (this.plannerLocked()) return;
+        if (
+            changes.some(
+                (row) =>
+                    !this.calendar()?.matches.some(
+                        (m) => m.id === row.id && this.editable(m),
+                    ),
+            )
+        ) {
+            this.error.set(
+                'Начатый или завершённый матч нельзя переносить. Обновите календарь.',
+            );
+            return;
+        }
+        this.drafts.update((rows) => ({
+            ...rows,
+            ...Object.fromEntries(changes.map((row) => [row.id, { ...row }])),
+        }));
+        this.invalidate();
     }
     disabled(m: CalendarMatch) {
         return !this.editable(m) || this.busy() || this.needsRefresh();
@@ -623,6 +669,10 @@ export class CalendarManagementComponent {
     showIssue(issue: CalendarBatchIssue) {
         const m = this.issueMatch(issue);
         if (!m) return;
+        if (this.desktop() && this.desktopPlanner()) {
+            this.desktopPlanner()!.focusMatch(m);
+            return;
+        }
         this.stage.set('');
         this.group.set('');
         this.filter.set('all');

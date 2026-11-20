@@ -155,6 +155,28 @@ describe('Batch calendar editor', () => {
         component.editField(calendar.matches[2], 'time', '22:00');
         expect(component.changed().length).toBe(0);
     });
+    it('merges desktop swaps atomically and submits both rows together', async () => {
+        const first = { ...component.row(calendar.matches[0]), time: '19:00' };
+        const second = { ...component.row(calendar.matches[1]), time: '18:00' };
+        component.applyPlannerRows([first, second]);
+        component.reason = 'Обмен временными слотами';
+        await component.preview();
+        expect(
+            api.previewCalendarBatch.calls
+                .mostRecent()
+                .args[1].changes.map((m) => m.id),
+        ).toEqual([7, 8]);
+        first.time = '23:00';
+        expect(component.row(calendar.matches[0]).time).toBe('19:00');
+    });
+    it('rejects an entire desktop patch when one row is immutable', () => {
+        component.applyPlannerRows([
+            { ...component.row(calendar.matches[0]), time: '21:00' },
+            { ...component.row(calendar.matches[2]), time: '21:00' },
+        ]);
+        expect(component.changed().length).toBe(0);
+        expect(component.error()).toContain('нельзя переносить');
+    });
     it('shows required-field errors before sending anything', async () => {
         component.editField(calendar.matches[0], 'date', '');
         await component.preview();
