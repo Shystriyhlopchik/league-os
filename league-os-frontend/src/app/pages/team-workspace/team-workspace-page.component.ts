@@ -9,6 +9,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { SessionStore } from '../../entities/user/model/session.store';
 import {
     TeamManagement,
     TeamManager,
@@ -40,6 +41,7 @@ interface TournamentRow {
     styleUrl: './team-workspace-page.component.scss',
 })
 export class TeamWorkspacePageComponent {
+    private readonly session = inject(SessionStore);
     private readonly api = inject(TeamWorkspaceApi);
     private readonly applications = inject(TournamentApplicationApi);
     private readonly route = inject(ActivatedRoute);
@@ -70,6 +72,10 @@ export class TeamWorkspacePageComponent {
     accessReason = '';
     managerUsername = '';
     ownerUsername = '';
+    transferUsername = '';
+    transferOwnerId = 0;
+    transferAction: 'keep' | 'manager' | 'revoke' = 'manager';
+    transferReason = '';
     readonly labels: Record<string, string> = {
         draft: 'Черновик',
         published: 'Опубликована',
@@ -90,6 +96,7 @@ export class TeamWorkspacePageComponent {
         profile_published: 'Карточка опубликована',
         manager_assigned: 'Права назначены',
         manager_removed: 'Права отозваны',
+        ownership_transferred: 'Владение передано',
         access_approved: 'Запрос доступа подтверждён',
         access_rejected: 'Запрос доступа отклонён',
         legacy_access_preserved: 'Сохранены прежние права капитана',
@@ -157,6 +164,12 @@ export class TeamWorkspacePageComponent {
     }
     private async refreshWorkspace() {
         this.workspace.set(await firstValueFrom(this.api.workspace()));
+        try {
+            await firstValueFrom(this.session.refreshUser());
+        } catch {
+            // A successful write must not be reported as failed if identity refresh is offline.
+            // The API independently checks current permissions on every request.
+        }
     }
     private applyProfile(view: TeamProfileView) {
         this.profile.set(view);
@@ -185,6 +198,9 @@ export class TeamWorkspacePageComponent {
         this.section.set('squad');
         this.editing.set(false);
         this.managerUsername = this.ownerUsername = '';
+        this.transferUsername = this.transferReason = '';
+        this.transferOwnerId = 0;
+        this.transferAction = 'manager';
     }
     async selectTeam(key: string) {
         if (key === this.selectedTeamKey() || !this.canLeavePage()) return;
@@ -423,6 +439,14 @@ export class TeamWorkspacePageComponent {
         this.management.set(
             await firstValueFrom(this.api.managers(p.communityId, p.team.id)),
         );
+        const owners =
+            this.management()?.managers.filter(
+                (m) => m.role === 'owner' && m.accessActive !== false,
+            ) ?? [];
+        this.transferOwnerId =
+            owners.find((m) => m.userId === this.session.user()?.id)?.userId ??
+            owners[0]?.userId ??
+            0;
     }
     assignManager(role: 'owner' | 'manager' = 'manager') {
         const username = (
@@ -433,7 +457,9 @@ export class TeamWorkspacePageComponent {
             role === 'manager' &&
             this.management()?.managers.some(
                 (manager) =>
-                    manager.username === username && manager.role === 'owner',
+                    manager.username === username &&
+                    manager.role === 'owner' &&
+                    manager.accessActive !== false,
             )
         ) {
             this.error.set(
@@ -477,6 +503,73 @@ export class TeamWorkspacePageComponent {
                 (m) => m.role === 'owner' && m.isActive,
             ).length === 1
         );
+    }
+    transferOwnership() {
+        const p = this.profile();
+        if (
+            !p ||
+            !this.canLeavePage() ||
+            this.busy() ||
+            !this.transferOwnerId ||
+            !this.transferUsername.trim() ||
+            this.transferReason.trim().length < 5
+        )
+            return;
+        const action = {
+            keep: 'оставить владельцем',
+            manager: 'сделать управляющим',
+            revoke: 'полностью отозвать доступ',
+        }[this.transferAction];
+        if (
+            !window.confirm(
+                `Назначить @${this.transferUsername.trim()} владельцем «${p.team.name}»? Для прежнего владельца №${this.transferOwnerId}: ${action}.`,
+            )
+        )
+            return;
+        return this.run(async () => {
+            await firstValueFrom(
+                this.api.transferOwnership(p.communityId, p.team.id, {
+                    username: this.transferUsername.trim(),
+                    previousOwnerUserId: this.transferOwnerId,
+                    previousOwnerAction: this.transferAction,
+                    reason: this.transferReason.trim(),
+                }),
+            );
+            this.transferUsername = this.transferReason = '';
+            await this.refreshWorkspace();
+            this.management.set(null);
+            if (
+                this.workspace()?.teams.some(
+                    (t) =>
+                        t.communityId === p.communityId &&
+                        t.teamId === p.team.id,
+                )
+            ) {
+                const latest = await firstValueFrom(
+                    this.api.profile(p.communityId, p.team.id),
+                );
+                this.profile.set({
+                    ...p,
+                    canManageAccess: latest.canManageAccess,
+                });
+                if (latest.canManageAccess) await this.loadManagement();
+                else this.section.set('squad');
+            } else {
+                this.profile.set(null);
+                this.selectedTeamKey.set('');
+            }
+            this.notice.set(
+                'Владение передано. Выбранное изменение прежних прав применено.',
+            );
+        });
+    }
+    async openUnownedTeam(c: number, t: number) {
+        if (!this.canLeavePage()) return;
+        await this.run(async () => {
+            await this.loadProfile(c, t);
+            this.section.set('access');
+            await this.loadManagement();
+        });
     }
     removeManager(manager: TeamManager) {
         if (this.busy() || this.isLastOwner(manager) || !this.canLeavePage())

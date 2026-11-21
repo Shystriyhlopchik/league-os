@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -8,7 +9,7 @@ import { MatchRegistrationDetailStore } from '../../model/match-registration-det
 
 @Component({
     selector: 'app-match-registration-detail-page',
-    imports: [PageHeaderComponent, DatePipe],
+    imports: [PageHeaderComponent, DatePipe, FormsModule],
     templateUrl: './match-registration-detail-page.component.html',
     styleUrl: './match-registration-detail-page.component.scss',
     providers: [MatchRegistrationDetailStore],
@@ -31,11 +32,12 @@ export class MatchRegistrationDetailPageComponent implements OnInit {
         ? 'Корректировка протокола участников'
         : this.isRefereeFlow
           ? 'Состав команды'
-          : 'Формирование заявки';
+          : 'Оформление протокола на матч';
+    reviewReason = '';
     readonly pageDescription = this.isCorrectionMode
         ? 'Уточните фактический состав команды в завершённом матче'
         : this.isRefereeFlow
-          ? 'Проверьте состав, который капитан выбрал на матч'
+          ? 'Проверьте состав, который представитель команды выбрал на матч'
           : 'Выберите игроков команды для участия в матче';
 
     readonly availablePlayers = computed(() =>
@@ -84,7 +86,19 @@ export class MatchRegistrationDetailPageComponent implements OnInit {
             this.isCorrectionMode,
             this.isRefereeFlow,
             this.isRefereeFlow ? () => this.isEditing.set(false) : undefined,
+            this.reviewReason.trim(),
         );
+    }
+    returnToTeam() {
+        if (
+            this.store.isDirty() &&
+            !window.confirm(
+                'Несохранённые изменения судьи будут отменены. Вернуть команде сохранённый состав?',
+            )
+        )
+            return;
+        this.store.returnToTeam(this.matchId, this.teamId, this.reviewReason);
+        this.isEditing.set(false);
     }
 
     startEditing(): void {

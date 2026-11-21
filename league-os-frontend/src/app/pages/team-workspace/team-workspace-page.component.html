@@ -697,13 +697,13 @@
                         }
                     }
                     <div class="inset">
-                        <h3>Заявка на матч — отдельно</h3>
+                        <h3>Оформление протокола на матч — отдельно</h3>
                         <p class="hint">
                             Игроки протокола выбираются из состава,
                             утверждённого для конкретного турнира.
                         </p>
                         <a routerLink="/dashboard/match-registrations"
-                            >Перейти к заявкам на матчи →</a
+                            >Оформление протокола на матч →</a
                         >
                     </div>
                 </section>
@@ -727,11 +727,32 @@
                                             >&#64;{{ manager.username }} ·
                                             {{ labels[manager.role]
                                             }}{{
-                                                manager.isActive
-                                                    ? ""
-                                                    : " · учётная запись отключена"
+                                                manager.accessActive === false
+                                                    ? " · доступ отозван"
+                                                    : manager.userActive ===
+                                                        false
+                                                      ? " · учётная запись отключена"
+                                                      : manager.memberActive ===
+                                                          false
+                                                        ? " · участие в сообществе отключено"
+                                                        : " · действует"
                                             }}</span
                                         >
+                                        @if (manager.assignedAt) {
+                                            <small class="hint"
+                                                >Обновлено
+                                                {{
+                                                    manager.assignedAt
+                                                        | date
+                                                            : "dd.MM.yyyy HH:mm"
+                                                }}
+                                                @if (manager.assignedByUserId) {
+                                                    · назначил пользователь №{{
+                                                        manager.assignedByUserId
+                                                    }}
+                                                }
+                                            </small>
+                                        }
                                         @if (isLastOwner(manager)) {
                                             <small class="hint"
                                                 >Последний активный владелец —
@@ -742,7 +763,10 @@
                                     <button
                                         class="danger"
                                         (click)="removeManager(manager)"
-                                        [disabled]="isLastOwner(manager)"
+                                        [disabled]="
+                                            isLastOwner(manager) ||
+                                            manager.accessActive === false
+                                        "
                                     >
                                         Отозвать доступ
                                     </button>
@@ -787,6 +811,82 @@
                                             required /></label
                                     ><button [disabled]="!ownerUsername.trim()">
                                         Назначить владельца
+                                    </button>
+                                </form>
+                            </details>
+                            <details class="inset">
+                                <summary>Передать владение</summary>
+                                <p class="hint">
+                                    Новый владелец и выбранное изменение прежних
+                                    прав применяются вместе. Игроки и заявки не
+                                    изменяются.
+                                </p>
+                                <form (ngSubmit)="transferOwnership()">
+                                    <label
+                                        >Прежний владелец<select
+                                            name="transferOwner"
+                                            [(ngModel)]="transferOwnerId"
+                                        >
+                                            @for (
+                                                owner of m.managers;
+                                                track owner.userId
+                                            ) {
+                                                @if (
+                                                    owner.role === "owner" &&
+                                                    owner.accessActive !== false
+                                                ) {
+                                                    <option
+                                                        [ngValue]="owner.userId"
+                                                    >
+                                                        {{ owner.name }} ·
+                                                        &#64;{{
+                                                            owner.username
+                                                        }}
+                                                    </option>
+                                                }
+                                            }
+                                        </select></label
+                                    >
+                                    <label
+                                        >Точный логин нового владельца<input
+                                            name="transferUsername"
+                                            [(ngModel)]="transferUsername"
+                                            maxlength="100"
+                                            required
+                                    /></label>
+                                    <label
+                                        >Права прежнего владельца<select
+                                            name="transferAction"
+                                            [(ngModel)]="transferAction"
+                                        >
+                                            <option value="manager">
+                                                Сделать управляющим
+                                            </option>
+                                            <option value="keep">
+                                                Оставить владельцем
+                                            </option>
+                                            <option value="revoke">
+                                                Полностью отозвать доступ
+                                            </option>
+                                        </select></label
+                                    >
+                                    <label
+                                        >Причина передачи<textarea
+                                            name="transferReason"
+                                            [(ngModel)]="transferReason"
+                                            minlength="5"
+                                            maxlength="1000"
+                                            required
+                                        ></textarea>
+                                    </label>
+                                    <button
+                                        [disabled]="
+                                            !transferOwnerId ||
+                                            !transferUsername.trim() ||
+                                            transferReason.trim().length < 5
+                                        "
+                                    >
+                                        Передать владение
                                     </button>
                                 </form>
                             </details>
@@ -838,5 +938,26 @@
                 >Рассмотреть запросы доступа к командам →</a
             >
         </aside>
+        @if (workspace()?.teamsWithoutOwners?.length) {
+            <section class="card" aria-label="Команды без владельца">
+                <h2>Нужно назначить владельца</h2>
+                <p class="hint">
+                    У этих команд нет действующего владельца. Капитаны не
+                    назначаются владельцами автоматически.
+                </p>
+                @for (
+                    team of workspace()!.teamsWithoutOwners;
+                    track team.communityId + ":" + team.teamId
+                ) {
+                    <button
+                        type="button"
+                        [disabled]="busy()"
+                        (click)="openUnownedTeam(team.communityId, team.teamId)"
+                    >
+                        {{ team.name }} · настроить доступ
+                    </button>
+                }
+            </section>
+        }
     }
 </main>

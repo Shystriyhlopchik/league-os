@@ -32,6 +32,7 @@ import {
   RequestTeamAccessDto,
   ReviewTeamAccessDto,
   SetTeamManagerDto,
+  TransferTeamOwnershipDto,
   TeamProfileDto,
   UpdateTeamProfileDto,
 } from './dto/team-workspace.dto';
@@ -60,7 +61,31 @@ export class TeamWorkspaceService {
       CommunityEntity,
       { id: communityId, isActive: true },
     );
+    const teamsWithoutOwners: {
+      communityId: number;
+      teamId: number;
+      name: string;
+    }[] = [];
+    for (const team of teams) {
+      if (
+        memberships.some(
+          (c) => c.id === team.communityId && c.canManageTournaments,
+        ) &&
+        !(await this.activeOwners(
+          this.db.manager,
+          team.communityId,
+          team.teamId,
+        ))
+      ) {
+        teamsWithoutOwners.push({
+          communityId: team.communityId,
+          teamId: team.teamId,
+          name: team.name,
+        });
+      }
+    }
     return {
+      teamsWithoutOwners,
       teams,
       defaultCommunity: {
         id: defaultCommunity.id,
@@ -595,7 +620,7 @@ export class TeamWorkspaceService {
   async managers(communityId: number, teamId: number, actor: CommunityActor) {
     await this.assertAccessOwner(communityId, teamId, actor, this.db.manager);
     const managers = await this.db.manager.find(TeamManagerEntity, {
-      where: { communityId, teamId, isActive: true },
+      where: { communityId, teamId },
       relations: { user: true },
       order: { id: 'ASC' },
     });
@@ -604,12 +629,35 @@ export class TeamWorkspaceService {
       order: { id: 'DESC' },
       take: 30,
     });
+    const members = await this.db.manager.find(CommunityMemberEntity, {
+      where: { communityId },
+    });
     return {
       managers: managers.map((m) => ({
         userId: m.userId,
         username: m.user.username,
         name: [m.user.lastName, m.user.firstName].join(' '),
-        isActive: m.user.isActive,
+        isActive:
+          m.isActive &&
+          m.user.isActive &&
+          members.find((member) => member.userId === m.userId)?.isActive !==
+            false,
+        accessActive: m.isActive,
+        userActive: m.user.isActive,
+        memberActive:
+          members.find((member) => member.userId === m.userId)?.isActive !==
+          false,
+        assignedAt: m.updatedAt ?? m.createdAt,
+        assignedByUserId:
+          audit.find(
+            (a) =>
+              a.targetUserId === m.userId &&
+              [
+                'manager_assigned',
+                'team_created',
+                'ownership_transferred',
+              ].includes(a.action),
+          )?.actorUserId ?? null,
         role: m.role,
       })),
       audit,
@@ -641,12 +689,12 @@ export class TeamWorkspaceService {
       if (
         existing?.isActive &&
         existing.role === 'owner' &&
-        dto.role !== 'owner' &&
-        !(await this.activeOwners(manager, communityId, teamId, user.id))
-      )
+        dto.role !== 'owner'
+      ) {
         throw new ConflictException(
-          'Сначала назначьте другого владельца команды',
+          'Понижение владельца выполняется через передачу владения',
         );
+      }
       await this.ensureMember(manager, communityId, user.id);
       await manager.save(TeamManagerEntity, {
         ...existing,
@@ -666,6 +714,86 @@ export class TeamWorkspaceService {
         dto.role,
       );
       return { userId: user.id, role: dto.role };
+    });
+  }
+
+  async transferOwnership(
+    communityId: number,
+    teamId: number,
+    dto: TransferTeamOwnershipDto,
+    actor: CommunityActor,
+  ) {
+    return this.db.transaction(async (manager) => {
+      await this.squads.lockCommunity(manager, communityId);
+      await this.assertAccessOwner(communityId, teamId, actor, manager);
+      const previous = await manager.findOneBy(TeamManagerEntity, {
+        communityId,
+        teamId,
+        userId: dto.previousOwnerUserId,
+        role: 'owner',
+        isActive: true,
+      });
+      if (!previous)
+        throw new ConflictException(
+          'Прежний владелец изменился. Обновите список доступа',
+        );
+      const user = await manager.findOneBy(UserEntity, {
+        username: dto.username,
+        isActive: true,
+      });
+      if (!user)
+        throw new NotFoundException(
+          'Активный пользователь с таким точным логином не найден',
+        );
+      if (user.id === previous.userId)
+        throw new BadRequestException(
+          'Новый и прежний владелец должны быть разными пользователями',
+        );
+      await this.ensureMember(manager, communityId, user.id);
+      const target = await manager.findOneBy(TeamManagerEntity, {
+        communityId,
+        teamId,
+        userId: user.id,
+      });
+      await manager.save(TeamManagerEntity, {
+        ...target,
+        communityId,
+        teamId,
+        userId: user.id,
+        role: 'owner',
+        isActive: true,
+      });
+      await this.audit(
+        manager,
+        communityId,
+        teamId,
+        actor.id,
+        user.id,
+        'ownership_transferred',
+        `${dto.reason}; прежний владелец №${previous.userId}: ${dto.previousOwnerAction}`,
+      );
+      if (dto.previousOwnerAction !== 'keep') {
+        previous.role =
+          dto.previousOwnerAction === 'manager' ? 'manager' : 'owner';
+        previous.isActive = dto.previousOwnerAction !== 'revoke';
+        await manager.save(previous);
+        await this.audit(
+          manager,
+          communityId,
+          teamId,
+          actor.id,
+          previous.userId,
+          dto.previousOwnerAction === 'revoke'
+            ? 'manager_removed'
+            : 'manager_assigned',
+          dto.reason,
+        );
+      }
+      return {
+        userId: user.id,
+        role: 'owner',
+        previousOwnerAction: dto.previousOwnerAction,
+      };
     });
   }
 

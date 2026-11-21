@@ -3,7 +3,7 @@ import { TokenStorage } from '../../../shared/lib/storage/token-storage';
 import { User } from './user.types';
 import { AuthResponse } from './auth.types';
 import { AuthApi } from '../api/auth.api';
-import { finalize } from 'rxjs';
+import { finalize, tap } from 'rxjs';
 
 @Injectable({
     providedIn: 'root',
@@ -32,18 +32,58 @@ export class SessionStore {
             ),
     );
 
-    readonly canManageCommunityVideos = computed(() =>
-        this.hasRole('super_admin') ||
-        (this.user()?.communities ?? []).some(c => c.role === 'owner' || c.role === 'admin'),
+    readonly canManageCommunityVideos = computed(
+        () =>
+            this.hasRole('super_admin') ||
+            (this.user()?.communities ?? []).some(
+                (c) => c.role === 'owner' || c.role === 'admin',
+            ),
     );
 
-    readonly canManageCommunityNews = computed(() => this.canManageCommunityTournaments());
+    readonly canManageCommunityNews = computed(() =>
+        this.canManageCommunityTournaments(),
+    );
+    readonly canPrepareMatchProtocol = computed(
+        () =>
+            this.hasRole('super_admin') ||
+            (this.user()?.teamAccess ?? []).some((t) =>
+                t.permissions.includes('team.matchRoster.edit'),
+            ),
+    );
+    canManageTeam(
+        teamId: number,
+        communityId?: number,
+        permission = 'team.matchRoster.edit',
+    ) {
+        if (this.hasRole('super_admin')) return true;
+        // Never fall back to a playing-captain marker or stale legacy IDs.
+        return (
+            communityId !== undefined &&
+            (this.user()?.teamAccess ?? []).some(
+                (t) =>
+                    t.teamId === teamId &&
+                    t.communityId === communityId &&
+                    t.permissions.includes(permission),
+            )
+        );
+    }
 
     updateUser(user: User): void {
         this.user.set(user);
         try {
-            localStorage.setItem('offline_match_identity', JSON.stringify({ token: this.tokenStorage.getAccessToken(), user }));
-        } catch { /* The protocol journal reports persistent storage failures separately. */ }
+            localStorage.setItem(
+                'offline_match_identity',
+                JSON.stringify({
+                    token: this.tokenStorage.getAccessToken(),
+                    user,
+                }),
+            );
+        } catch {
+            /* The protocol journal reports persistent storage failures separately. */
+        }
+    }
+    refreshUser() {
+        return this.authApi.me().pipe(tap((user) => this.updateUser(user)));
     }
 
     init(): void {
@@ -71,12 +111,18 @@ export class SessionStore {
                 error: (error) => {
                     if ([0, 502, 503, 504].includes(error?.status)) {
                         try {
-                            const cached = JSON.parse(localStorage.getItem('offline_match_identity') ?? 'null');
+                            const cached = JSON.parse(
+                                localStorage.getItem(
+                                    'offline_match_identity',
+                                ) ?? 'null',
+                            );
                             if (cached?.token === token && cached.user?.id) {
                                 this.user.set(cached.user);
                                 return; // Only a local identity; the API still checks JWT and current permissions.
                             }
-                        } catch { /* Missing/corrupt cache must never invent a user. */ }
+                        } catch {
+                            /* Missing/corrupt cache must never invent a user. */
+                        }
                     }
                     this.logout();
                 },

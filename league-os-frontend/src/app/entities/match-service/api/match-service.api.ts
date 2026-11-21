@@ -26,12 +26,20 @@ export class MatchServiceApi {
     private readonly http = inject(HttpClient);
     private readonly apiUrl = environment.apiUrl;
 
-    command(matchId: number, command: MatchCommand): Observable<{ data: MatchProtocolData }> {
-        return this.http.post<{ data: MatchProtocolData }>(`${this.apiUrl}/match-service/matches/${matchId}/commands`, command);
+    command(
+        matchId: number,
+        command: MatchCommand,
+    ): Observable<{ data: MatchProtocolData }> {
+        return this.http.post<{ data: MatchProtocolData }>(
+            `${this.apiUrl}/match-service/matches/${matchId}/commands`,
+            command,
+        );
     }
 
     getUnfinishedMatches(): Observable<MatchServiceMatch[]> {
-        return this.http.get<MatchServiceMatch[]>(`${this.apiUrl}/match-service/unfinished-matches`);
+        return this.http.get<MatchServiceMatch[]>(
+            `${this.apiUrl}/match-service/unfinished-matches`,
+        );
     }
 
     getAvailableMatches(): Observable<MatchServiceMatch[]> {
@@ -91,10 +99,18 @@ export class MatchServiceApi {
         matchId: number,
         teamId: number,
         teamPlayerIds: number[],
+        reason?: string,
     ): Observable<MatchRegistration> {
         return this.http.put<MatchRegistration>(
             `${this.apiUrl}/match-service/match-results/${matchId}/teams/${teamId}/roster`,
-            { teamPlayerIds },
+            { teamPlayerIds, ...(reason ? { reason } : {}) },
+        );
+    }
+
+    returnMatchRegistration(matchId: number, teamId: number, reason: string) {
+        return this.http.post<MatchRegistration>(
+            `${this.apiUrl}/match-service/match-results/${matchId}/teams/${teamId}/roster/return`,
+            { reason },
         );
     }
 
@@ -121,10 +137,11 @@ export class MatchServiceApi {
         matchId: number,
         teamId: number,
         teamPlayerIds: number[],
+        reason?: string,
     ): Observable<MatchRegistration> {
         return this.http.put<MatchRegistration>(
             `${this.apiUrl}/match-service/finished-matches/${matchId}/teams/${teamId}/roster`,
-            { teamPlayerIds },
+            { teamPlayerIds, ...(reason ? { reason } : {}) },
         );
     }
 

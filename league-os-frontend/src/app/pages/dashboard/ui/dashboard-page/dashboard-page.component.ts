@@ -19,13 +19,17 @@ export class DashboardPageComponent {
     private readonly featureFlagsApi = inject(FeatureFlagsApi);
 
     readonly user = this.sessionStore.user;
-    readonly canReviewPlayerProfiles = this.sessionStore.canManageCommunityTournaments;
+    readonly canReviewPlayerProfiles =
+        this.sessionStore.canManageCommunityTournaments;
 
     readonly actions: DashboardAction[] = [
         {
             title: 'Управление календарём',
-            description: 'Изменение дат, площадок и переносы матчей по ходу турнира',
-            route: '/dashboard/calendar', roles: [UserRole.Admin, UserRole.SuperAdmin], variant: '#D6FF3F',
+            description:
+                'Изменение дат, площадок и переносы матчей по ходу турнира',
+            route: '/dashboard/calendar',
+            roles: [UserRole.Admin, UserRole.SuperAdmin],
+            variant: '#D6FF3F',
             capability: 'communityTournaments',
         },
         {
@@ -55,7 +59,8 @@ export class DashboardPageComponent {
         },
         {
             title: 'История прежних трансферов',
-            description: 'Новые переходы — в разделе заявок на турниры и составов',
+            description:
+                'Новые переходы — в разделе заявок на турниры и составов',
             route: '/dashboard/player-transfers',
             roles: [UserRole.Admin, UserRole.SuperAdmin],
             variant: '#2ECC71',
@@ -71,6 +76,7 @@ export class DashboardPageComponent {
             title: 'Начать обслуживание матча',
             description: 'Протокол, события, счет и завершение игры',
             route: '/dashboard/match-service',
+            capability: 'matchService',
             roles: [UserRole.Referee, UserRole.Admin, UserRole.SuperAdmin],
             variant: '#F04E55',
         },
@@ -78,14 +84,17 @@ export class DashboardPageComponent {
             title: 'Ввод результата матча вручную',
             description: 'Ручное внесение счёта и событий матча',
             route: '/dashboard/match-results',
+            capability: 'matchService',
             roles: [UserRole.Referee, UserRole.Admin, UserRole.SuperAdmin],
             variant: '#F04E55',
         },
         {
-            title: 'Регистрация на игру',
-            description: 'Заявка команды на игру',
+            title: 'Оформление протокола на матч',
+            description:
+                'Выбор участников матча из утверждённой заявки турнира',
             route: '/dashboard/match-registrations',
-            roles: [UserRole.Admin, UserRole.SuperAdmin, UserRole.Captain],
+            roles: [],
+            capability: 'teamMatchRosters',
             variant: '#2ECC71',
         },
         {
@@ -115,15 +124,25 @@ export class DashboardPageComponent {
     readonly availableActions = computed(() => {
         return this.actions.filter(
             (action) =>
-                (action.capability === 'communityTournaments'
-                    ? this.sessionStore.canManageCommunityTournaments()
-                    : action.capability === 'communityNews'
-                    ? this.sessionStore.canManageCommunityNews()
-                    : action.capability === 'communityVideos'
-                    ? this.sessionStore.canManageCommunityVideos()
-                    : action.feature === 'tournamentBuilder'
-                    ? this.sessionStore.canManageCommunityTournaments()
-                    : this.sessionStore.hasAnyRole(...action.roles)) &&
+                (action.capability === 'matchService'
+                    ? this.sessionStore.hasAnyRole(
+                          'super_admin',
+                          'admin',
+                          'referee',
+                      ) || this.sessionStore.canManageCommunityTournaments()
+                    : action.capability === 'teamMatchRosters'
+                      ? this.sessionStore.canPrepareMatchProtocol()
+                      : action.capability === 'communityTournaments'
+                        ? this.sessionStore.canManageCommunityTournaments()
+                        : action.capability === 'communityNews'
+                          ? this.sessionStore.canManageCommunityNews()
+                          : action.capability === 'communityVideos'
+                            ? this.sessionStore.canManageCommunityVideos()
+                            : action.feature === 'tournamentBuilder'
+                              ? this.sessionStore.canManageCommunityTournaments()
+                              : this.sessionStore.hasAnyRole(
+                                    ...action.roles,
+                                )) &&
                 (!action.feature || this.featureFlags()[action.feature]),
         );
     });

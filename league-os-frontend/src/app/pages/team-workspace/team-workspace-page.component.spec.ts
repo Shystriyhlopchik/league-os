@@ -15,6 +15,7 @@ import {
     TournamentApplicationApi,
 } from '../../entities/tournament-application/tournament-application.api';
 import { TeamWorkspacePageComponent } from './team-workspace-page.component';
+import { SessionStore } from '../../entities/user/model/session.store';
 
 describe('TeamWorkspacePageComponent', () => {
     let fixture: ComponentFixture<TeamWorkspacePageComponent>;
@@ -66,6 +67,7 @@ describe('TeamWorkspacePageComponent', () => {
             'setManager',
             'removeManager',
             'requests',
+            'transferOwnership',
         ]);
         api.workspace.and.returnValue(of(empty));
         api.profile.and.returnValue(of(view()));
@@ -88,6 +90,13 @@ describe('TeamWorkspacePageComponent', () => {
                 },
                 { provide: TeamWorkspaceApi, useValue: api },
                 { provide: TournamentApplicationApi, useValue: squadApi },
+                {
+                    provide: SessionStore,
+                    useValue: {
+                        user: () => ({ id: 1 }),
+                        refreshUser: () => of({ id: 1 }),
+                    },
+                },
             ],
         }).compileComponents();
         fixture = TestBed.createComponent(TeamWorkspacePageComponent);

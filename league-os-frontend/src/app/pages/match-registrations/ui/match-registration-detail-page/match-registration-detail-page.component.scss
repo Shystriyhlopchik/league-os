@@ -15,7 +15,9 @@
     color: #8d9999;
     font-weight: 700;
 
-    &--error { color: #ff6670; }
+    &--error {
+        color: #ff6670;
+    }
 }
 
 .match-summary {
@@ -33,7 +35,10 @@
         background: #202829;
     }
 
-    span { color: #8d9999; font-size: 12px; }
+    span {
+        color: #8d9999;
+        font-size: 12px;
+    }
 }
 
 .approved-message,
@@ -44,8 +49,14 @@
 }
 
 .approved-message,
-.form-message--success { color: #78eeaa; background: #153426; }
-.form-message--error { color: #ff8a92; background: #3b1c20; }
+.form-message--success {
+    color: #78eeaa;
+    background: #153426;
+}
+.form-message--error {
+    color: #ff8a92;
+    background: #3b1c20;
+}
 
 .players-list {
     display: grid;
@@ -58,7 +69,9 @@
     font-family: "Oswald", Arial, sans-serif;
     font-size: 20px;
 
-    &--danger { color: #ff6670; }
+    &--danger {
+        color: #ff6670;
+    }
 }
 
 .players-hint {
@@ -86,7 +99,11 @@
     background: #202829;
     cursor: pointer;
 
-    input { width: 18px; height: 18px; accent-color: #28df7a; }
+    input {
+        width: 18px;
+        height: 18px;
+        accent-color: #28df7a;
+    }
 
     &__blocked-mark {
         color: #ff6670;
@@ -95,7 +112,10 @@
         text-align: center;
     }
 
-    &--disabled { opacity: 0.58; cursor: not-allowed; }
+    &--disabled {
+        opacity: 0.58;
+        cursor: not-allowed;
+    }
 
     &__photo {
         display: flex;
@@ -107,7 +127,11 @@
         border-radius: 50%;
         background: #101616;
 
-        img { width: 100%; height: 100%; object-fit: contain; }
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
     }
 
     &__info {
@@ -115,11 +139,18 @@
         flex-direction: column;
         gap: 4px;
 
-        span { color: #8d9999; font-size: 13px; }
-        small { color: #ff8a92; }
+        span {
+            color: #8d9999;
+            font-size: 13px;
+        }
+        small {
+            color: #ff8a92;
+        }
     }
 
-    &__warning { color: #f8d100 !important; }
+    &__warning {
+        color: #f8d100 !important;
+    }
 }
 
 .form-actions {
@@ -135,17 +166,67 @@
         font-weight: 700;
         cursor: pointer;
 
-        &:disabled { opacity: 0.45; cursor: not-allowed; }
+        &:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
     }
 
-    &__save { color: #fff; border: 1px solid #566; background: transparent; }
-    &__cancel { color: #c5cece; border: 1px solid #566; background: transparent; }
+    &__save {
+        color: #fff;
+        border: 1px solid #566;
+        background: transparent;
+    }
+    &__cancel {
+        color: #c5cece;
+        border: 1px solid #566;
+        background: transparent;
+    }
     &__approve,
-    &__edit { color: #071010; border: 0; background: #28df7a; }
+    &__edit {
+        color: #071010;
+        border: 0;
+        background: #28df7a;
+    }
 }
 
 @media (max-width: 760px) {
-    .match-summary { grid-template-columns: 1fr 1fr; }
-    .players-list { grid-template-columns: 1fr; }
-    .form-actions { flex-direction: column; }
+    .match-summary {
+        grid-template-columns: 1fr 1fr;
+    }
+    .players-list {
+        grid-template-columns: 1fr;
+    }
+    .form-actions {
+        flex-direction: column;
+    }
+}
+.review-reason {
+    display: grid;
+    gap: 8px;
+    margin: 20px 0 12px;
+}
+.review-reason textarea {
+    width: 100%;
+    box-sizing: border-box;
+    color: #f2f2e9;
+    background: #19211f;
+    border: 1px solid #687568;
+    padding: 12px;
+    font: inherit;
+    border-radius: 4px;
+    resize: vertical;
+}
+.roster-return {
+    min-height: 44px;
+    padding: 10px 16px;
+    border: 1px solid #d6ff3f;
+    background: transparent;
+    color: #d6ff3f;
+    cursor: pointer;
+    margin-bottom: 16px;
+}
+.roster-return:disabled {
+    opacity: 0.5;
+    cursor: default;
 }

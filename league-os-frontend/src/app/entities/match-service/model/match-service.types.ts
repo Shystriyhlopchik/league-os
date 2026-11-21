@@ -14,6 +14,7 @@ export interface FinalizePlayedMatch {
 export interface MatchServiceMatch {
     id: number;
     tournamentId: number;
+    communityId?: number;
     round?: string;
     matchDatetime?: string;
     status: MatchStatus;
@@ -68,6 +69,15 @@ export interface MatchRegistration {
     isSubmitted: boolean;
     isApproved: boolean;
     players: MatchRegistrationPlayer[];
+    minimumPlayers?: number;
+    maximumPlayers?: number;
+    reviewComment?: string | null;
+    workflowHistory?: {
+        action: 'returned' | 'edited_by_official' | 'corrected_finished';
+        at: string;
+        actorUserId: number;
+        reason: string;
+    }[];
 }
 
 export type MatchServiceStatus =
@@ -131,7 +141,21 @@ export interface MatchProtocolEvent {
     isCancelled: boolean;
 }
 
-export type MatchCommandAction = 'start' | 'pause' | 'resume' | 'finish-half' | 'start-second-half' | 'finish' | 'start-recording' | 'cancel-recording' | 'event' | 'cancel-event' | 'red-ball' | 'sign' | 'recover' | 'reset';
+export type MatchCommandAction =
+    | 'start'
+    | 'pause'
+    | 'resume'
+    | 'finish-half'
+    | 'start-second-half'
+    | 'finish'
+    | 'start-recording'
+    | 'cancel-recording'
+    | 'event'
+    | 'cancel-event'
+    | 'red-ball'
+    | 'sign'
+    | 'recover'
+    | 'reset';
 export interface MatchCommand {
     id: string;
     action: MatchCommandAction;
@@ -212,10 +236,7 @@ export interface CreateMatchServiceEventResponse {
 }
 
 export type RedBallStatus =
-    | 'active'
-    | 'completed_by_goal'
-    | 'completed_by_time'
-    | 'cancelled';
+    'active' | 'completed_by_goal' | 'completed_by_time' | 'cancelled';
 
 export interface MatchRedBall {
     id: number;

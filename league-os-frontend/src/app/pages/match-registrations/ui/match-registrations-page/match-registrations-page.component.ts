@@ -1,19 +1,23 @@
 import { DatePipe } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
+import { finalize } from 'rxjs';
 import { Router } from '@angular/router';
 
 import { InfoCardComponent } from '../../../../shared/ui/info-card/info-card.component';
 import { PageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
 import { MatchRegistrationsStore } from '../../model/match-registrations.store';
 import { SessionStore } from '../../../../entities/user/model/session.store';
-import { UserRole } from '../../../../entities/user/model/user-role.type';
-import { MatchServiceMatch, MatchServiceTeam } from '../../../../entities/match-service/model/match-service.types';
+import {
+    MatchServiceMatch,
+    MatchServiceTeam,
+} from '../../../../entities/match-service/model/match-service.types';
 
 @Component({
     selector: 'app-match-registrations-page',
     imports: [InfoCardComponent, PageHeaderComponent, DatePipe],
     templateUrl: './match-registrations-page.component.html',
-    styleUrl: '../../../match-service/ui/match-service-page/match-service-page.component.scss',
+    styleUrl:
+        '../../../match-service/ui/match-service-page/match-service-page.component.scss',
     providers: [MatchRegistrationsStore],
 })
 export class MatchRegistrationsPageComponent implements OnInit {
@@ -23,7 +27,10 @@ export class MatchRegistrationsPageComponent implements OnInit {
     readonly store = inject(MatchRegistrationsStore);
 
     ngOnInit(): void {
-        this.store.loadMatches();
+        this.sessionStore
+            .refreshUser()
+            .pipe(finalize(() => this.store.loadMatches()))
+            .subscribe({ error: () => {} });
     }
 
     goBack(): void {
@@ -31,16 +38,8 @@ export class MatchRegistrationsPageComponent implements OnInit {
     }
 
     getManageableTeams(match: MatchServiceMatch): MatchServiceTeam[] {
-        if (this.sessionStore.hasAnyRole(UserRole.Admin, UserRole.SuperAdmin)) {
-            return [match.homeTeam, match.awayTeam];
-        }
-
-        const teamIds = new Set(
-            this.sessionStore.user()?.manageableTeamIds ?? [],
-        );
-
         return [match.homeTeam, match.awayTeam].filter((team) =>
-            teamIds.has(team.id),
+            this.sessionStore.canManageTeam(team.id, match.communityId),
         );
     }
 
