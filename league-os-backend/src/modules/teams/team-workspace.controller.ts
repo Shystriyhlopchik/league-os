@@ -21,6 +21,7 @@ import {
   RequestTeamAccessDto,
   ReviewTeamAccessDto,
   SetTeamManagerDto,
+  TransferTeamOwnershipDto,
   TeamProfileDto,
   TeamProfileVersionDto,
   UpdateTeamProfileDto,
@@ -119,6 +120,16 @@ export class TeamWorkspaceController {
   ) {
     return this.service.setManager(c, t, dto, req.user);
   }
+  @Post('communities/:communityId/teams/:teamId/ownership/transfer')
+  transferOwnership(
+    @Param('communityId', ParseIntPipe) c: number,
+    @Param('teamId', ParseIntPipe) t: number,
+    @Body() dto: TransferTeamOwnershipDto,
+    @Req() req: Request,
+  ) {
+    return this.service.transferOwnership(c, t, dto, req.user);
+  }
+
   @Delete('communities/:communityId/teams/:teamId/managers/:userId')
   removeManager(
     @Param('communityId', ParseIntPipe) c: number,

@@ -16,9 +16,11 @@ import { PasswordResetTokenEntity } from './entities/password-reset-token.entity
 import { PasswordResetService } from './password-reset.service';
 import { PasswordResetMailerService } from './password-reset-mailer.service';
 import { CommunityMemberEntity } from '../communities/entities/community-member.entity';
+import { TeamAccessModule } from '../team-access/team-access.module';
 
 @Module({
   imports: [
+    TeamAccessModule,
     TypeOrmModule.forFeature([
       UserAuthAccountEntity,
       PasswordResetTokenEntity,

@@ -1,6 +1,6 @@
 <div class="match-service-page">
     <app-page-header
-        title="Регистрация на игру"
+        title="Оформление протокола на матч"
         description="Матчи команд, которыми вы управляете"
         (back)="goBack()"
     />
@@ -24,16 +24,25 @@
             @for (match of store.matches(); track match.id) {
                 <article class="match-item">
                     <div>
-                        <p>{{ match.matchDatetime | date: 'd MMMM, HH:mm' }}</p>
+                        <p>{{ match.matchDatetime | date: "d MMMM, HH:mm" }}</p>
                         <strong>
-                            {{ match.homeTeam.name }} — {{ match.awayTeam.name }}
+                            {{ match.homeTeam.name }} —
+                            {{ match.awayTeam.name }}
                         </strong>
 
-                        <p>{{ match.venue?.name || 'Место проведения не указано' }}</p>
+                        <p>
+                            {{
+                                match.venue?.name ||
+                                    "Место проведения не указано"
+                            }}
+                        </p>
                     </div>
 
                     <div class="match-item__actions">
-                        @for (team of getManageableTeams(match); track team.id) {
+                        @for (
+                            team of getManageableTeams(match);
+                            track team.id
+                        ) {
                             <button
                                 type="button"
                                 (click)="openRegistration(match.id, team.id)"

@@ -48,17 +48,14 @@ export class TeamPlayersRegistrationStore {
     }
 
     private filterTeamsForCurrentUser(teams: Team[]): Team[] {
-        if (
-            this.sessionStore.hasAnyRole(
-                UserRole.Admin,
-                UserRole.SuperAdmin,
-            )
-        ) {
+        if (this.sessionStore.hasAnyRole(UserRole.SuperAdmin)) {
             return teams;
         }
 
         const manageableTeamIds = new Set(
-            this.sessionStore.user()?.manageableTeamIds ?? [],
+            (this.sessionStore.user()?.teamAccess ?? [])
+                .filter((t) => t.permissions.includes('team.squad.edit'))
+                .map((t) => t.teamId),
         );
 
         return teams.filter((team) => manageableTeamIds.has(team.id));

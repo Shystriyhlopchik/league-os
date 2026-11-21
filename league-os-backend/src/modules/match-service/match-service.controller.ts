@@ -21,7 +21,10 @@ import { ActivateRedBallDto } from './dto/match-red-ball-activation.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { SaveMatchRegistrationDto } from './dto/save-match-registration.dto';
+import {
+  SaveMatchRegistrationDto,
+  ReturnMatchRosterDto,
+} from './dto/save-match-registration.dto';
 import { CreateManualMatchEventDto } from './dto/create-manual-match-event.dto';
 import { FinalizeMatchResultDto } from './dto/finalize-match-result.dto';
 import { RoleCode } from '../users/enums/role-code.enum';
@@ -35,12 +38,18 @@ export class MatchServiceController {
 
   @Post('matches/:matchId/commands')
   @UseGuards(MatchServiceAccessGuard)
-  command(@Param('matchId', ParseIntPipe) id: number, @Body() dto: MatchCommandDto, @Req() req: any) {
+  command(
+    @Param('matchId', ParseIntPipe) id: number,
+    @Body() dto: MatchCommandDto,
+    @Req() req: any,
+  ) {
     return this.matchService.command(id, dto, req.user.id);
   }
 
   @Get('unfinished-matches')
-  unfinished() { return this.matchService.findUnfinishedMatches(); }
+  unfinished() {
+    return this.matchService.findUnfinishedMatches();
+  }
 
   @Get('matches')
   findAvailableMatches(): Promise<MatchServiceMatchDto[]> {
@@ -87,7 +96,7 @@ export class MatchServiceController {
   }
 
   @Get('finished-matches/:matchId/teams/:teamId/roster')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, MatchServiceAccessGuard)
   @Roles(RoleCode.Admin, RoleCode.SuperAdmin)
   getFinishedMatchRegistration(
     @Param('matchId', ParseIntPipe) matchId: number,
@@ -97,17 +106,20 @@ export class MatchServiceController {
   }
 
   @Put('finished-matches/:matchId/teams/:teamId/roster')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, MatchServiceAccessGuard)
   @Roles(RoleCode.Admin, RoleCode.SuperAdmin)
   saveFinishedMatchRegistration(
     @Param('matchId', ParseIntPipe) matchId: number,
     @Param('teamId', ParseIntPipe) teamId: number,
     @Body() dto: SaveMatchRegistrationDto,
+    @Req() req: any,
   ) {
     return this.matchService.saveFinishedMatchRegistration(
       matchId,
       teamId,
       dto.teamPlayerIds,
+      req.user.id,
+      dto.reason ?? '',
     );
   }
 
@@ -177,8 +189,7 @@ export class MatchServiceController {
   }
 
   @Get('match-results/:matchId/teams/:teamId/roster')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.Referee, RoleCode.Admin, RoleCode.SuperAdmin)
+  @UseGuards(MatchServiceAccessGuard)
   getMatchRegistrationByOfficial(
     @Param('matchId', ParseIntPipe) matchId: number,
     @Param('teamId', ParseIntPipe) teamId: number,
@@ -192,8 +203,7 @@ export class MatchServiceController {
   }
 
   @Put('match-results/:matchId/teams/:teamId/roster')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.Referee, RoleCode.Admin, RoleCode.SuperAdmin)
+  @UseGuards(MatchServiceAccessGuard)
   saveMatchRegistrationByOfficial(
     @Param('matchId', ParseIntPipe) matchId: number,
     @Param('teamId', ParseIntPipe) teamId: number,
@@ -205,6 +215,23 @@ export class MatchServiceController {
       teamId,
       dto.teamPlayerIds,
       req.user.id,
+      dto.reason,
+    );
+  }
+
+  @Post('match-results/:matchId/teams/:teamId/roster/return')
+  @UseGuards(MatchServiceAccessGuard)
+  returnMatchRegistration(
+    @Param('matchId', ParseIntPipe) matchId: number,
+    @Param('teamId', ParseIntPipe) teamId: number,
+    @Body() dto: ReturnMatchRosterDto,
+    @Req() req: any,
+  ) {
+    return this.matchService.returnMatchRegistration(
+      matchId,
+      teamId,
+      req.user.id,
+      dto.reason,
     );
   }
 
@@ -231,8 +258,7 @@ export class MatchServiceController {
   }
 
   @Post('matches/:matchId/rosters/:teamId/approve')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.Referee, RoleCode.Admin, RoleCode.SuperAdmin)
+  @UseGuards(MatchServiceAccessGuard)
   approveRoster(
     @Param('matchId', ParseIntPipe) matchId: number,
     @Param('teamId', ParseIntPipe) teamId: number,

@@ -96,10 +96,13 @@ describe('Team self-service safeguards', () => {
     );
     jest.spyOn(squads, 'assertTeam').mockResolvedValue({} as never);
     expect(await squads.canManage(1, 3, { id: 8 })).toBe(false);
-    expect(manager.exists).toHaveBeenCalledWith(TeamManagerEntity, {
-      where: { communityId: 1, teamId: 3, userId: 8, isActive: true },
+    expect(manager.findOneBy).toHaveBeenCalledWith(TeamManagerEntity, {
+      communityId: 1,
+      teamId: 3,
+      userId: 8,
+      isActive: true,
     });
-    manager.exists.mockResolvedValue(true);
+    manager.findOneBy.mockResolvedValue({ isActive: true, role: 'manager' });
     expect(await squads.canManage(1, 3, { id: 8 })).toBe(true);
   });
   it('blocks excluded community members even when their team grant still exists', async () => {

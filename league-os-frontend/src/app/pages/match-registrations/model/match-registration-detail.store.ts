@@ -66,19 +66,26 @@ export class MatchRegistrationDetailStore {
         correctionMode = false,
         officialMode = false,
         onSuccess?: () => void,
+        reason = '',
     ): void {
         this.isSaving.set(true);
         this.error.set(null);
         this.message.set(null);
 
         const request = correctionMode
-            ? this.api.saveFinishedMatchRegistration(matchId, teamId, [
-                  ...this.selectedIds(),
-              ])
+            ? this.api.saveFinishedMatchRegistration(
+                  matchId,
+                  teamId,
+                  [...this.selectedIds()],
+                  reason,
+              )
             : officialMode
-              ? this.api.saveMatchRegistrationByOfficial(matchId, teamId, [
-                    ...this.selectedIds(),
-                ])
+              ? this.api.saveMatchRegistrationByOfficial(
+                    matchId,
+                    teamId,
+                    [...this.selectedIds()],
+                    reason,
+                )
               : this.api.saveMatchRegistration(matchId, teamId, [
                     ...this.selectedIds(),
                 ]);
@@ -101,6 +108,33 @@ export class MatchRegistrationDetailStore {
                         error?.error?.message || 'Не удалось сохранить заявку',
                     );
 
+                    return EMPTY;
+                }),
+                finalize(() => this.isSaving.set(false)),
+            )
+            .subscribe();
+    }
+
+    returnToTeam(matchId: number, teamId: number, reason: string) {
+        if (this.isSaving() || this.isApproving()) return;
+        if (reason.trim().length < 5) {
+            this.error.set('Укажите комментарий не короче 5 символов');
+            return;
+        }
+        this.isSaving.set(true);
+        this.error.set(null);
+        this.message.set(null);
+        this.api
+            .returnMatchRegistration(matchId, teamId, reason.trim())
+            .pipe(
+                tap((registration) => {
+                    this.applyRegistration(registration);
+                    this.message.set('Состав возвращён команде на доработку');
+                }),
+                catchError((error) => {
+                    this.error.set(
+                        error?.error?.message || 'Не удалось вернуть состав',
+                    );
                     return EMPTY;
                 }),
                 finalize(() => this.isSaving.set(false)),

@@ -185,15 +185,14 @@ export class TeamPlayersService {
 
       const player = teamPlayer.player;
 
-      const currentUser = await this.usersService.findById(currentUserId);
       if (
-        ((dto.firstName !== undefined &&
+        (dto.firstName !== undefined &&
           dto.firstName.trim() !== player.firstName) ||
-          (dto.lastName !== undefined &&
-            dto.lastName.trim() !== player.lastName) ||
-          (dto.middleName !== undefined &&
-            (dto.middleName?.trim() || '') !== (player.middleName || '')) ||
-          (dto.birthDate !== undefined && dto.birthDate !== player.birthDate))
+        (dto.lastName !== undefined &&
+          dto.lastName.trim() !== player.lastName) ||
+        (dto.middleName !== undefined &&
+          (dto.middleName?.trim() || '') !== (player.middleName || '')) ||
+        (dto.birthDate !== undefined && dto.birthDate !== player.birthDate)
       )
         throw new ForbiddenException(
           'Для исправления ФИО и даты рождения откройте «Профиль игрока» в разделе «Мои команды» и отправьте исправление организатору',
@@ -203,23 +202,21 @@ export class TeamPlayersService {
         player.preferredFoot = dto.preferredFoot;
       if (dto.position !== undefined) player.position = dto.position;
       if (photo)
-        throw new ForbiddenException('Для замены фотографии откройте «Профиль игрока» в разделе «Мои команды»');
+        throw new ForbiddenException(
+          'Для замены фотографии откройте «Профиль игрока» в разделе «Мои команды»',
+        );
 
       if (dto.shirtNumber !== undefined)
         teamPlayer.shirtNumber = dto.shirtNumber;
       if (dto.position !== undefined) teamPlayer.position = dto.position;
-      if (dto.isCaptain === false)
-        await this.squads.assertCaptainHandover(
-          teamPlayer,
-          { id: currentUserId, roles: currentUser?.roles.map((r) => r.code) },
-          manager,
-        );
       if (dto.isCaptain !== undefined) teamPlayer.isCaptain = dto.isCaptain;
 
       // Update only team-independent sporting fields explicitly. Never save a stale
       // whole player entity over a concurrent, moderated identity/photo correction.
       await manager.update(PlayerEntity, player.id, {
-        ...(dto.preferredFoot !== undefined ? { preferredFoot: dto.preferredFoot } : {}),
+        ...(dto.preferredFoot !== undefined
+          ? { preferredFoot: dto.preferredFoot }
+          : {}),
         ...(dto.position !== undefined ? { position: dto.position } : {}),
         updatedAt: new Date(),
       });

@@ -11,13 +11,11 @@ import {
   CommunityActor,
 } from '../communities/communities.service';
 import { CommunityEntity } from '../communities/entities/community.entity';
-import {
-  CommunityMemberEntity,
-  CommunityRole,
-} from '../communities/entities/community-member.entity';
+import { CommunityMemberEntity } from '../communities/entities/community-member.entity';
 import { TeamPlayerEntity } from '../team-players/entities/team-players.entity';
 import { PlayerEntity } from '../players/entities/player.entity';
 import { TeamManagerEntity } from '../teams/entities/team-management.entity';
+import { effectiveTeamRole } from '../team-access/team-access.service';
 import {
   CommunityTeamEntity,
   CommunityTransferRequestEntity,
@@ -67,15 +65,13 @@ export class CommunitySquadsService {
       communityId,
       userId: actor.id,
     });
-    if (member && !member.isActive) return false;
-    if (
-      member &&
-      [CommunityRole.Admin, CommunityRole.Owner].includes(member.role)
-    )
-      return true;
-    return manager.exists(TeamManagerEntity, {
-      where: { communityId, teamId, userId: actor.id, isActive: true },
+    const grant = await manager.findOneBy(TeamManagerEntity, {
+      communityId,
+      teamId,
+      userId: actor.id,
+      isActive: true,
     });
+    return effectiveTeamRole(actor.roles ?? [], member, grant) !== null;
   }
 
   async assertManage(
@@ -211,54 +207,6 @@ export class CommunitySquadsService {
       .join(' ');
   }
 
-  async assertCaptainHandover(
-    link: TeamPlayerEntity,
-    actor: CommunityActor,
-    manager: EntityManager,
-  ) {
-    if (
-      await manager.exists(TeamManagerEntity, {
-        where: {
-          communityId: link.communityId,
-          teamId: link.teamId,
-          userId: actor.id,
-          isActive: true,
-        },
-      })
-    )
-      return;
-    if (!link.isCaptain || actor.roles?.includes('super_admin')) return;
-    const player = await manager.findOneBy(PlayerEntity, { id: link.playerId });
-    if (player?.userId !== actor.id) return;
-    const member = await manager.findOneBy(CommunityMemberEntity, {
-      communityId: link.communityId,
-      userId: actor.id,
-      isActive: true,
-    });
-    if (
-      member &&
-      [CommunityRole.Admin, CommunityRole.Owner].includes(member.role)
-    )
-      return;
-    const replacement = await manager
-      .getRepository(TeamPlayerEntity)
-      .createQueryBuilder('tp')
-      .innerJoin('tp.player', 'p')
-      .innerJoin('p.user', 'u')
-      .where(
-        'tp.community_id = :communityId AND tp.team_id = :teamId AND tp.id != :id',
-        { communityId: link.communityId, teamId: link.teamId, id: link.id },
-      )
-      .andWhere(
-        'tp."isActive" AND tp."isCaptain" AND p."isActive" AND u."isActive"',
-      )
-      .getExists();
-    if (!replacement)
-      throw new ConflictException(
-        'Сначала назначьте другого капитана со связанной учётной записью или обратитесь к администратору. Иначе команда потеряет доступ к управлению',
-      );
-  }
-
   async addExisting(
     communityId: number,
     teamId: number,
@@ -333,7 +281,6 @@ export class CommunitySquadsService {
         isActive: true,
       });
       if (!link) throw new NotFoundException('Игрок команды не найден');
-      await this.assertCaptainHandover(link, actor, manager);
       await manager.update(TeamPlayerEntity, link.id, {
         isActive: false,
         isCaptain: false,

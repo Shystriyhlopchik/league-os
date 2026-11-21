@@ -44,6 +44,7 @@ describe('MatchRegistrationDetailStore official roster editing', () => {
             'saveMatchRegistration',
             'saveMatchRegistrationByOfficial',
             'saveFinishedMatchRegistration',
+            'returnMatchRegistration',
         ]);
         api.getMatchRegistration.and.returnValue(of(registration));
         api.getMatchRegistrationByOfficial.and.returnValue(of(registration));
@@ -87,6 +88,7 @@ describe('MatchRegistrationDetailStore official roster editing', () => {
             10,
             20,
             [60, 61, 62, 63, 64, 65],
+            '',
         );
         expect(api.saveMatchRegistration).not.toHaveBeenCalled();
     });
@@ -100,5 +102,53 @@ describe('MatchRegistrationDetailStore official roster editing', () => {
         store.load(10, 20, false, true);
         expect(store.error()).toBe('Предстоящий матч не найден');
         expect(store.isLoading()).toBeFalse();
+    });
+
+    it('requires a comment before returning the saved roster', () => {
+        store.returnToTeam(10, 20, '');
+        expect(api.returnMatchRegistration).not.toHaveBeenCalled();
+        expect(store.error()).toContain('комментарий');
+    });
+    it('returns a roster and replaces unsaved selection with the saved snapshot', () => {
+        store.load(10, 20, false, true);
+        store.toggle(65, true);
+        api.returnMatchRegistration.and.returnValue(
+            of({
+                ...registration,
+                isSubmitted: false,
+                isApproved: false,
+                reviewComment: 'Уточнить состав',
+            }),
+        );
+        store.returnToTeam(10, 20, '  Уточнить состав  ');
+        expect(api.returnMatchRegistration).toHaveBeenCalledWith(
+            10,
+            20,
+            'Уточнить состав',
+        );
+        expect(store.registration()?.isApproved).toBeFalse();
+        expect(store.selectedIds().has(65)).toBeFalse();
+        expect(store.isDirty()).toBeFalse();
+        expect(store.isSaving()).toBeFalse();
+    });
+    it('reports a failed return without changing the approved state', () => {
+        store.load(10, 20, false, true);
+        api.returnMatchRegistration.and.returnValue(
+            throwError(() => ({ error: { message: 'Матч уже начат' } })),
+        );
+        store.returnToTeam(10, 20, 'Уточнить состав');
+        expect(store.error()).toBe('Матч уже начат');
+        expect(store.registration()?.isApproved).toBeTrue();
+        expect(store.isSaving()).toBeFalse();
+    });
+    it('forwards the correction reason to the official endpoint', () => {
+        store.load(10, 20, false, true);
+        store.save(10, 20, false, true, undefined, 'Исправление состава');
+        expect(api.saveMatchRegistrationByOfficial).toHaveBeenCalledWith(
+            10,
+            20,
+            [60, 61, 62, 63, 64],
+            'Исправление состава',
+        );
     });
 });

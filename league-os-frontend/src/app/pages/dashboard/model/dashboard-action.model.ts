@@ -1,6 +1,5 @@
 import { UserRole } from '../../../entities/user/model/user-role.type';
 
-
 export interface DashboardAction {
     id?: string;
     title: string;
@@ -11,5 +10,10 @@ export interface DashboardAction {
 
     variant: string;
     feature?: 'tournamentBuilder';
-    capability?: 'communityVideos' | 'communityNews' | 'communityTournaments';
+    capability?:
+        | 'communityVideos'
+        | 'communityNews'
+        | 'communityTournaments'
+        | 'teamMatchRosters'
+        | 'matchService';
 }

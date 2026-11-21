@@ -57,3 +57,10 @@ export class SetTeamManagerDto {
   @Transform(trim) @IsString() @MinLength(1) @MaxLength(100) username: string;
   @IsIn(['owner', 'manager']) role: 'owner' | 'manager';
 }
+export class TransferTeamOwnershipDto {
+  @IsInt() @Min(1) previousOwnerUserId: number;
+  @Transform(trim) @IsString() @MinLength(1) @MaxLength(100) username: string;
+  @IsIn(['keep', 'manager', 'revoke']) previousOwnerAction:
+    'keep' | 'manager' | 'revoke';
+  @Transform(trim) @IsString() @MinLength(5) @MaxLength(1000) reason: string;
+}

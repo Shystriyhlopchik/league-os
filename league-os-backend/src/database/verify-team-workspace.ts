@@ -1,4 +1,4 @@
-/** Integration fixtures run only against the dedicated disposable database on port 55439. */
+/** Integration fixtures run only against the dedicated disposable database on port 56439. */
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { DataSource } from 'typeorm';
@@ -27,6 +27,13 @@ import { TournamentEntity } from '../modules/tournaments/entities/tournaments.en
 import { TournamentLifecycleStatus } from '../modules/tournaments/enums/tournament-lifecycle-status.enum';
 import { DEFAULT_REGISTRATION_POLICY } from '../modules/registrations/entities/registration.entity';
 import { TournamentTeamEntity } from '../modules/tournament-teams/entities/tournament-teams.entity';
+import { TeamEntity } from '../modules/teams/entities/team.entity';
+import { CommunityTeamEntity } from '../modules/registrations/entities/registration.entity';
+import { MatchEntity } from '../modules/matches/entities/match.entity';
+import { MatchStatus } from '../modules/matches/enums/match-status.enum';
+import { UserEntity } from '../modules/users/entities/user.entity';
+import { MatchEventEntity } from '../modules/match-events/entities/match-event.entity';
+import { MatchEventType } from '../modules/match-events/enums/match-event-type.enum';
 
 interface Auth {
   accessToken: string;
@@ -48,7 +55,7 @@ async function main() {
     entities: AppDataSource.options.entities,
     migrations: AppDataSource.options.migrations,
     host: '127.0.0.1',
-    port: 55439,
+    port: 56439,
     username: 'admissions_test',
     password: 'isolated_test_only',
     database: 'admissions_test',
@@ -72,8 +79,7 @@ async function main() {
       )
     )[0].missing;
     let legacy:
-      | { userId: number; teamId: number; communityId: number }
-      | undefined;
+      { userId: number; teamId: number; communityId: number } | undefined;
     let ambiguousTeamId: number | undefined;
     if (needsBackfill) {
       const c = (
@@ -162,7 +168,7 @@ async function main() {
     });
     Object.assign(process.env, {
       POSTGRES_HOST: '127.0.0.1',
-      POSTGRES_PORT: '55439',
+      POSTGRES_PORT: '56439',
       POSTGRES_USER: 'admissions_test',
       POSTGRES_PASSWORD: 'isolated_test_only',
       POSTGRES_DB: 'admissions_test',
@@ -332,7 +338,7 @@ async function main() {
         .send({ playerIds: [], representatives: [] })
         .expect(409);
       const links: { id: number; playerId: number }[] = [];
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 6; i++) {
         const link = (
           await request(server)
             .post(`/api/teams/${teamId}/players`)
@@ -404,6 +410,184 @@ async function main() {
         .get(profileUrl)
         .auth(successor.accessToken, { type: 'bearer' })
         .expect(200);
+      const identity = async (actor: Auth) =>
+        (
+          await request(server)
+            .get('/api/auth/me')
+            .auth(actor.accessToken, { type: 'bearer' })
+            .expect(200)
+        ).body;
+      const ownerIdentity = await identity(owner);
+      assert.deepEqual(ownerIdentity.captainTeamIds, []);
+      assert.ok(
+        ownerIdentity.teamAccess.some(
+          (g: any) => g.teamId === teamId && g.role === 'owner',
+        ),
+      );
+      const managerIdentity = await identity(successor);
+      assert.deepEqual(managerIdentity.captainTeamIds, []);
+      assert.ok(
+        managerIdentity.teamAccess.some(
+          (g: any) =>
+            g.teamId === teamId &&
+            g.role === 'manager' &&
+            !g.permissions.includes('team.access.manage'),
+        ),
+      );
+      const opponent = await db.manager.save(TeamEntity, {
+        name: 'Соперник',
+        slug: `opponent-${suffix}`,
+      });
+      await db.manager.upsert(
+        CommunityTeamEntity,
+        { communityId: community.id, teamId: opponent.id, isActive: true },
+        ['communityId', 'teamId'],
+      );
+      await db.manager.update(TournamentEntity, tournament.id, {
+        lifecycleStatus: TournamentLifecycleStatus.IN_PROGRESS,
+      });
+      const match = await db.manager.save(MatchEntity, {
+        tournamentId: tournament.id,
+        homeTeamId: teamId,
+        awayTeamId: opponent.id,
+        status: MatchStatus.SCHEDULED,
+        matchDatetime: new Date(Date.now() + 86400000),
+      });
+      const rosterUrl = `/api/match-service/registration-matches/${match.id}/teams/${teamId}/roster`;
+      const officialUrl = `/api/match-service/match-results/${match.id}/teams/${teamId}/roster`;
+      const selection = { teamPlayerIds: links.map((l) => l.id) };
+      const listed = await request(server)
+        .get('/api/match-service/registration-matches')
+        .auth(successor.accessToken, { type: 'bearer' })
+        .expect(200);
+      assert.ok(
+        listed.body.some(
+          (m: any) => m.id === match.id && m.communityId === community.id,
+        ),
+      );
+      await request(server)
+        .put(rosterUrl)
+        .auth(successor.accessToken, { type: 'bearer' })
+        .send(selection)
+        .expect(200);
+      const submitted = await request(server)
+        .post(`${rosterUrl}/approve`)
+        .auth(successor.accessToken, { type: 'bearer' })
+        .expect(201);
+      assert.equal(submitted.body.isSubmitted, true);
+      assert.equal(submitted.body.isApproved, false);
+      await request(server)
+        .put(officialUrl)
+        .auth(outsider.accessToken, { type: 'bearer' })
+        .send(selection)
+        .expect(403);
+      const approved = await request(server)
+        .put(officialUrl)
+        .auth(admin.accessToken, { type: 'bearer' })
+        .send(selection)
+        .expect(200);
+      assert.equal(approved.body.isApproved, true);
+      await request(server)
+        .put(rosterUrl)
+        .auth(owner.accessToken, { type: 'bearer' })
+        .send(selection)
+        .expect(400);
+      await request(server)
+        .put(officialUrl)
+        .auth(admin.accessToken, { type: 'bearer' })
+        .send(selection)
+        .expect(400);
+      const returned = await request(server)
+        .post(`${officialUrl}/return`)
+        .auth(admin.accessToken, { type: 'bearer' })
+        .send({ reason: 'Уточните состав перед матчем' })
+        .expect(201);
+      assert.equal(returned.body.isApproved, false);
+      assert.equal(returned.body.isSubmitted, false);
+      assert.equal(returned.body.reviewComment, 'Уточните состав перед матчем');
+      await request(server)
+        .put(rosterUrl)
+        .auth(owner.accessToken, { type: 'bearer' })
+        .send(selection)
+        .expect(200);
+      await request(server)
+        .post(`${rosterUrl}/approve`)
+        .auth(owner.accessToken, { type: 'bearer' })
+        .expect(201);
+      await request(server)
+        .put(officialUrl)
+        .auth(admin.accessToken, { type: 'bearer' })
+        .send(selection)
+        .expect(200);
+      const corrected = await request(server)
+        .put(officialUrl)
+        .auth(admin.accessToken, { type: 'bearer' })
+        .send({ ...selection, reason: 'Исправление по просьбе представителя' })
+        .expect(200);
+      assert.ok(
+        corrected.body.workflowHistory.some(
+          (e: any) => e.action === 'returned',
+        ),
+      );
+      assert.equal(
+        corrected.body.workflowHistory.at(-1).reason,
+        'Исправление по просьбе представителя',
+      );
+      const adminWorkspace = await request(server)
+        .get(workspace)
+        .auth(admin.accessToken, { type: 'bearer' })
+        .expect(200);
+      assert.ok(
+        adminWorkspace.body.teamsWithoutOwners.some(
+          (t: any) => t.teamId === opponent.id,
+        ),
+      );
+      const referee = await register('referee');
+      const refereeRole =
+        (await db.manager.findOneBy(RoleEntity, { code: RoleCode.Referee })) ??
+        (await db.manager.save(RoleEntity, {
+          code: RoleCode.Referee,
+          name: 'Судья',
+        }));
+      const refereeAccount = await db.manager.findOneOrFail(UserEntity, {
+        where: { id: referee.user.id },
+        relations: { roles: true },
+      });
+      refereeAccount.roles.push(refereeRole);
+      await db.manager.save(refereeAccount);
+      const otherCommunity = await db.manager.save(CommunityEntity, {
+        name: 'Другое сообщество',
+        slug: `other-${suffix}`,
+      });
+      await db.manager.save(CommunityMemberEntity, {
+        communityId: otherCommunity.id,
+        userId: referee.user.id,
+        role: CommunityRole.Member,
+        isActive: true,
+      });
+      await request(server)
+        .get(officialUrl)
+        .auth(referee.accessToken, { type: 'bearer' })
+        .expect(403);
+      await db.manager.save(CommunityMemberEntity, {
+        communityId: community.id,
+        userId: referee.user.id,
+        role: CommunityRole.Member,
+        isActive: true,
+      });
+      await request(server)
+        .get(officialUrl)
+        .auth(referee.accessToken, { type: 'bearer' })
+        .expect(200);
+      await db.manager.update(
+        CommunityMemberEntity,
+        { communityId: community.id, userId: referee.user.id },
+        { isActive: false },
+      );
+      await request(server)
+        .get(officialUrl)
+        .auth(referee.accessToken, { type: 'bearer' })
+        .expect(403);
       await request(server)
         .post(`${profileUrl}/managers`)
         .auth(successor.accessToken, { type: 'bearer' })
@@ -424,19 +608,48 @@ async function main() {
         .get(profileUrl)
         .auth(successor.accessToken, { type: 'bearer' })
         .expect(403);
+      const revokedIdentity = await identity(successor);
+      assert.ok(revokedIdentity.captainTeamIds.includes(teamId));
+      assert.ok(
+        !revokedIdentity.teamAccess.some((g: any) => g.teamId === teamId),
+      );
+      await request(server)
+        .get(rosterUrl)
+        .auth(successor.accessToken, { type: 'bearer' })
+        .expect(403);
       await request(server)
         .delete(`${profileUrl}/managers/${owner.user.id}`)
         .auth(owner.accessToken, { type: 'bearer' })
         .expect(409);
       await request(server)
-        .post(`${profileUrl}/managers`)
+        .post(`${profileUrl}/ownership/transfer`)
         .auth(owner.accessToken, { type: 'bearer' })
-        .send({ username: successor.user.username, role: 'owner' })
-        .expect(201);
+        .send({
+          username: 'missing-account',
+          previousOwnerUserId: owner.user.id,
+          previousOwnerAction: 'revoke',
+          reason: 'Проверка атомарности передачи',
+        })
+        .expect(404);
+      assert.equal(
+        (
+          await db.manager.findOneByOrFail(TeamManagerEntity, {
+            teamId,
+            userId: owner.user.id,
+          })
+        ).isActive,
+        true,
+      );
       await request(server)
-        .delete(`${profileUrl}/managers/${owner.user.id}`)
+        .post(`${profileUrl}/ownership/transfer`)
         .auth(owner.accessToken, { type: 'bearer' })
-        .expect(200);
+        .send({
+          username: successor.user.username,
+          previousOwnerUserId: owner.user.id,
+          previousOwnerAction: 'revoke',
+          reason: 'Передача полномочий новому владельцу',
+        })
+        .expect(201);
       await request(server)
         .get(profileUrl)
         .auth(owner.accessToken, { type: 'bearer' })
@@ -523,8 +736,98 @@ async function main() {
         .auth(outsider.accessToken, { type: 'bearer' })
         .send({ username: rejected.user.username, role: 'owner' })
         .expect(403);
+      for (const action of ['keep', 'manager'] as const) {
+        await request(server)
+          .post(`${profileUrl}/ownership/transfer`)
+          .auth(admin.accessToken, { type: 'bearer' })
+          .send({
+            username: owner.user.username,
+            previousOwnerUserId: successor.user.id,
+            previousOwnerAction: action,
+            reason: 'Проверка вариантов сохранения доступа',
+          })
+          .expect(201);
+        const prior = await db.manager.findOneByOrFail(TeamManagerEntity, {
+          teamId,
+          userId: successor.user.id,
+        });
+        assert.equal(prior.role, action === 'keep' ? 'owner' : 'manager');
+        assert.equal(prior.isActive, true);
+        // Restore the successor as an owner before testing the next explicit choice.
+        await request(server)
+          .post(`${profileUrl}/ownership/transfer`)
+          .auth(admin.accessToken, { type: 'bearer' })
+          .send({
+            username: successor.user.username,
+            previousOwnerUserId: owner.user.id,
+            previousOwnerAction: 'revoke',
+            reason: 'Обратная передача для проверки',
+          })
+          .expect(201);
+      }
+      const adminRole =
+        (await db.manager.findOneBy(RoleEntity, { code: RoleCode.Admin })) ??
+        (await db.manager.save(RoleEntity, {
+          code: RoleCode.Admin,
+          name: 'Администратор',
+        }));
+      const adminAccount = await db.manager.findOneOrFail(UserEntity, {
+        where: { id: admin.user.id },
+        relations: { roles: true },
+      });
+      adminAccount.roles.push(adminRole);
+      await db.manager.save(adminAccount);
+      await db.manager.update(MatchEntity, match.id, {
+        status: MatchStatus.FINISHED,
+      });
+      await request(server)
+        .post(`${officialUrl}/return`)
+        .auth(admin.accessToken, { type: 'bearer' })
+        .send({ reason: 'Матч уже завершён' })
+        .expect(404);
+      const finishedUrl = `/api/match-service/finished-matches/${match.id}/teams/${teamId}/roster`;
+      await request(server)
+        .put(finishedUrl)
+        .auth(admin.accessToken, { type: 'bearer' })
+        .send(selection)
+        .expect(400);
+      const finished = await request(server)
+        .put(finishedUrl)
+        .auth(admin.accessToken, { type: 'bearer' })
+        .send({
+          ...selection,
+          reason: 'Уточнение фактического состава после игры',
+        })
+        .expect(200);
+      assert.equal(
+        finished.body.workflowHistory.at(-1).action,
+        'corrected_finished',
+      );
+      assert.ok(
+        finished.body.workflowHistory.some((e: any) => e.action === 'returned'),
+      );
+      await db.manager.save(MatchEventEntity, {
+        matchId: match.id,
+        teamId,
+        playerId: links[0].playerId,
+        eventType: MatchEventType.GOAL,
+        minute: 1,
+        half: 1,
+        isCancelled: false,
+      });
+      const blocked = await request(server)
+        .put(finishedUrl)
+        .auth(admin.accessToken, { type: 'bearer' })
+        .send({
+          teamPlayerIds: selection.teamPlayerIds.filter(
+            (id) => id !== links[0].id,
+          ),
+          reason: 'Попытка исключить автора гола',
+        })
+        .expect(400);
+      assert.match(blocked.body.message, /Сначала удалите события/);
       console.log(
-        'PASS: legacy backfill; real signup → draft team → logo/profile → independent squad → published team → submitted and approved application; ownership transfer, revocation, last-owner protection, reviewed access requests, draft privacy, optimistic locking, upload validation',
+        'PASS: migrations; signup → team → squad → approved tournament application → roster submission/approval/return/correction history; non-playing manager; captain without grant denied; community-scoped referees; atomic ownership keep/manager/revoke; last-owner protection; reviewed access; upload validation',
       );
     } finally {
       await app.close();

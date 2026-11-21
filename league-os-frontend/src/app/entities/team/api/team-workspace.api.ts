@@ -34,6 +34,11 @@ export interface TeamProfileForm {
 }
 export interface TeamWorkspace {
     teams: ManagedTeam[];
+    teamsWithoutOwners?: {
+        communityId: number;
+        teamId: number;
+        name: string;
+    }[];
     defaultCommunity: { id: number; name: string };
     reviewCommunities: { id: number; name: string }[];
     requests: {
@@ -51,6 +56,11 @@ export interface TeamManager {
     name: string;
     role: 'owner' | 'manager';
     isActive: boolean;
+    accessActive?: boolean;
+    userActive?: boolean;
+    memberActive?: boolean;
+    assignedAt?: string;
+    assignedByUserId?: number | null;
 }
 export interface TeamManagement {
     managers: TeamManager[];
@@ -158,5 +168,17 @@ export class TeamWorkspaceApi {
     }
     removeManager(c: number, t: number, userId: number) {
         return this.http.delete(`${this.teamUrl(c, t)}/managers/${userId}`);
+    }
+    transferOwnership(
+        c: number,
+        t: number,
+        dto: {
+            username: string;
+            previousOwnerUserId: number;
+            previousOwnerAction: 'keep' | 'manager' | 'revoke';
+            reason: string;
+        },
+    ) {
+        return this.http.post(`${this.teamUrl(c, t)}/ownership/transfer`, dto);
     }
 }

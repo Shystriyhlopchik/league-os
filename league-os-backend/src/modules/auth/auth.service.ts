@@ -23,6 +23,7 @@ import { TeamPlayerEntity } from '../team-players/entities/team-players.entity';
 import { ConfirmPlayerLinkDto } from './dto/confirm-player-link.dto';
 import { UserEntity } from '../users/entities/user.entity';
 import { CommunityMemberEntity } from '../communities/entities/community-member.entity';
+import { TeamAccessService } from '../team-access/team-access.service';
 
 @Injectable()
 export class AuthService {
@@ -42,6 +43,7 @@ export class AuthService {
 
     @InjectRepository(CommunityMemberEntity)
     private readonly communityMembersRepository: Repository<CommunityMemberEntity>,
+    private readonly teamAccess: TeamAccessService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -50,7 +52,8 @@ export class AuthService {
     const email = dto.email?.trim().toLowerCase();
 
     const existingAuthAccount = await this.findLocalAuthAccount(login);
-    const existingUsername = await this.usersService.findByEmailOrUsername(username);
+    const existingUsername =
+      await this.usersService.findByEmailOrUsername(username);
     const existingEmail = email
       ? await this.usersService.findByEmailOrUsername(email)
       : null;
@@ -73,33 +76,39 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
-    const user = await this.authAccountsRepository.manager.transaction(async (manager) => {
-      // Serialize cross-field username/email claims too: separate unique
-      // indexes alone cannot stop concurrent username-vs-email collisions.
-      await manager.query('SELECT pg_advisory_xact_lock(78202, 1)');
-      const identities = [login, email].filter((v): v is string => !!v);
-      const conflicts = await manager.query(`SELECT id FROM users
+    const user = await this.authAccountsRepository.manager.transaction(
+      async (manager) => {
+        // Serialize cross-field username/email claims too: separate unique
+        // indexes alone cannot stop concurrent username-vs-email collisions.
+        await manager.query('SELECT pg_advisory_xact_lock(78202, 1)');
+        const identities = [login, email].filter((v): v is string => !!v);
+        const conflicts = await manager.query(
+          `SELECT id FROM users
         WHERE lower(btrim(username)) = ANY($1::text[]) OR lower(btrim(email)) = ANY($1::text[])
-        UNION ALL SELECT user_id FROM user_auth_accounts WHERE provider='local' AND lower(btrim(login)) = ANY($1::text[]) LIMIT 1`, [identities]);
-      if (conflicts.length) throw new ConflictException('Логин или email уже используется');
-      const created = await manager.getRepository(UserEntity).save({
-      email,
-      username,
-      firstName: dto.firstName.trim(),
-      lastName: dto.lastName.trim(),
-      middleName: dto.middleName?.trim() || undefined,
-      // Kept for backward compatibility with existing local users.
-      passwordHash,
-      roles: [userRole],
-      });
-      await manager.getRepository(UserAuthAccountEntity).save({
-        userId: created.id,
-        provider: AuthProvider.Local,
-        login,
-        passwordHash,
-      });
-      return created;
-    });
+        UNION ALL SELECT user_id FROM user_auth_accounts WHERE provider='local' AND lower(btrim(login)) = ANY($1::text[]) LIMIT 1`,
+          [identities],
+        );
+        if (conflicts.length)
+          throw new ConflictException('Логин или email уже используется');
+        const created = await manager.getRepository(UserEntity).save({
+          email,
+          username,
+          firstName: dto.firstName.trim(),
+          lastName: dto.lastName.trim(),
+          middleName: dto.middleName?.trim() || undefined,
+          // Kept for backward compatibility with existing local users.
+          passwordHash,
+          roles: [userRole],
+        });
+        await manager.getRepository(UserAuthAccountEntity).save({
+          userId: created.id,
+          provider: AuthProvider.Local,
+          login,
+          passwordHash,
+        });
+        return created;
+      },
+    );
 
     const createdUser = await this.usersService.findById(user.id);
 
@@ -192,7 +201,9 @@ export class AuthService {
 
     teamPlayer.player.userId = user.id;
     // Linking an account must not overwrite a concurrently corrected player profile.
-    await this.playersRepository.update(teamPlayer.player.id, { userId: user.id });
+    await this.playersRepository.update(teamPlayer.player.id, {
+      userId: user.id,
+    });
 
     const playerRole = await this.rolesService.findByCode(RoleCode.Player);
 
@@ -264,6 +275,10 @@ export class AuthService {
     const captainTeamIds = teamLinks
       .filter((teamLink) => teamLink.isCaptain)
       .map((teamLink) => teamLink.teamId);
+    const teamAccess = await this.teamAccess.entries({
+      id: user.id,
+      roles: user.roles?.map((r) => r.code) ?? [],
+    });
 
     return {
       id: user.id,
@@ -288,7 +303,9 @@ export class AuthService {
           }
         : null,
       captainTeamIds,
-      manageableTeamIds: captainTeamIds,
+      // Legacy clients receive actual grants too; captainTeamIds is sporting metadata only.
+      manageableTeamIds: [...new Set(teamAccess.map((entry) => entry.teamId))],
+      teamAccess,
     };
   }
 
@@ -296,7 +313,9 @@ export class AuthService {
     const accounts = await this.authAccountsRepository.find({
       where: {
         provider: AuthProvider.Local,
-        login: Raw((column) => `LOWER(BTRIM(${column})) = :login`, { login: this.normalizeLogin(login) }),
+        login: Raw((column) => `LOWER(BTRIM(${column})) = :login`, {
+          login: this.normalizeLogin(login),
+        }),
       },
       relations: {
         user: {
@@ -305,7 +324,10 @@ export class AuthService {
       },
       take: 2,
     });
-    if (accounts.length > 1) throw new ConflictException('Неоднозначный логин. Обратитесь к администратору');
+    if (accounts.length > 1)
+      throw new ConflictException(
+        'Неоднозначный логин. Обратитесь к администратору',
+      );
     return accounts[0] ?? null;
   }
 

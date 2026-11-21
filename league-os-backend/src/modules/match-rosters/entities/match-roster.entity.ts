@@ -4,10 +4,24 @@ import { BaseEntity } from '../../../common/base/base.entity';
 import { MatchEntity } from '../../matches/entities/match.entity';
 import { TeamEntity } from '../../teams/entities/team.entity';
 import { UserEntity } from '../../users/entities/user.entity';
+export interface MatchRosterWorkflowEntry {
+  action: 'returned' | 'edited_by_official' | 'corrected_finished';
+  at: string;
+  actorUserId: number;
+  reason: string;
+  before: number[];
+  after: number[];
+}
 
 @Entity('match_rosters')
 @Unique(['matchId', 'teamId'])
 export class MatchRosterEntity extends BaseEntity {
+  @Column({
+    name: 'workflow_history',
+    type: 'jsonb',
+    default: () => "'[]'::jsonb",
+  })
+  workflowHistory: MatchRosterWorkflowEntry[];
   @Column({ name: 'match_id' })
   matchId: number;
 

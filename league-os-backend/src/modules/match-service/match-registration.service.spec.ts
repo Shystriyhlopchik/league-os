@@ -10,6 +10,7 @@ import { ROLES_KEY } from '../auth/decorators/roles.decorator';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { MatchServiceAccessGuard } from './match-service-access.guard';
 
 describe('MatchServiceService registration editing', () => {
   const buildService = () => {
@@ -53,7 +54,9 @@ describe('MatchServiceService registration editing', () => {
       {} as never,
       dataSource as never,
       tournamentApplications as never,
-      { myTeams: jest.fn().mockResolvedValue([]) } as never,
+      {
+        myTeams: jest.fn().mockResolvedValue([{ communityId: 1, teamId: 20 }]),
+      } as never,
       {} as never,
     );
 
@@ -78,6 +81,9 @@ describe('MatchServiceService registration editing', () => {
 
   const prepareApprovedRoster = () => {
     const fixture = buildService();
+    jest
+      .spyOn(fixture.service as never, 'canApproveMatchRoster' as never)
+      .mockResolvedValue(true as never);
     const currentPlayers = Array.from({ length: 6 }, (_, index) => ({
       id: 50 + index,
       teamPlayerId: 60 + index,
@@ -167,13 +173,16 @@ describe('MatchServiceService registration editing', () => {
       save: jest.fn(),
     };
     const rosterPlayerRepository = {
+      find: jest.fn().mockResolvedValue([]),
       delete: jest.fn(),
       save: jest.fn(),
       create: jest.fn((value) => value),
     };
     dataSource.transaction.mockImplementation(async (callback) =>
       callback({
-        findOne: jest.fn().mockResolvedValue({ id: 1 }),
+        findOne: jest
+          .fn()
+          .mockResolvedValue({ id: 1, status: MatchStatus.SCHEDULED }),
         find: jest.fn().mockResolvedValue(currentPlayers),
         getRepository: (entity: unknown) =>
           entity === MatchRosterEntity
@@ -190,6 +199,7 @@ describe('MatchServiceService registration editing', () => {
         20,
         currentPlayers.map((p) => p.teamPlayerId),
         40,
+        'Добавлен забытый игрок',
       ),
     ).resolves.toEqual({ ok: true });
     expect(rosterPlayerRepository.save).toHaveBeenCalledWith(
@@ -249,17 +259,12 @@ describe('MatchServiceService registration editing', () => {
     );
   });
 
-  it('protects the official candidate endpoint with authentication and official roles', () => {
+  it('protects official candidates with authentication and community-scoped authority', () => {
     const handler =
       MatchServiceController.prototype.getMatchRegistrationByOfficial;
-    expect(Reflect.getMetadata(ROLES_KEY, handler)).toEqual([
-      RoleCode.Referee,
-      RoleCode.Admin,
-      RoleCode.SuperAdmin,
-    ]);
+    expect(Reflect.getMetadata(ROLES_KEY, handler)).toBeUndefined();
     expect(Reflect.getMetadata(GUARDS_METADATA, handler)).toEqual([
-      JwtAuthGuard,
-      RolesGuard,
+      MatchServiceAccessGuard,
     ]);
   });
 
@@ -369,6 +374,7 @@ describe('MatchServiceService registration editing', () => {
       .mockResolvedValue({ ok: true } as never);
     dataSource.transaction.mockImplementation(async (callback) =>
       callback({
+        findOne: jest.fn().mockResolvedValue({ status: MatchStatus.SCHEDULED }),
         getRepository: (entity: unknown) =>
           entity === MatchRosterEntity
             ? rosterRepository
@@ -406,6 +412,7 @@ describe('MatchServiceService registration editing', () => {
       .mockResolvedValue([] as never);
     dataSource.transaction.mockImplementation(async (callback) =>
       callback({
+        findOne: jest.fn().mockResolvedValue({ status: MatchStatus.SCHEDULED }),
         getRepository: (entity: unknown) =>
           entity === MatchRosterEntity
             ? rosterRepository

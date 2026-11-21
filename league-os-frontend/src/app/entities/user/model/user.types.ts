@@ -15,6 +15,14 @@ export interface User {
     linkedPlayer?: LinkedPlayer | null;
     captainTeamIds?: number[];
     manageableTeamIds?: number[];
+    teamAccess?: TeamAccess[];
+}
+export interface TeamAccess {
+    communityId: number;
+    teamId: number;
+    teamName: string;
+    role: 'owner' | 'manager' | 'community_admin' | 'super_admin';
+    permissions: string[];
 }
 
 export interface LinkedPlayer {

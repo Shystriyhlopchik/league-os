@@ -24,6 +24,7 @@ describe('Case-insensitive login, case-sensitive password', () => {
       {} as never,
       {} as never,
       {} as never,
+      {} as never,
     );
     jest
       .spyOn(service as never, 'buildAuthResponse' as never)
